@@ -1,123 +1,37 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0d0d0d" />
-  <meta name="description" content="زخم برفيوم — عطور مصممة بحضور لا يُنسى." />
-  <title>زخم برفيوم | Zakham Perfume</title>
-  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-  <link rel="stylesheet" href="/styles.css" />
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0c0c0c" /><meta name="description" content="متجر زخم برفيوم — عطور، هدايا، وتركيبات خاصة." />
+  <title>زخم برفيوم | متجر العطور</title><link rel="icon" type="image/svg+xml" href="/logo.svg" /><link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="grain" aria-hidden="true"></div>
-  <header class="site-header" id="top">
-    <div class="header-shell">
-      <a class="wordmark-mobile" href="#top" aria-label="زخم برفيوم">ZP</a>
-      <nav class="main-nav" aria-label="التنقل الرئيسي">
-        <a href="#services" data-i18n="nav.services">خدماتنا</a>
-        <a href="#story" data-i18n="nav.story">قصتنا</a>
-        <a href="#gallery" data-i18n="nav.gallery">المعرض</a>
-        <a href="#faq" data-i18n="nav.faq">الأسئلة الشائعة</a>
-      </nav>
-      <a class="header-logo" href="#top" aria-label="Zakham Perfume — العودة إلى الأعلى">
-        <img src="/logo.svg" alt="زخم برفيوم — Zakham Perfume" />
-      </a>
-      <div class="header-actions">
-        <button class="lang-switch" type="button" data-lang-toggle aria-label="تبديل اللغة">EN</button>
-        <a class="header-cta" href="#contact" data-i18n="nav.cta">ابدأ محادثة</a>
-      </div>
-      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="فتح القائمة">☰</button>
-    </div>
-    <div class="mobile-menu" id="mobile-menu" hidden>
-      <a href="#services" data-i18n="nav.services">خدماتنا</a>
-      <a href="#story" data-i18n="nav.story">قصتنا</a>
-      <a href="#gallery" data-i18n="nav.gallery">المعرض</a>
-      <a href="#faq" data-i18n="nav.faq">الأسئلة الشائعة</a>
-      <a href="#contact" data-i18n="nav.cta">ابدأ محادثة</a>
-    </div>
+  <div class="announcement"><div><span class="pulse"></span><span data-i18n="announcement.welcome">خصم 7% على طلبك الأول — استخدم الكود HALA</span></div><span data-i18n="announcement.shipping">شحن مجاني للطلبات فوق 190 ر.س</span><button data-lang-toggle>EN</button></div>
+  <header class="store-header" id="top">
+    <div class="header-main container"><div class="header-tools"><button class="icon-btn" data-search-open aria-label="بحث">⌕</button><a class="tool-link" href="#account"><span class="tool-icon">♙</span><span data-i18n="header.account">حسابي</span></a></div><a class="store-logo" href="#top"><img src="/logo.svg" alt="زخم برفيوم" /></a><div class="header-tools"><button class="icon-btn cart-trigger" data-cart-open aria-label="السلة"><span class="cart-icon">▱</span><b class="cart-count">0</b></button><a class="tool-link desktop-only" href="#wishlist"><span class="tool-icon">♡</span><span data-i18n="header.wishlist">المفضلة</span></a></div></div>
+    <nav class="category-nav container" aria-label="تصنيفات المتجر"><a href="#products" data-category="all" data-i18n="nav.all">كل المنتجات</a><a href="#products" data-category="perfumes" data-i18n="nav.perfumes">العطور</a><a href="#products" data-category="oud" data-i18n="nav.oud">العود</a><a href="#products" data-category="sets" data-i18n="nav.sets">البكجات</a><a href="#products" data-category="gifts" data-i18n="nav.gifts">الهدايا</a><a href="#services" data-i18n="nav.custom">تركيب خاص</a><a href="#offers" data-i18n="nav.offers">العروض</a><a href="#about" data-i18n="nav.about">عن زخم</a></nav>
   </header>
 
   <main>
-    <section class="hero section-pad" id="home">
-      <div class="hero-copy reveal">
-        <p class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="hero.eyebrow">عطرٌ يترك أثراً</span></p>
-        <h1 data-i18n="hero.title">نصنع حضورك<br /><em>بصيغة العطر.</em></h1>
-        <p class="hero-text" data-i18n="hero.text">في زخم، نحول الذوق الشخصي إلى تركيبة تحمل اسمك، وتمنح كل لحظة توقيعاً لا يُنسى.</p>
-        <div class="hero-actions">
-          <a href="#quote" class="btn btn-gold" data-i18n="hero.quote">اطلب عرض سعر</a>
-          <a href="#consult" class="btn btn-ghost" data-i18n="hero.consult">احجز استشارتك <span>↗</span></a>
-        </div>
-        <div class="hero-note"><span class="signal-dot"></span><span data-i18n="hero.note">تركيبات خاصة للأفراد والعلامات التجارية</span></div>
-      </div>
-      <div class="hero-visual reveal reveal-delay">
-        <div class="visual-frame"></div>
-        <img src="/manus-storage/44522_70a2e3c0.jpg" alt="مجموعة عطور زخم داخل صندوق خشبي فاخر" />
-        <div class="visual-stamp"><span>EST.</span><strong>2021</strong><small>RIYADH · KSA</small></div>
-        <div class="visual-caption"><span data-i18n="hero.caption">مجموعة زخم الخاصة</span><b>01 / 04</b></div>
-      </div>
-    </section>
+    <section class="store-hero container"><div class="hero-image"><img src="/manus-storage/44522_70a2e3c0.jpg" alt="مجموعة زخم العطرية داخل صندوق خشبي" /><span class="hero-badge" data-i18n="hero.badge">الأكثر طلباً</span><div class="hero-progress"><span class="active"></span><span></span><span></span></div></div><div class="hero-copy"><p class="overline" data-i18n="hero.overline">THE ZAKHAM EDIT · 2024</p><h1 data-i18n="hero.title">رائحة<br /><em>تشبهك.</em></h1><p data-i18n="hero.text">اكتشف مجموعاتنا العطرية المصممة لترافق يومك، أو اصنع تركيبتك الخاصة مع خبرائنا.</p><div class="hero-actions"><a class="btn btn-dark" href="#products" data-i18n="hero.shop">تسوق الآن <span>←</span></a><a class="plain-link" href="#services" data-i18n="hero.custom">اصنع عطرك الخاص <span>↗</span></a></div><div class="hero-note"><span>✦</span><span data-i18n="hero.note">توصيل أنيق · تغليف هدايا · جودة أصلية</span></div></div></section>
 
-    <section class="marquee" aria-label="هوية العلامة">
-      <div class="marquee-track"><span>Zakham Perfume</span><i>✦</i><span data-i18n="marquee.custom">عطور مصمّمة بذوقك</span><i>✦</i><span>Zakham Perfume</span><i>✦</i><span data-i18n="marquee.custom">عطور مصمّمة بذوقك</span><i>✦</i></div>
-    </section>
+    <section class="promo-strip" id="offers"><div class="container promo-inner"><div><span class="promo-tag" data-i18n="promo.tag">عرض زخم</span><h2 data-i18n="promo.title">ثلاث لحظات.<br /><em>مجموعة واحدة.</em></h2></div><p data-i18n="promo.text">اختر من بكجات زخم الجاهزة للهدايا، أو اطلب تشكيلتك حسب ذوقك.</p><a class="btn btn-outline-light" href="#products" data-i18n="promo.cta">اكتشف العروض <span>←</span></a></div></section>
 
-    <section class="intro section-pad" id="story">
-      <div class="section-kicker"><span>01</span><span class="kicker-line"></span><span data-i18n="story.kicker">عن زخم</span></div>
-      <div class="intro-grid">
-        <h2 data-i18n="story.title">الرائحة ليست<br /><em>تفصيلاً.</em></h2>
-        <div class="intro-body">
-          <p class="lead" data-i18n="story.lead">إنها الطريقة التي يتذكرك بها العالم.</p>
-          <p data-i18n="story.text">بدأت زخم من شغف بسيط: أن يكون لكل شخص عطر يشبهه حقاً. نمزج الحرفة العربية مع حسّ معاصر، ونصنع تركيبات متوازنة للبيوت، والهدايا، والعلامات التي تبحث عن حضور مختلف.</p>
-          <a href="#contact" class="text-link" data-i18n="story.link">تعرّف على قصتنا <span>↗</span></a>
-        </div>
-      </div>
-      <div class="stats-row">
-        <div class="stat"><strong>04</strong><span data-i18n="stats.years">سنوات من الشغف</span></div>
-        <div class="stat"><strong>120+</strong><span data-i18n="stats.blends">تركيبة مخصصة</span></div>
-        <div class="stat"><strong>03</strong><span data-i18n="stats.steps">خطوات لصناعة عطرك</span></div>
-        <div class="stat stat-mark">✦</div>
-      </div>
-    </section>
+    <section class="category-section container" id="categories"><div class="section-title"><span class="section-index">01</span><div><p class="overline" data-i18n="categories.overline">تصفح حسب ذوقك</p><h2 data-i18n="categories.title">اختر عالمك<br /><em>العطري.</em></h2></div><a class="plain-link" href="#products" data-i18n="categories.all">عرض الكل <span>↗</span></a></div><div class="category-grid"><a class="category-card category-dark" href="#products" data-category="perfumes"><span>01</span><strong data-i18n="categories.perfumes">العطور</strong><small data-i18n="categories.perfumesCount">12 منتجاً</small><b>↗</b></a><a class="category-card category-gold" href="#products" data-category="oud"><span>02</span><strong data-i18n="categories.oud">العود</strong><small data-i18n="categories.oudCount">08 منتجات</small><b>↗</b></a><a class="category-card category-pearl" href="#products" data-category="sets"><span>03</span><strong data-i18n="categories.sets">البكجات</strong><small data-i18n="categories.setsCount">06 مجموعات</small><b>↗</b></a><a class="category-card category-photo" href="#products" data-category="gifts"><img src="/manus-storage/44522_70a2e3c0.jpg" alt="هدايا زخم" /><span>04</span><strong data-i18n="categories.gifts">الهدايا</strong><small data-i18n="categories.giftsCount">لمن تحب</small><b>↗</b></a></div></section>
 
-    <section class="services section-pad" id="services">
-      <div class="section-heading">
-        <div class="section-kicker"><span>02</span><span class="kicker-line"></span><span data-i18n="services.kicker">خدماتنا</span></div>
-        <div><h2 data-i18n="services.title">من الفكرة<br /><em>إلى الأثر.</em></h2><p data-i18n="services.intro">نرافقك في كل مرحلة لصناعة تجربة عطرية تحمل قصتك.</p></div>
-      </div>
-      <div class="service-list">
-        <article class="service-card featured"><div class="service-number">01</div><div class="service-icon">✦</div><h3 data-i18n="service.one.title">تركيب عطر خاص</h3><p data-i18n="service.one.text">جلسة ذوقية نكتشف فيها نوتاتك المفضلة ونبني تركيبة فريدة تحمل بصمتك.</p><a href="#consult" class="service-link" data-i18n="service.one.cta">ابدأ من هنا <span>↗</span></a></article>
-        <article class="service-card"><div class="service-number">02</div><div class="service-icon">◌</div><h3 data-i18n="service.two.title">هوية عطرية للعلامات</h3><p data-i18n="service.two.text">نحوّل شخصية علامتك إلى رائحة متكاملة للمساحات، المنتجات، والهدايا.</p><a href="#quote" class="service-link" data-i18n="service.two.cta">اطلب عرضاً <span>↗</span></a></article>
-        <article class="service-card"><div class="service-number">03</div><div class="service-icon">⌁</div><h3 data-i18n="service.three.title">هدايا وتغليف فاخر</h3><p data-i18n="service.three.text">مجموعات عطرية مصممة للمناسبات، بتفاصيل تغليف تحكي قيمة الهدية.</p><a href="#quote" class="service-link" data-i18n="service.three.cta">صمّم مجموعتك <span>↗</span></a></article>
-      </div>
-    </section>
+    <section class="products-section container" id="products"><div class="section-title"><span class="section-index">02</span><div><p class="overline" data-i18n="products.overline">مختارات زخم</p><h2 data-i18n="products.title">الأكثر<br /><em>طلباً.</em></h2></div><div class="filter-tabs"><button class="active" data-category="all" data-i18n="filter.all">الكل</button><button data-category="perfumes" data-i18n="filter.perfumes">عطور</button><button data-category="sets" data-i18n="filter.sets">بكجات</button><button data-category="oud" data-i18n="filter.oud">عود</button></div></div><div class="product-grid" id="product-grid"></div><div class="center-action"><button class="btn btn-dark" data-load-more data-i18n="products.more">عرض المزيد <span>↓</span></button></div></section>
 
-    <section class="gallery section-pad" id="gallery">
-      <div class="gallery-top"><div><div class="section-kicker"><span>03</span><span class="kicker-line"></span><span data-i18n="gallery.kicker">المعرض</span></div><h2 data-i18n="gallery.title">تفاصيل<br /><em>تُشمّ.</em></h2></div><p data-i18n="gallery.text">من الخشب الدافئ إلى الزجاج الصافي، كل ملمس في زخم جزء من التجربة.</p></div>
-      <div class="gallery-grid">
-        <figure class="gallery-main"><img src="/manus-storage/44522_70a2e3c0.jpg" alt="تفاصيل زجاجات عطور زخم" /><figcaption><span data-i18n="gallery.caption">مجموعة التوقيع · 2024</span><b>↗</b></figcaption></figure>
-        <div class="gallery-side"><div class="gallery-tile tile-dark"><span>ZA</span><small>THE SIGNATURE<br />COLLECTION</small></div><div class="gallery-tile tile-copy"><span class="quote-mark">“</span><p data-i18n="gallery.quote">الرفاهية ليست في الكثرة، بل في أن تجد ما يشبهك.</p><small>— ZAKHAM NOTES</small></div></div>
-      </div>
-    </section>
+    <section class="service-banner container" id="services"><div class="service-art"><div class="art-ring"></div><div class="art-monogram">Z<br /><small>خ</small></div></div><div class="service-content"><p class="overline" data-i18n="service.overline">ONE-OF-ONE · BY ZAKHAM</p><h2 data-i18n="service.title">عطرك ليس<br /><em>منتجاً.</em></h2><p data-i18n="service.text">احجز جلسة تركيب خاصة، ودعنا نصنع رائحة لا توجد إلا لك.</p><a class="btn btn-gold" href="#consult" data-i18n="service.cta">احجز استشارتك <span>↗</span></a></div><div class="service-side"><span>05</span><p data-i18n="service.side">لأن أفضل الهدايا<br />تبدأ من فكرة.</p></div></section>
 
-    <section class="process section-pad">
-      <div class="process-aside"><div class="section-kicker"><span>04</span><span class="kicker-line"></span><span data-i18n="process.kicker">رحلة العطر</span></div><h2 data-i18n="process.title">ثلاث لحظات.<br /><em>عطر واحد.</em></h2></div>
-      <div class="process-steps"><div class="step"><span>01</span><div><h3 data-i18n="process.one.title">نستمع</h3><p data-i18n="process.one.text">نبدأ بحوار عن ذوقك، ذاكرتك، والمشاعر التي تريد أن يتركها عطرك.</p></div></div><div class="step"><span>02</span><div><h3 data-i18n="process.two.title">نمزج</h3><p data-i18n="process.two.text">نختار النوتات ونوازنها يدوياً حتى تتشكل تركيبة تنتمي إليك.</p></div></div><div class="step"><span>03</span><div><h3 data-i18n="process.three.title">نصقل</h3><p data-i18n="process.three.text">نختبر العطر، نعدّل تفاصيله، ثم نسلّمك تجربة مكتملة من الرائحة إلى التغليف.</p></div></div></div>
-    </section>
+    <section class="trust-section container" id="about"><div class="trust-copy"><p class="overline" data-i18n="trust.overline">لماذا زخم؟</p><h2 data-i18n="trust.title">تفاصيل صغيرة،<br /><em>فرق كبير.</em></h2></div><div class="trust-items"><div><span>✦</span><h3 data-i18n="trust.one.title">أصلي دائماً</h3><p data-i18n="trust.one.text">تركيبات مختارة بعناية وجودة نثق بها.</p></div><div><span>◌</span><h3 data-i18n="trust.two.title">تغليف يليق</h3><p data-i18n="trust.two.text">كل طلب يصل كهدية، حتى لو كانت لك.</p></div><div><span>⌁</span><h3 data-i18n="trust.three.title">نصنعها لك</h3><p data-i18n="trust.three.text">خدمة تركيب خاصة بلمستك أنت.</p></div></div></section>
 
-    <section class="testimonial section-pad"><div class="testimonial-card"><span class="quote-mark">“</span><blockquote data-i18n="testimonial.quote">طلبت عطراً يحضر دون أن يسبقني، وصنعت زخم تماماً ما تخيلته.</blockquote><div class="testimonial-meta"><span class="avatar">ن</span><span><strong data-i18n="testimonial.name">نورة العتيبي</strong><small data-i18n="testimonial.role">عميلة خاصة</small></span></div></div><div class="testimonial-side"><span>05 / 06</span><p data-i18n="testimonial.side">كل تركيبة تبدأ بسؤال<br /><em>كيف تريد أن تُذكر؟</em></p></div></section>
+    <section class="reviews-section"><div class="container review-layout"><div class="review-number">06 / 06</div><div><span class="quote-mark">“</span><blockquote data-i18n="review.quote">طلبت بكجاً كهدية، ووصل أجمل مما تخيلت. التفاصيل والرائحة في مكان آخر.</blockquote><p class="review-author" data-i18n="review.author">— سارة · عميلة زخم</p></div><a class="plain-link" href="#contact" data-i18n="review.more">كل الآراء <span>↗</span></a></div></section>
 
-    <section class="faq section-pad" id="faq"><div class="section-heading"><div><div class="section-kicker"><span>05</span><span class="kicker-line"></span><span data-i18n="faq.kicker">الأسئلة الشائعة</span></div><h2 data-i18n="faq.title">قبل أن<br /><em>نبدأ.</em></h2></div><p data-i18n="faq.intro">كل ما تحتاج معرفته قبل صناعة عطرك.</p></div><div class="faq-list"><details open><summary><span data-i18n="faq.one.q">كم تستغرق صناعة العطر الخاص؟</span><b>＋</b></summary><p data-i18n="faq.one.a">تستغرق الجلسة الأولى 45–60 دقيقة، ثم نشاركك النسخة التجريبية خلال أيام قليلة للتقييم والصقل.</p></details><details><summary><span data-i18n="faq.two.q">هل يمكن تصميم عطر لعلامة تجارية؟</span><b>＋</b></summary><p data-i18n="faq.two.a">نعم، نصمم هويات عطرية للمتاجر، الفنادق، الهدايا، والمناسبات الخاصة وفق الكمية والهوية المطلوبة.</p></details><details><summary><span data-i18n="faq.three.q">هل يمكن طلب كمية كبيرة؟</span><b>＋</b></summary><p data-i18n="faq.three.a">بالتأكيد. أرسل لنا فكرة المشروع والكمية المتوقعة وسنجهز لك عرضاً مناسباً.</p></details><details><summary><span data-i18n="faq.four.q">كيف أحجز استشارة؟</span><b>＋</b></summary><p data-i18n="faq.four.a">استخدم نموذج حجز الاستشارة في هذه الصفحة. النموذج حالياً تجريبي ولا يرسل بيانات، وسيُربط لاحقاً بعد اعتمادك.</p></details></div></section>
-
-    <section class="contact section-pad" id="contact"><div class="contact-intro"><div class="section-kicker"><span>06</span><span class="kicker-line"></span><span data-i18n="contact.kicker">لنصنع أثراً</span></div><h2 data-i18n="contact.title">لديك فكرة؟<br /><em>نسمعها.</em></h2><p data-i18n="contact.text">أخبرنا بما تتخيله، وسنعود إليك بالخطوة الأنسب.</p><div class="contact-details"><a href="mailto:hello@zakhamperfume.com">hello@zakhamperfume.com</a><span>الرياض · المملكة العربية السعودية</span></div></div><div class="contact-actions"><a href="#quote" class="contact-action"><span class="action-icon">↗</span><span><small data-i18n="contact.quote.small">للمشاريع والطلبات</small><strong data-i18n="contact.quote.title">اطلب عرض سعر</strong></span></a><a href="#consult" class="contact-action"><span class="action-icon">◷</span><span><small data-i18n="contact.consult.small">للأفراد والذوق الشخصي</small><strong data-i18n="contact.consult.title">احجز استشارتك</strong></span></a></div></section>
-
-    <section class="forms-section section-pad" id="quote"><div class="form-shell"><div class="form-heading"><span class="form-label" data-i18n="form.quote.label">REQUEST A QUOTE</span><h2 data-i18n="form.quote.title">لنضع فكرة<br /><em>على الورق.</em></h2><p data-i18n="form.quote.text">هذا النموذج جاهز للربط لاحقاً. حالياً لا يتم إرسال أو حفظ أي بيانات.</p></div><form class="lead-form" data-demo-form><label><span data-i18n="form.name">الاسم</span><input required name="name" placeholder="اكتب اسمك" data-placeholder-en="Your name" /></label><label><span data-i18n="form.email">البريد الإلكتروني</span><input required type="email" name="email" placeholder="name@example.com" /></label><label><span data-i18n="form.type">نوع الطلب</span><select name="type"><option data-i18n="form.option.brand">هوية عطرية لعلامة</option><option data-i18n="form.option.gift">هدايا وتغليف</option><option data-i18n="form.option.private">عطر خاص</option></select></label><label class="full"><span data-i18n="form.message">حدثنا عن فكرتك</span><textarea name="message" rows="3" placeholder="الكمية، الموعد، وما تتخيله..."></textarea></label><button class="btn btn-gold" type="submit" data-i18n="form.send">إرسال الطلب <span>↗</span></button></form></div></section>
-
-    <section class="consult-section section-pad" id="consult"><div class="consult-card"><div class="consult-copy"><span class="form-label" data-i18n="form.consult.label">PRIVATE CONSULTATION</span><h2 data-i18n="form.consult.title">عطرك يبدأ<br /><em>من حديث.</em></h2><p data-i18n="form.consult.text">اختر الوقت الذي يناسبك لجلسة تعارف عطرية. الحجز هنا تجريبي ولن يتم حفظه قبل اعتماد الربط.</p><form class="consult-form" data-demo-form><label><span data-i18n="form.name">الاسم</span><input required name="name" placeholder="اكتب اسمك" /></label><label><span data-i18n="form.date">التاريخ المفضل</span><input required type="date" name="date" /></label><label><span data-i18n="form.time">الوقت</span><select name="time"><option>10:00 — 12:00</option><option>13:00 — 15:00</option><option>17:00 — 19:00</option></select></label><button class="btn btn-light" type="submit" data-i18n="form.request">اطلب موعداً <span>↗</span></button></form></div><div class="consult-mark"><img src="/logo.svg" alt="" /><span>01—1</span></div></div></section>
+    <section class="newsletter container" id="contact"><div><p class="overline" data-i18n="newsletter.overline">ZAKHAM NOTES</p><h2 data-i18n="newsletter.title">كن أول من<br /><em>يعرف.</em></h2></div><div><p data-i18n="newsletter.text">عروض خاصة، إطلاقات جديدة، وقليل من الإلهام العطري إلى بريدك.</p><form data-newsletter><input type="email" required placeholder="بريدك الإلكتروني" /><button type="submit" aria-label="اشتراك">←</button></form><small data-i18n="newsletter.note">بالاشتراك، توافق على استقبال رسائل زخم فقط.</small></div></section>
   </main>
 
-  <footer class="site-footer"><div class="footer-brand"><img src="/logo.svg" alt="زخم برفيوم" /><p data-i18n="footer.tagline">رائحة تشبهك، وأثر يبقى.</p></div><div class="footer-nav"><a href="#services" data-i18n="nav.services">خدماتنا</a><a href="#story" data-i18n="nav.story">قصتنا</a><a href="#gallery" data-i18n="nav.gallery">المعرض</a><a href="#contact" data-i18n="nav.cta">ابدأ محادثة</a></div><div class="footer-bottom"><span>© 2024 Zakham Perfume</span><span data-i18n="footer.note">صُنع بحضور.</span></div></footer>
-  <div class="toast" role="status" aria-live="polite" hidden></div>
+  <footer class="store-footer"><div class="container footer-grid"><div class="footer-brand"><img src="/logo.svg" alt="زخم برفيوم" /><p data-i18n="footer.tagline">رائحة تشبهك، وأثر يبقى.</p></div><div><h4 data-i18n="footer.shop">تسوق</h4><a href="#products" data-category="perfumes" data-i18n="nav.perfumes">العطور</a><a href="#products" data-category="sets" data-i18n="nav.sets">البكجات</a><a href="#products" data-category="gifts" data-i18n="nav.gifts">الهدايا</a></div><div><h4 data-i18n="footer.help">نساعدك</h4><a href="#services" data-i18n="footer.consult">الاستشارة العطرية</a><a href="#contact" data-i18n="footer.contact">تواصل معنا</a><a href="#faq" data-i18n="footer.faq">الأسئلة الشائعة</a></div><div><h4 data-i18n="footer.follow">تابعنا</h4><a href="#instagram">Instagram ↗</a><a href="#tiktok">TikTok ↗</a><a href="mailto:hello@zakhamperfume.com">hello@zakhamperfume.com</a></div></div><div class="container footer-bottom"><span>© 2024 Zakham Perfume</span><span data-i18n="footer.bottom">صُنع بحضور.</span></div></footer>
+
+  <aside class="cart-drawer" aria-hidden="true" data-cart-drawer><div class="drawer-head"><h2 data-i18n="cart.title">سلة التسوق</h2><button data-cart-close>×</button></div><div class="cart-items" data-cart-items><div class="empty-cart"><span>▱</span><p data-i18n="cart.empty">سلتك فارغة حالياً.</p><a href="#products" data-cart-close data-i18n="cart.shop">استكشف المنتجات</a></div></div><div class="cart-summary"><div><span data-i18n="cart.total">الإجمالي</span><strong data-cart-total>0 ر.س</strong></div><button class="btn btn-gold" data-checkout data-i18n="cart.checkout">متابعة الطلب <span>←</span></button><small data-i18n="cart.note">الدفع غير مفعّل في هذه النسخة التجريبية.</small></div></aside><div class="drawer-overlay" data-cart-close></div><div class="search-modal" data-search-modal><div class="search-inner"><button data-search-close>×</button><p class="overline" data-i18n="search.overline">ابحث في زخم</p><input data-search-input type="search" placeholder="عن ماذا تبحث؟" /><div data-search-results></div></div></div><div class="toast" role="status" aria-live="polite" hidden></div>
   <script src="/script.js"></script>
-</body>
-</html>
+</body></html>
