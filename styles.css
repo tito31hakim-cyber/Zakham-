@@ -34,3 +34,36 @@
 .mega-feature{background:#1a1a19;color:#e9ddc7;min-height:145px;padding:15px;display:flex;flex-direction:column;justify-content:space-between}.mega-feature span{font:11px/1.1 var(--serif);letter-spacing:.14em;color:var(--gold-light)}.mega-feature b{font:19px var(--serif);font-weight:400}.mega-gold{background:#b8914a;color:#181208}.mega-gold span{color:#3a2911}.mega-pearl{background:#dce9e5;color:#172220}.mega-pearl span{color:#56706a}.mega-rose{background:#ead8d8;color:#4a202d}.mega-rose span{color:#9b4b64}
 @media(max-width:900px){.category-nav{overflow-x:auto;overflow-y:visible;justify-content:flex-start}.mega-panel{position:fixed;top:140px;right:12px;transform:translateY(8px);width:calc(100vw - 24px);grid-template-columns:1fr 1.3fr 120px;max-height:360px}.nav-menu-group:hover .mega-panel{opacity:0;visibility:hidden;pointer-events:none;transform:translateY(8px)}.nav-menu-group.open .mega-panel{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0)}}
 @media(max-width:560px){.mega-panel{top:133px;padding:16px;grid-template-columns:1fr 1fr;gap:15px;max-height:330px}.mega-feature{display:none}.mega-heading strong{font-size:26px}.mega-links{grid-template-columns:1fr;gap:4px}.mega-links a{font-size:10px}.mega-heading a{margin-top:18px}}
+
+/* Refined minimal announcement bar like reference storefront */
+.announcement{justify-content:center;position:relative;padding:0;min-height:28px;gap:0}
+.announcement-track{display:flex;gap:15px;align-items:center}
+.announcement span{font-size:10px;font-weight:400;color:#ddd;letter-spacing:0}
+.announcement .pulse{display:none}
+.lang-btn{position:absolute;left:5vw;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--gold-light);font-size:10px;cursor:pointer;padding:4px}
+@media(max-width:560px){.announcement-track{gap:8px}.announcement span:nth-child(2),.announcement span:nth-child(3){display:none}.lang-btn{left:3vw}}
+
+/* Official Zakham House horizontal wordmark: preserve the supplied ratio, no crop or distortion. */
+.header-main>.store-logo{width:220px;height:70px;justify-self:end}
+.header-main>.store-logo img{width:100%;height:auto;max-height:70px;object-fit:contain}
+.footer-brand img{width:250px;height:auto;max-height:96px;object-fit:contain;object-position:right center}
+@media(max-width:900px){.header-main>.store-logo{width:170px;height:58px}.header-main>.store-logo img{max-height:58px}}
+@media(max-width:560px){.header-main>.store-logo{width:145px;height:48px}.header-main>.store-logo img{max-height:48px}.footer-brand img{width:220px}}
+
+/* Mobile logo clarity: large official horizontal mark, always fully visible. */
+.header-main>.store-logo{display:flex;align-items:center;justify-content:flex-end}
+.header-main>.store-logo img{display:block;width:100%;height:auto;max-width:100%;max-height:none}
+@media(max-width:900px){.header-main{grid-template-columns:1fr 1fr 205px}.header-main>.store-logo{width:205px;height:58px}.header-main>.store-logo img{width:205px}}
+@media(max-width:560px){.header-main{height:75px;grid-template-columns:1fr 1fr 188px}.header-main>.store-logo{width:188px;height:62px}.header-main>.store-logo img{width:188px}.header-tools{gap:10px}}
+
+/* Final transparent wordmark treatment: prioritize legibility on small screens. */
+.header-main>.store-logo{width:250px;height:78px}
+.header-main>.store-logo img{width:250px;height:78px;object-fit:contain;object-position:center}
+@media(max-width:900px){.header-main{height:82px;grid-template-columns:1fr 1fr 220px}.header-main>.store-logo{width:220px;height:72px}.header-main>.store-logo img{width:220px;height:72px}}
+@media(max-width:560px){.header-main{height:88px;grid-template-columns:1fr 1fr 220px}.header-main>.store-logo{width:220px;height:78px}.header-main>.store-logo img{width:220px;height:78px}}
+
+/* Final transparent wordmark treatment: prioritize legibility on small screens. */
+.header-main>.store-logo{width:250px;height:78px}
+.header-main>.store-logo img{width:250px;height:78px;object-fit:contain;object-position:center}
+@media(max-width:900px){.header-main{height:82px;grid-template-columns:1fr 1fr 220px}.header-main>.store-logo{width:220px;height:72px}.header-main>.store-logo img{width:220px;height:72px}}
+@media(max-width:560px){.header-main{height:88px;grid-template-columns:1fr 1fr 220px}.header-main>.store-logo{width:220px;height:78px}.header-main>.store-logo img{width:220px;height:78px}}
