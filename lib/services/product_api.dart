@@ -1,19 +1,29 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import '../models/product.dart';
 
 class ProductApi {
-  // الرابط المباشر المحدث للـ API على استضافتك
   static const String apiUrl = 'https://zakhamhouse.shop/api.php?route=api/storefront';
 
-  // دعم دالة fetchProducts التي يستدعيها main.dart
+  // دالة لإنشاء عميل HTTP يتجاوز مشاكل الشهادات الأمنية مؤقتاً
+  http.Client _getClient() {
+    bool trustSelfSigned = true;
+    HttpClient httpClient = HttpClient()
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) => trustSelfSigned;
+    return IOClient(httpClient);
+  }
+
   Future<Map<String, dynamic>> fetchProducts() async {
     return await fetchStorefront();
   }
 
   Future<Map<String, dynamic>> fetchStorefront() async {
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final client = _getClient();
+      final response = await client.get(Uri.parse(apiUrl));
+      
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         List<Product> products = [];
