@@ -11,16 +11,30 @@ class ProductApi {
   final String? token;
 
   Future<List<Product>> fetchProducts() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/products'),
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'HouseOfZakham/1.0 (Flutter; Android/iOS)',
-        'X-API-Client': 'house-of-zakham-mobile',
-        if (token != null && token!.isNotEmpty)
-          'Authorization': 'Bearer $token',
-      },
-    );
+    late final http.Response response;
+    try {
+      response = await http
+          .get(
+            Uri.parse(baseUrl),
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'HouseOfZakham/1.0 (Flutter; Android/iOS)',
+              'X-API-Client': 'house-of-zakham-mobile',
+              if (token != null && token!.isNotEmpty)
+                'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 20));
+    } catch (error) {
+      final message = error.toString();
+      if (message.contains('CERTIFICATE_VERIFY_FAILED') ||
+          message.contains('HandshakeException')) {
+        throw Exception(
+          'تعذر التحقق من شهادة TLS للمخزن. يجب تثبيت شهادة HTTPS كاملة وصالحة على الخادم؛ لا يتم تعطيل التحقق داخل التطبيق.',
+        );
+      }
+      throw Exception('تعذر الاتصال بخدمة المنتجات: $error');
+    }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Products API failed: ${response.statusCode}');
@@ -30,7 +44,7 @@ class ProductApi {
     final body = response.body.trim();
     if (!contentType.contains('application/json') || body.startsWith('<')) {
       throw Exception(
-        'The server returned HTML instead of JSON. Exclude /api.php from the hosting JavaScript protection.',
+        'The products URL did not return JSON. Check the static file and its hosting access rules.',
       );
     }
 

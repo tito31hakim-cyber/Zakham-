@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'models/product.dart';
+import 'pages/checkout_page.dart';
+import 'pages/admin_page.dart';
+import 'pages/contact_page.dart';
+import 'providers/cart_provider.dart';
+
 import 'services/product_api.dart';
 
-void main() => runApp(const ZakhamApp());
+void main() => runApp(
+  ChangeNotifierProvider(
+    create: (_) => CartProvider(),
+    child: const ZakhamApp(),
+  ),
+);
 
 const gold = Color(0xFFC9A45C);
 const cream = Color(0xFFF5EFE5);
@@ -11,7 +22,7 @@ const muted = Color(0xFF9D978E);
 const card = Color(0xFF171615);
 const productImage =
     'https://zakhamhouse.shop/assets/products/catalog-royal-2026.jpg';
-const apiBaseUrl = 'https://zakhamhouse.shop/api.php';
+const apiBaseUrl = 'https://zakhamhouse.shop/mobile-api/products.json';
 
 class ZakhamApp extends StatelessWidget {
   const ZakhamApp({super.key});
@@ -121,24 +132,15 @@ class Header extends StatelessWidget {
   const Header({super.key});
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(20),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: const [
-        Text(
-          'زَخَم',
-          style: TextStyle(
-            color: cream,
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 3,
-          ),
-        ),
-        Text(
-          'HOUSE OF ZAKHAM',
-          style: TextStyle(color: gold, fontSize: 8, letterSpacing: 2.3),
-        ),
-      ],
+    padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+    child: SizedBox(
+      height: 112,
+      width: double.infinity,
+      child: Image.asset(
+        'assets/brand/zakham-house-logo.png',
+        fit: BoxFit.contain,
+        alignment: Alignment.center,
+      ),
     ),
   );
 }
@@ -766,8 +768,8 @@ class AccountPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView(
     padding: EdgeInsets.zero,
-    children: const [
-      Header(),
+    children: [
+      const Header(),
       Padding(
         padding: EdgeInsets.all(20),
         child: Column(
@@ -796,7 +798,47 @@ class AccountPage extends StatelessWidget {
               style: TextStyle(color: cream, fontSize: 16),
             ),
             SizedBox(height: 22),
-            Text('تواصل مع زخم', style: TextStyle(color: cream, fontSize: 16)),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.shopping_bag_outlined, color: gold),
+              title: Text(
+                'سلة المشتريات',
+                style: TextStyle(color: cream, fontSize: 16),
+              ),
+              trailing: Icon(Icons.arrow_back_ios_new, color: gold, size: 16),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CheckoutPage()),
+              ),
+            ),
+            SizedBox(height: 8),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.admin_panel_settings_outlined, color: gold),
+              title: Text(
+                'لوحة الإدارة',
+                style: TextStyle(color: cream, fontSize: 16),
+              ),
+              trailing: Icon(Icons.arrow_back_ios_new, color: gold, size: 16),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AdminLoginPage()),
+              ),
+            ),
+            SizedBox(height: 8),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.forum_outlined, color: gold),
+              title: Text(
+                'تواصل مع زخم',
+                style: TextStyle(color: cream, fontSize: 16),
+              ),
+              trailing: Icon(Icons.arrow_back_ios_new, color: gold, size: 16),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ContactPage()),
+              ),
+            ),
           ],
         ),
       ),
