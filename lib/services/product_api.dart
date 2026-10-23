@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/product.dart';
 
 class ProductApi {
-  // الرابط المباشر للـ API على استضافتك
+  // الرابط المباشر المحدث للـ API على استضافتك
   static const String apiUrl = 'https://zakhamhouse.shop/api.php?route=api/storefront';
 
   // دعم دالة fetchProducts التي يستدعيها main.dart
