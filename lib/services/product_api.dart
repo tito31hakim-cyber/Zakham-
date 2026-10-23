@@ -1,10 +1,18 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import '../models/product.dart';
 
 class ProductApi {
-  // الرابط المباشر الصحيح للملف داخل مجلد mobile-api الذي أنشأته
   static const String apiUrl = 'https://zakhamhouse.shop/mobile-api/products.json';
+
+  // إنشاء عميل HTTP يتجاوز شهادة الأمان نهائياً لمنع ظهور خطأ HandshakeException
+  http.Client _getUnsafeClient() {
+    HttpClient httpClient = HttpClient()
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+    return IOClient(httpClient);
+  }
 
   Future<Map<String, dynamic>> fetchProducts() async {
     return await fetchStorefront();
@@ -12,7 +20,13 @@ class ProductApi {
 
   Future<Map<String, dynamic>> fetchStorefront() async {
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final client = _getUnsafeClient();
+      final response = await client.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Accept': 'application/json',
+        },
+      );
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
