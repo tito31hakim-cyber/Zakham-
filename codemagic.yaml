@@ -1,3 +1,41 @@
-git add codemagic.yaml
-git commit -m "Add codemagic.yaml configuration file"
-git push origin main
+workflows:
+  android-workflow:
+    name: Android Workflow
+    max_build_duration: 60
+
+    environment:
+      flutter: stable
+
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+      cancel_previous_builds: true
+
+    scripts:
+      - name: Install dependencies
+        script: flutter pub get
+
+      - name: Analyze Flutter project
+        script: flutter analyze
+
+      - name: Run widget tests
+        script: flutter test
+
+      - name: Build release APK
+        script: flutter build apk --release
+
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+
+    publishing:
+      email:
+        recipients:
+          - tito31hakim@gmail.com
+        notify:
+          success: true
+          failure: true

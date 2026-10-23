@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:house_of_zakham/main.dart';
+import 'package:house_of_zakham/app.dart';
 
 void main() {
   testWidgets('House of Zakham home renders logo', (tester) async {
