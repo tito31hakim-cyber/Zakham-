@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../main.dart' show card, cream, gold, muted;
 import '../services/admin_api.dart';
+import '../theme/app_theme.dart';
 
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});

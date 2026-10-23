@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../config/app_config.dart';
 import '../models/cart_item.dart';
+import 'api_headers.dart';
 
 class OrderResult {
   const OrderResult({
@@ -17,9 +19,13 @@ class OrderResult {
 }
 
 class OrderApi {
-  OrderApi({this.baseUrl = 'https://zakhamhouse.shop'});
+  OrderApi({
+    this.baseUrl = AppConfig.apiBaseUrl,
+    this.credentials,
+  });
 
   final String baseUrl;
+  final ApiCredentials? credentials;
 
   Future<OrderResult> createOrder({
     required String customerName,
@@ -32,20 +38,20 @@ class OrderApi {
     double shippingFee = 0,
     String shippingLabel = 'يحدد لاحقًا',
   }) async {
-    if (items.isEmpty) {
-      throw Exception('السلة فارغة.');
-    }
+    if (items.isEmpty) throw Exception('السلة فارغة.');
 
     final subtotal = items.fold<double>(0, (sum, item) => sum + item.total);
+    final uri = baseUrl == AppConfig.apiBaseUrl
+        ? AppConfig.ordersUri
+        : Uri.parse('$baseUrl${AppConfig.ordersPath}');
     final response = await http
         .post(
-          Uri.parse('$baseUrl/api/orders'),
-          headers: const {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'User-Agent': 'HouseOfZakham/1.0 (Flutter; Android/iOS)',
-            'X-API-Client': 'house-of-zakham-mobile',
-          },
+          uri,
+          headers: ApiHeaders.build(
+            credentials: credentials,
+            json: true,
+            mutating: true,
+          ),
           body: jsonEncode({
             'customerName': customerName.trim(),
             'phone': phone.trim(),
@@ -67,8 +73,7 @@ class OrderApi {
                     'nameAr': item.product.name,
                     'nameEn': '',
                     'perfumeCode': '',
-                    'sizeMl':
-                        int.tryParse(
+                    'sizeMl': int.tryParse(
                           item.product.size.replaceAll(RegExp(r'[^0-9]'), ''),
                         ) ??
                         0,
@@ -85,16 +90,12 @@ class OrderApi {
 
     final body = _decode(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(
-        body['message'] ?? 'تعذر إنشاء الطلب (${response.statusCode}).',
-      );
+      throw Exception(body['message'] ?? 'تعذر إنشاء الطلب.');
     }
-
     final orderRef = '${body['orderRef'] ?? ''}';
     if (body['ok'] != true || orderRef.isEmpty) {
       throw Exception(body['message'] ?? 'استجابة إنشاء الطلب غير صالحة.');
     }
-
     return OrderResult(
       orderRef: orderRef,
       total: (body['total'] as num?)?.toDouble() ?? subtotal + shippingFee,
@@ -108,7 +109,7 @@ class OrderApi {
       final decoded = jsonDecode(raw);
       return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
     } catch (_) {
-      throw Exception('الخادم أعاد استجابة غير صالحة بدل JSON.');
+      throw Exception('الخادم أعاد استجابة غير صالحة.');
     }
   }
 }

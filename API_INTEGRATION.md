@@ -1,56 +1,104 @@
 # تكامل API — House of Zakham
 
-تمت إضافة:
+## الاستضافة
 
-- `lib/models/product.dart`: يحول JSON المنتج إلى نموذج Flutter.
-- `lib/services/product_api.dart`: يجلب قائمة المنتجات من `GET /products`.
+النسخة الحالية من الخلفية مستضافة على Infinity Free وتستخدم `api.php` مع قواعد إعادة الكتابة الموجودة في `.htaccess`.
 
-## تصحيح JSON المرسل
+العنوان الأساسي:
 
-القيمة الصحيحة لحقل `base_notes` يجب أن تكون:
-
-```json
-"base_notes": ["العود", "المسك", "العنبر"]
+```text
+https://zakhamhouse.shop
 ```
 
-وليس:
+تستخدم تطبيقات Flutter المسارات التالية:
 
-```json
-"base_notes": ["العود", "المسك", العنبر]
-```
+| الوظيفة | الطريقة | المسار |
+|---|---:|---|
+| فحص الخدمة | GET | `/api/health` |
+| كتالوج المنتجات | GET | `/api/storefront` |
+| إنشاء طلب | POST | `/api/orders` |
+| تسجيل دخول الإدارة | GET | `/api/analytics` مع `X-Admin-Token` |
+| منتجات الإدارة | GET | `/api/admin/products` |
+| تعديل منتج | PATCH | `/api/admin/products/{id}` |
+| إخفاء منتج | DELETE | `/api/admin/products/{id}` |
+| العملاء | GET | `/api/admin/customers?q=...` |
 
-## الاستخدام بعد معرفة الرابط
+يتم تجميع العناوين في `lib/config/app_config.dart`، ولا ينبغي كتابة مسارات API داخل صفحات الواجهة.
 
-```dart
-final api = ProductApi(
-  baseUrl: 'https://YOUR-DOMAIN.example/api',
-);
+## شكل الكتالوج
 
-final products = await api.fetchProducts();
-```
-
-إذا كان الرد مغلفًا، فالعميل يدعم الشكلين:
-
-```json
-[
-  { "product_id": "1" }
-]
-```
-
-أو:
+يرد `/api/storefront` بالشكل التالي:
 
 ```json
 {
-  "data": [
-    { "product_id": "1" }
+  "settings": {},
+  "products": [
+    {
+      "id": "royal",
+      "name": "زَخَم رويال",
+      "en": "ZAKHAM ROYAL",
+      "image": "/assets/products/catalog-royal-2026.jpg",
+      "category": "official",
+      "season": "وصف العطر",
+      "notes": {
+        "top": "نفحات البداية",
+        "middle": "قلب العطر",
+        "base": "القاعدة"
+      },
+      "prices": {"30": 250, "50": 350, "100": 500},
+      "variants": {
+        "presence": {
+          "label": "حُضور · Eau de Parfum",
+          "prices": {"30": 250, "50": 350, "100": 500}
+        }
+      },
+      "stockQty": 10,
+      "stockStatus": "available"
+    }
   ]
 }
 ```
 
-## المطلوب لإكمال الربط
+يتولى `Product.fromJson` تحويل صيغ الاستضافة إلى نموذج Flutter، بما في ذلك:
 
-- عنوان Endpoint الحقيقي.
-- هل المسار هو `/products` أم مسار آخر؟
-- عنوان الصور الكامل إذا كانت قيمة `image` نسبية مثل `assets/...`.
-- هل الـ API يحتاج Token؟
-- مثال حقيقي للرد، ويفضل أن يحتوي على أكثر من منتج.
+- `notes.top/middle/base`.
+- `prices` و`variants`.
+- `stockQty` و`stockStatus`.
+- الصور النسبية تحت `/assets/products/`.
+
+## الطلبات
+
+يرسل تطبيق Flutter الطلبات إلى `/api/orders` باستخدام JSON. الخادم الحالي يقبل بيانات العميل والعناصر والمجموع والإجمالي، لذلك يجب أن تبقى إعادة حساب الأسعار والإجمالي على الخادم قبل اعتماد الطلب في بيئة الإنتاج.
+
+## الإدارة
+
+تتحقق `api.php` من رمز الإدارة عبر الترويسة:
+
+```text
+X-Admin-Token: <admin token>
+```
+
+يجب عدم تخزين رمز الإدارة داخل التطبيق أو تضمينه في الكود؛ صفحة الإدارة الحالية تطلبه من المستخدم، ويجب إضافة جلسة قصيرة العمر أو آلية تدوير للرمز قبل النشر الإنتاجي.
+
+## ترويسات Flutter للمصادقة وCSRF
+
+تستخدم طبقة `lib/services/api_headers.dart` ترويسات موحدة:
+
+```text
+Authorization: Bearer <access token>
+X-Admin-Token: <admin token>
+X-CSRF-Token: <server-issued csrf token>
+```
+
+يتم إرسال `X-CSRF-Token` فقط مع الطلبات المعدِّلة مثل `PATCH` و`DELETE` و`POST`. رمز الإدارة ورمز CSRF يبقيان في الذاكرة فقط ولا يتم حفظهما في `SharedPreferences` أو طباعتهما في السجلات.
+
+مثال الاستخدام:
+
+```dart
+final api = AdminApi(
+  token: adminTokenFromSession,
+  csrfToken: csrfTokenReturnedByPhpSession,
+);
+```
+
+يجب أن يصدر الخادم رمز CSRF بعد إنشاء جلسة الإدارة. لا يجوز استخدام رمز الإدارة نفسه كرمز CSRF. الإضافة في Flutter متوافقة مع PHP الحالي، لكن تفعيل التحقق الفعلي من CSRF يتطلب إضافة `requireCsrf()` في `api.php` على مسارات `PATCH` و`DELETE` و`POST`.

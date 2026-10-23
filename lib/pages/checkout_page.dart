@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../main.dart' show cream, gold;
 import '../providers/cart_provider.dart';
 import '../services/order_api.dart';
+import '../theme/app_theme.dart';
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../main.dart' show card, cream, gold, muted;
+import '../theme/app_theme.dart';
 
 class ContactPage extends StatelessWidget {
   const ContactPage({super.key});
