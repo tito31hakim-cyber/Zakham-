@@ -1,3 +1,12 @@
+import java.io.FileInputStream
+import java.util.Properties
+
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
+}
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -29,11 +38,27 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            val isCi = System.getenv("CI")?.toBoolean() == true
+            if (isCi) {
+                storeFile = file(System.getenv("CM_KEYSTORE_PATH") ?: error("CM_KEYSTORE_PATH is not set"))
+                storePassword = System.getenv("CM_KEYSTORE_PASSWORD") ?: error("CM_KEYSTORE_PASSWORD is not set")
+                keyAlias = System.getenv("CM_KEY_ALIAS") ?: error("CM_KEY_ALIAS is not set")
+                keyPassword = System.getenv("CM_KEY_PASSWORD") ?: error("CM_KEY_PASSWORD is not set")
+            } else if (keystorePropertiesFile.exists()) {
+                storeFile = keystoreProperties.getProperty("storeFile")?.let(::file)
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            } else {
+                throw GradleException("Release signing is not configured. Add android/key.properties locally or run through Codemagic with android_signing.")
+            }
+        }
+    }
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

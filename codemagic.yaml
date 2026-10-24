@@ -1,11 +1,12 @@
 workflows:
-  android-workflow:
-    name: Android Workflow
-    max_build_duration: 60
-
+  android-release:
+    name: Android signed release (AAB)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
     environment:
       flutter: stable
-
+      android_signing:
+        - zakham_android_keystore
     triggering:
       events:
         - push
@@ -15,23 +16,66 @@ workflows:
           include: true
           source: true
       cancel_previous_builds: true
-
     scripts:
-      - name: Install dependencies
+      - name: Configure Flutter Android path
+        script: echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Get Flutter packages
         script: flutter pub get
-
       - name: Analyze Flutter project
         script: flutter analyze
-
       - name: Run widget tests
         script: flutter test
-
-      - name: Build release APK
-        script: flutter build apk --release
-
+      - name: Build signed Android App Bundle
+        script: flutter build appbundle --release
     artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
+      - build/**/outputs/**/*.aab
+    publishing:
+      email:
+        recipients:
+          - tito31hakim@gmail.com
+        notify:
+          success: true
+          failure: true
 
+  ios-release:
+    name: iOS signed release (IPA)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: zakham_appstore_connect
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.houseofzakham.house_of_zakham
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+      cancel_previous_builds: true
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Install CocoaPods dependencies
+        script: pod install --project-directory=ios
+      - name: Configure iOS signing profiles
+        script: xcode-project use-profiles
+      - name: Analyze Flutter project
+        script: flutter analyze
+      - name: Run widget tests
+        script: flutter test
+      - name: Build signed iOS IPA
+        script: |
+          flutter build ipa --release             --build-name=1.0.0             --build-number=1             --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
     publishing:
       email:
         recipients:
