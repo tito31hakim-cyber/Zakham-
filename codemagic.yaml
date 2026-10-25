@@ -5,6 +5,8 @@ workflows:
 
     environment:
       flutter: stable
+      android_signing:
+        - dar_zakham_release
 
     triggering:
       events:
@@ -26,11 +28,11 @@ workflows:
       - name: Run widget tests
         script: flutter test
 
-      - name: Build release APK
-        script: flutter build apk --release
+      - name: Build signed Android App Bundle
+        script: flutter build appbundle --release
 
     artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/bundle/release/*.aab
 
     publishing:
       email:
