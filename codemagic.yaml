@@ -6,7 +6,7 @@ workflows:
     environment:
       flutter: stable
       android_signing:
-        - dar_zakham_release
+        - zakham_android_keystore
     triggering:
       events:
         - push
