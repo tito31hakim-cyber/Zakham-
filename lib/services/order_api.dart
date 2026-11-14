@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
@@ -11,11 +12,13 @@ class OrderResult {
     required this.orderRef,
     required this.total,
     required this.status,
+    this.trackingToken = '',
   });
 
   final String orderRef;
-  final double total;
+  final double? total;
   final String status;
+  final String trackingToken;
 }
 
 class OrderApi {
@@ -30,77 +33,85 @@ class OrderApi {
   Future<OrderResult> createOrder({
     required String customerName,
     required String phone,
+    required String governorate,
+    required String city,
     required String address,
     required String paymentMethod,
+    required String receiptReference,
+    required String notes,
     required List<CartItem> items,
-    String governorate = 'غير محدد',
-    String notes = '',
-    double shippingFee = 0,
-    String shippingLabel = 'يحدد لاحقًا',
   }) async {
     if (items.isEmpty) throw Exception('السلة فارغة.');
+    const supportedPayments = {
+      'InstaPay | إنستاباي',
+      'Vodafone Cash | فودافون كاش',
+    };
+    if (!supportedPayments.contains(paymentMethod)) {
+      throw Exception('طريقة الدفع غير متاحة على الموقع.');
+    }
 
-    final subtotal = items.fold<double>(0, (sum, item) => sum + item.total);
     final uri = baseUrl == AppConfig.apiBaseUrl
         ? AppConfig.ordersUri
         : Uri.parse('$baseUrl${AppConfig.ordersPath}');
-    final response = await http
-        .post(
-          uri,
-          headers: ApiHeaders.build(
-            credentials: credentials,
-            json: true,
-            mutating: true,
-          ),
-          body: jsonEncode({
-            'customerName': customerName.trim(),
-            'phone': phone.trim(),
-            'governorate': governorate,
-            'address': address.trim(),
-            'paymentMethod': paymentMethod,
-            'receiptReference': '',
-            'receiptName': '',
-            'notes': notes,
-            'subtotal': subtotal,
-            'shippingFee': shippingFee,
-            'shippingLabel': shippingLabel,
-            'total': subtotal + shippingFee,
-            'discountCode': '',
-            'items': items
-                .map(
-                  (item) => {
-                    'productId': item.product.id,
-                    'nameAr': item.product.name,
-                    'nameEn': '',
-                    'perfumeCode': '',
-                    'sizeMl': int.tryParse(
-                          item.product.size.replaceAll(RegExp(r'[^0-9]'), ''),
-                        ) ??
-                        0,
-                    'quantity': item.quantity,
-                    'unitPrice': item.product.price,
-                    'lineTotal': item.total,
-                    'concentration': 'presence',
-                  },
-                )
-                .toList(),
-          }),
-        )
-        .timeout(const Duration(seconds: 20));
+    final trackingToken = _secureToken();
+    final payload = <String, dynamic>{
+      'items': items
+          .map(
+            (item) => {
+              'productId': item.product.id,
+              'sizeMl': item.sizeMl,
+              'concentration': item.concentration,
+              'quantity': item.quantity,
+            },
+          )
+          .toList(),
+      'customerName': customerName.trim(),
+      'phone': phone.trim(),
+      'governorate': governorate,
+      'address': '${city.trim()}، ${address.trim()}',
+      'paymentMethod': paymentMethod,
+      'receiptReference': receiptReference.trim(),
+      'notes': notes.trim(),
+      'discountCode': '',
+      'idempotencyKey': _secureToken(),
+      'trackingToken': trackingToken,
+    };
 
+    final request = http.MultipartRequest('POST', uri)
+      ..headers.addAll(ApiHeaders.build(credentials: credentials, mutating: true))
+      ..fields['payload'] = jsonEncode(payload);
+    final streamedResponse = await request.send().timeout(
+      const Duration(seconds: 25),
+    );
+    final response = await http.Response.fromStream(streamedResponse);
     final body = _decode(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(body['message'] ?? 'تعذر إنشاء الطلب.');
     }
-    final orderRef = '${body['orderRef'] ?? ''}';
-    if (body['ok'] != true || orderRef.isEmpty) {
-      throw Exception(body['message'] ?? 'استجابة إنشاء الطلب غير صالحة.');
+
+    final rawOrder = body['order'];
+    final order = rawOrder is Map
+        ? Map<String, dynamic>.from(rawOrder)
+        : <String, dynamic>{};
+    final orderRef = '${order['orderRef'] ?? body['orderRef'] ?? ''}';
+    if (orderRef.isEmpty) {
+      throw Exception(body['message'] ?? 'استجابة إنشاء الطلب غير مكتملة.');
     }
+    final rawTotal = order['total'] ?? body['total'];
+    final double? total = rawTotal is num
+        ? rawTotal.toDouble()
+        : double.tryParse('$rawTotal');
     return OrderResult(
       orderRef: orderRef,
-      total: (body['total'] as num?)?.toDouble() ?? subtotal + shippingFee,
-      status: '${body['status'] ?? 'pending_transfer'}',
+      total: total,
+      status: '${order['status'] ?? body['status'] ?? 'received'}',
+      trackingToken: '${body['trackingToken'] ?? ''}',
     );
+  }
+
+  String _secureToken() {
+    final bytes = List<int>.generate(24, (_) => Random.secure().nextInt(256));
+    return base64UrlEncode(bytes).replaceAll('=', '');
   }
 
   Map<String, dynamic> _decode(String raw) {

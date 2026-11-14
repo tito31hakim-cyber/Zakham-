@@ -4,7 +4,8 @@ class AppConfig {
   static const appName = 'دار زخم';
   static const apiBaseUrl = 'https://zakhamhouse.shop';
 
-  // Infinity Free serves api.php through the /api/* rewrite rules.
+  // The mobile app is intentionally connected to the branch host.
+  // The branch host exposes the store and administration API routes.
   static const productsPath = '/api/storefront';
   static const ordersPath = '/api/orders';
   static const adminProductsPath = '/api/admin/products';

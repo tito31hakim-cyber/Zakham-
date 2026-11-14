@@ -19,8 +19,8 @@ class ProductApi {
     try {
       response = await http.get(uri, headers: {
         'Accept': 'application/json',
-        'User-Agent': 'HouseOfZakham/1.0 (Flutter; Android/iOS)',
-        'X-API-Client': 'house-of-zakham-mobile',
+        'User-Agent': 'DarZakham/1.0 (Flutter; Android/iOS)',
+        'X-API-Client': 'dar-zakham-mobile',
         if (token != null && token!.isNotEmpty) 'Authorization': 'Bearer $token',
       }).timeout(const Duration(seconds: 20));
     } catch (error) {

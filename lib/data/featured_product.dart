@@ -2,7 +2,7 @@ import '../config/app_config.dart';
 import '../models/product.dart';
 
 const featuredProduct = Product(
-  id: 'zakham-royal',
+  id: 'royal',
   name: 'زَخَم رويال',
   price: 500,
   currency: 'EGP',

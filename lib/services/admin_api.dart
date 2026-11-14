@@ -10,20 +10,24 @@ class AdminApi {
     required String token,
     this.csrfToken,
     this.baseUrl = AppConfig.apiBaseUrl,
-  }) : credentials = ApiCredentials(adminToken: token.trim(), csrfToken: csrfToken?.trim());
+  }) : credentials = ApiCredentials(
+         adminToken: token.trim(),
+         csrfToken: csrfToken?.trim(),
+       );
 
   final ApiCredentials credentials;
   final String? csrfToken;
   final String baseUrl;
 
   Map<String, String> _headers({bool mutating = false}) => ApiHeaders.build(
-        credentials: credentials,
-        json: mutating,
-        mutating: mutating,
-      );
+    credentials: credentials,
+    json: mutating,
+    mutating: mutating,
+  );
 
-  Uri _uri(Uri defaultUri, String path) =>
-      baseUrl == AppConfig.apiBaseUrl ? defaultUri : Uri.parse('$baseUrl$path');
+  Uri _uri(Uri defaultUri, String path) => baseUrl == AppConfig.apiBaseUrl
+      ? defaultUri
+      : Uri.parse('$baseUrl$path');
 
   Future<Map<String, dynamic>> _get(Uri uri) async {
     final response = await http
@@ -32,48 +36,96 @@ class AdminApi {
     return _validate(response);
   }
 
+  Future<Map<String, dynamic>> _sendJson(
+    Uri uri, {
+    required String method,
+    Map<String, dynamic>? body,
+  }) async {
+    final request = http.Request(method, uri)..headers.addAll(
+      _headers(mutating: true),
+    );
+    if (body != null) request.body = jsonEncode(body);
+    final streamed = await request.send().timeout(const Duration(seconds: 20));
+    return _validate(await http.Response.fromStream(streamed));
+  }
+
   Future<List<dynamic>> products() async =>
-      (await _get(_uri(AppConfig.adminProductsUri, AppConfig.adminProductsPath)))['products']
+      (await _get(_uri(AppConfig.adminProductsUri, AppConfig.adminProductsPath)))
+              ['products'] as List<dynamic>? ??
+          [];
+
+  Future<List<dynamic>> customers([String query = '']) async =>
+      (await _get(
+            _uri(
+              AppConfig.adminCustomersUri(query),
+              '${AppConfig.adminCustomersPath}?q=${Uri.encodeQueryComponent(query)}',
+            ),
+          ))['customers']
           as List<dynamic>? ??
       [];
 
-  Future<List<dynamic>> customers([String query = '']) async =>
-      (await _get(_uri(
-        AppConfig.adminCustomersUri(query),
-        '${AppConfig.adminCustomersPath}?q=${Uri.encodeQueryComponent(query)}',
-      )))['customers'] as List<dynamic>? ?? [];
-
   Future<Map<String, dynamic>> analytics() =>
       _get(_uri(AppConfig.analyticsUri, AppConfig.analyticsPath));
+
+  Future<Map<String, dynamic>> orders({
+    String query = '',
+    String status = '',
+    String paymentStatus = '',
+    String paymentMethod = '',
+    String governorate = '',
+    int page = 1,
+    int pageSize = 25,
+  }) => _sendJson(
+    _uri(
+      Uri.parse('$baseUrl/api.php?route=api/admin/orders/search'),
+      '/api/admin/orders/search',
+    ),
+    method: 'POST',
+    body: {
+      'q': query,
+      'status': status,
+      'paymentStatus': paymentStatus,
+      'paymentMethod': paymentMethod,
+      'governorate': governorate,
+      'dateFrom': '',
+      'dateTo': '',
+      'sort': 'created_desc',
+      'page': page,
+      'pageSize': pageSize,
+    },
+  );
+
+  Future<Map<String, dynamic>> orderDetail(String orderRef) => _get(
+    _uri(
+      Uri.parse(
+        '$baseUrl/api.php?route=api/admin/orders/${Uri.encodeComponent(orderRef)}',
+      ),
+      '/api/admin/orders/${Uri.encodeComponent(orderRef)}',
+    ),
+  );
 
   Future<void> updateProduct({
     required String id,
     required Map<String, dynamic> product,
   }) async {
-    final response = await http
-        .patch(
-          _uri(
-            AppConfig.adminProductUri(id),
-            '${AppConfig.adminProductsPath}/${Uri.encodeComponent(id)}',
-          ),
-          headers: _headers(mutating: true),
-          body: jsonEncode(product),
-        )
-        .timeout(const Duration(seconds: 20));
-    _validate(response);
+    await _sendJson(
+      _uri(
+        AppConfig.adminProductUri(id),
+        '${AppConfig.adminProductsPath}/${Uri.encodeComponent(id)}',
+      ),
+      method: 'PATCH',
+      body: product,
+    );
   }
 
   Future<void> deleteProduct(String id) async {
-    final response = await http
-        .delete(
-          _uri(
-            AppConfig.adminProductUri(id),
-            '${AppConfig.adminProductsPath}/${Uri.encodeComponent(id)}',
-          ),
-          headers: _headers(mutating: true),
-        )
-        .timeout(const Duration(seconds: 20));
-    _validate(response);
+    await _sendJson(
+      _uri(
+        AppConfig.adminProductUri(id),
+        '${AppConfig.adminProductsPath}/${Uri.encodeComponent(id)}',
+      ),
+      method: 'DELETE',
+    );
   }
 
   Map<String, dynamic> _validate(http.Response response) {

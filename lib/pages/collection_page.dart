@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../data/featured_product.dart';
 import '../models/product.dart';
 import '../services/product_api.dart';
 import '../theme/app_theme.dart';
@@ -10,13 +9,9 @@ class CollectionPage extends StatefulWidget {
   const CollectionPage({
     super.key,
     required this.onProduct,
-    required this.favorite,
-    required this.onFavorite,
   });
 
   final ValueChanged<Product> onProduct;
-  final bool favorite;
-  final VoidCallback onFavorite;
 
   @override
   State<CollectionPage> createState() => _CollectionPageState();
@@ -57,16 +52,6 @@ class _CollectionPageState extends State<CollectionPage> {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: ProductTile(
-                product: featuredProduct,
-                onTap: () => widget.onProduct(featuredProduct),
-                favorite: widget.favorite,
-                onFavorite: widget.onFavorite,
-              ),
-            ),
-            const SizedBox(height: 24),
             FutureBuilder<List<Product>>(
               future: productsFuture,
               builder: (context, snapshot) {

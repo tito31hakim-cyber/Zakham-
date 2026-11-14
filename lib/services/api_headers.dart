@@ -18,8 +18,8 @@ class ApiHeaders {
   }) {
     final headers = <String, String>{
       'Accept': 'application/json',
-      'User-Agent': 'HouseOfZakham/1.0 (Flutter; Android/iOS)',
-      'X-API-Client': 'house-of-zakham-mobile',
+      'User-Agent': 'DarZakham/1.0 (Flutter; Android/iOS)',
+      'X-API-Client': 'dar-zakham-mobile',
       if (json) 'Content-Type': 'application/json',
     };
 
@@ -30,7 +30,6 @@ class ApiHeaders {
     if (bearer != null && bearer.isNotEmpty) {
       headers['Authorization'] = 'Bearer $bearer';
     }
-    // Kept for compatibility with the current PHP admin() implementation.
     if (admin != null && admin.isNotEmpty) {
       headers['X-Admin-Token'] = admin;
     }
