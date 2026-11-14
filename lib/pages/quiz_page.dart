@@ -51,7 +51,7 @@ class _QuizPageState extends State<QuizPage> {
               ...question.$2.map((option) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: SizedBox(width: double.infinity, child: OutlinedButton(onPressed: next, child: Text(option, style: const TextStyle(color: cream)))),
-                  ),
+                  )),
             ],
           ),
         ),
