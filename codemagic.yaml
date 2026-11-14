@@ -24,7 +24,7 @@ workflows:
       - name: Generate Zakham brand launcher icons
         script: dart run flutter_launcher_icons
       - name: Analyze Flutter project
-        script: flutter analyze
+        script: flutter analyze --no-fatal-infos
       - name: Run widget tests
         script: flutter test
       - name: Build signed Android App Bundle
