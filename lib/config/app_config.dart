@@ -1,7 +1,7 @@
 class AppConfig {
   AppConfig._();
 
-  static const appName = 'House of Zakham';
+  static const appName = 'دار زخم';
   static const apiBaseUrl = 'https://zakhamhouse.shop';
 
   // Infinity Free serves api.php through the /api/* rewrite rules.
