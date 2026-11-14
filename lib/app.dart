@@ -16,7 +16,7 @@ class ZakhamApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'House of Zakham',
+        title: 'دار زخم | House of ZAKHAM',
         theme: AppTheme.dark(),
         home: const StoreShell(),
       );
@@ -81,8 +81,8 @@ class _StoreShellState extends State<StoreShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: selected,
         onDestinationSelected: (value) => setState(() => selected = value),
-        backgroundColor: const Color(0xFF101010),
-        indicatorColor: gold.withOpacity(.2),
+        backgroundColor: card,
+        indicatorColor: burgundy.withOpacity(.72),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: gold), label: 'الرئيسية'),
           NavigationDestination(icon: Icon(Icons.grid_view_rounded), selectedIcon: Icon(Icons.grid_view, color: gold), label: 'التشكيلة'),

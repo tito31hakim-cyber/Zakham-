@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:house_of_zakham/app.dart';
 
 void main() {
-  testWidgets('House of Zakham home renders logo', (tester) async {
+  testWidgets('Dar Zakham home renders brand mark', (tester) async {
     await tester.pumpWidget(const ZakhamApp());
     await tester.pumpAndSettle();
     expect(
@@ -11,7 +11,7 @@ void main() {
         (widget) => widget is Image &&
             widget.image is AssetImage &&
             (widget.image as AssetImage).assetName ==
-                'assets/brand/zakham-house-logo.png',
+                'assets/brand/zakham-brand-mark.png',
       ),
       findsOneWidget,
     );
