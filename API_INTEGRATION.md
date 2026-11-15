@@ -2,7 +2,7 @@
 
 ## الاستضافة
 
-يستخدم التطبيق نطاق الفرع `zakhamhouse.shop` كمضيف للكتالوج والطلبات ولوحة الإدارة. يعتمد التنفيذ المنشور على `api.php` ومسارات API الخاصة بالنطاق؛ لا يُفترض أن استضافة هذا النطاق هي استضافة النطاق الأساسي `zakham.shop`.
+النسخة الحالية من الخلفية مستضافة على Infinity Free وتستخدم `api.php` مع قواعد إعادة الكتابة الموجودة في `.htaccess`.
 
 العنوان الأساسي:
 
@@ -17,13 +17,11 @@ https://zakhamhouse.shop
 | فحص الخدمة | GET | `/api/health` |
 | كتالوج المنتجات | GET | `/api/storefront` |
 | إنشاء طلب | POST | `/api/orders` |
-| التحقق من رمز الإدارة | GET | `/api/analytics` مع `X-Admin-Token` |
+| تسجيل دخول الإدارة | GET | `/api/analytics` مع `X-Admin-Token` |
 | منتجات الإدارة | GET | `/api/admin/products` |
 | تعديل منتج | PATCH | `/api/admin/products/{id}` |
 | إخفاء منتج | DELETE | `/api/admin/products/{id}` |
 | العملاء | GET | `/api/admin/customers?q=...` |
-| بحث الطلبات الإدارية | POST | `/api/admin/orders/search` |
-| تفاصيل طلب إداري | GET | `/api/admin/orders/{orderRef}` |
 
 يتم تجميع العناوين في `lib/config/app_config.dart`، ولا ينبغي كتابة مسارات API داخل صفحات الواجهة.
 
@@ -70,33 +68,37 @@ https://zakhamhouse.shop
 
 ## الطلبات
 
-يرسل تطبيق Flutter الطلبات إلى `https://zakhamhouse.shop/api/orders` بصيغة `multipart/form-data` وبداخل الحقل `payload` كائن JSON، كما يفعل نموذج الموقع. يحتوي كل عنصر على `productId`, `sizeMl`, `concentration`, و`quantity`. ترسل بيانات العميل والمحافظة والعنوان الذي يتضمن المدينة وطريقة الدفع ومرجع التحويل والملاحظات ومفتاح منع التكرار ورمز التتبع. يقبل الموقع حاليًا `InstaPay | إنستاباي` و`Vodafone Cash | فودافون كاش` فقط؛ لا تُرسل طريقة دفع أخرى من التطبيق.
-
-يجب أن يعيد الخادم الأسعار والإجمالي ورسوم الشحن من بياناته، لا أن يعتمد على مجموع يرسله العميل. صفحة الموقع تقرأ مرجع الطلب والإجمالي من الكائن `order` في الاستجابة، لذلك يدعم عميل Flutter الحقول المتداخلة `order.orderRef` و`order.total`.
+يرسل تطبيق Flutter الطلبات إلى `/api/orders` باستخدام JSON. الخادم الحالي يقبل بيانات العميل والعناصر والمجموع والإجمالي، لذلك يجب أن تبقى إعادة حساب الأسعار والإجمالي على الخادم قبل اعتماد الطلب في بيئة الإنتاج.
 
 ## الإدارة
 
-يستخدم تطبيق الهاتف طريقة المصادقة الأصلية للـAPI: يدخل المسؤول رمز الإدارة في التطبيق، ويرسله التطبيق في `X-Admin-Token` إلى استضافة الفرع. مسار `/api/admin/session` مرفوض من واجهة المتجر العامة (`403 admin_blocked_on_storefront`)، لذلك لا يُستخدم لتسجيل الدخول من التطبيق. قائمة الطلبات تستخدم `POST /api/admin/orders/search` وتفاصيل الطلب تستخدم `GET /api/admin/orders/{orderRef}` مع ترويسة الإدارة.
+تتحقق `api.php` من رمز الإدارة عبر الترويسة:
 
-لا تضمّن رمز الإدارة في التطبيق أو المستودع؛ يبقى الرمز الذي يدخله المستخدم في ذاكرة التطبيق. يستخدم التطبيق النطاق الفرعي `zakhamhouse.shop` وفق اختيار المستخدم.
+```text
+X-Admin-Token: <admin token>
+```
+
+يجب عدم تخزين رمز الإدارة داخل التطبيق أو تضمينه في الكود؛ صفحة الإدارة الحالية تطلبه من المستخدم، ويجب إضافة جلسة قصيرة العمر أو آلية تدوير للرمز قبل النشر الإنتاجي.
 
 ## ترويسات Flutter للمصادقة وCSRF
 
-تستخدم طبقة إدارة التطبيق وعمليات المتجر الترويسات التالية عند الحاجة:
+تستخدم طبقة `lib/services/api_headers.dart` ترويسات موحدة:
 
 ```text
-Accept: application/json
-Content-Type: application/json (للطلبات الإدارية التي ترسل JSON)
-X-Admin-Token: <admin token entered by the administrator>
+Authorization: Bearer <access token>
+X-Admin-Token: <admin token>
 X-CSRF-Token: <server-issued csrf token>
 ```
 
-يُرسل `X-CSRF-Token` إذا كان رمز CSRF متاحًا للعمليات المعدِّلة. لا تحفظ رموز الإدارة أو CSRF في `SharedPreferences` ولا تطبع في السجلات.
+يتم إرسال `X-CSRF-Token` فقط مع الطلبات المعدِّلة مثل `PATCH` و`DELETE` و`POST`. رمز الإدارة ورمز CSRF يبقيان في الذاكرة فقط ولا يتم حفظهما في `SharedPreferences` أو طباعتهما في السجلات.
 
 مثال الاستخدام:
 
 ```dart
-final api = AdminApi(token: adminTokenHeldInMemory);
+final api = AdminApi(
+  token: adminTokenFromSession,
+  csrfToken: csrfTokenReturnedByPhpSession,
+);
 ```
 
-تحتاج عمليات التعديل إلى صلاحيات الإدارة التي يصدرها الخادم. لا يضمّن التطبيق رمزًا ثابتًا، ولا يخزن الرمز بعد إغلاقه.
+يجب أن يصدر الخادم رمز CSRF بعد إنشاء جلسة الإدارة. لا يجوز استخدام رمز الإدارة نفسه كرمز CSRF. الإضافة في Flutter متوافقة مع PHP الحالي، لكن تفعيل التحقق الفعلي من CSRF يتطلب إضافة `requireCsrf()` في `api.php` على مسارات `PATCH` و`DELETE` و`POST`.

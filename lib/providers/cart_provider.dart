@@ -5,48 +5,31 @@ import '../models/product.dart';
 
 class CartProvider extends ChangeNotifier {
   final Map<String, CartItem> _items = {};
-
   List<CartItem> get items => _items.values.toList(growable: false);
-  int get itemCount => _items.values.fold(0, (sum, item) => sum + item.quantity);
+  int get itemCount =>
+      _items.values.fold(0, (sum, item) => sum + item.quantity);
   double get subtotal => _items.values.fold(0, (sum, item) => sum + item.total);
 
-  String _key(String productId, String concentration, int sizeMl) =>
-      '$productId|$concentration|$sizeMl';
-
-  void add(
-    Product product, {
-    required int sizeMl,
-    required String concentration,
-  }) {
+  void add(Product product) {
     if (!product.inStock) return;
-    final key = _key(product.id, concentration, sizeMl);
-    final item = _items[key];
+    final item = _items[product.id];
     if (item == null) {
-      _items[key] = CartItem(
-        product: product,
-        sizeMl: sizeMl,
-        concentration: concentration,
-      );
+      _items[product.id] = CartItem(product: product);
     } else {
       item.quantity++;
     }
     notifyListeners();
   }
 
-  void decrease(CartItem item) {
-    final key = _key(item.product.id, item.concentration, item.sizeMl);
-    final current = _items[key];
-    if (current == null) return;
-    if (current.quantity > 1) {
-      current.quantity--;
-    } else {
-      _items.remove(key);
-    }
+  void decrease(Product product) {
+    final item = _items[product.id];
+    if (item == null) return;
+    item.quantity > 1 ? item.quantity-- : _items.remove(product.id);
     notifyListeners();
   }
 
-  void remove(CartItem item) {
-    _items.remove(_key(item.product.id, item.concentration, item.sizeMl));
+  void remove(Product product) {
+    _items.remove(product.id);
     notifyListeners();
   }
 

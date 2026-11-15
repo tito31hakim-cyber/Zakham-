@@ -1,5 +1,5 @@
 name: house_of_zakham
-description: "تطبيق دار زخم للعطور — عطور بحضور تترك أثراً."
+description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -61,7 +61,8 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
-    - assets/brand/zakham-brand-mark.png
+    - assets/brand/zakham-house-logo.png
+    - assets/brand/zakham-app-icon.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -97,11 +98,6 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  web:
-    generate: true
-    image_path: assets/brand/zakham-brand-mark.png
-    background_color: "#090809"
-    theme_color: "#C9A45C"
-  image_path: assets/brand/zakham-brand-mark.png
+  image_path: assets/brand/zakham-app-icon.png
   adaptive_icon_background: "#050505"
-  adaptive_icon_foreground: assets/brand/zakham-brand-mark.png
+  adaptive_icon_foreground: assets/brand/zakham-app-icon.png

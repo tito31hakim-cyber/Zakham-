@@ -35,44 +35,6 @@ class Product {
   final Map<String, dynamic> prices;
   final Map<String, dynamic> variants;
 
-  List<String> get concentrationOptions => variants.entries
-      .where((entry) => entry.value is Map)
-      .map((entry) => entry.key)
-      .toList(growable: false);
-
-  String concentrationLabel(String key) {
-    final variant = variants[key];
-    if (variant is Map && variant['label'] is String) {
-      return variant['label'] as String;
-    }
-    return key;
-  }
-
-  List<int> sizesFor(String concentration) {
-    final variant = variants[concentration];
-    final values = variant is Map && variant['prices'] is Map
-        ? Map<String, dynamic>.from(variant['prices'] as Map)
-        : prices;
-    final sizes = values.keys.map(int.tryParse).whereType<int>().toList();
-    if (sizes.isNotEmpty) {
-      sizes.sort((a, b) => b.compareTo(a));
-      return sizes;
-    }
-    final fallback = int.tryParse(size.replaceAll(RegExp(r'[^0-9]'), ''));
-    return [fallback != null && fallback > 0 ? fallback : 100];
-  }
-
-  double priceFor(String concentration, int sizeMl) {
-    final variant = variants[concentration];
-    final values = variant is Map && variant['prices'] is Map
-        ? Map<String, dynamic>.from(variant['prices'] as Map)
-        : prices;
-    final value = values['$sizeMl'] ?? values[sizeMl];
-    if (value is num) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0;
-    return price;
-  }
-
   factory Product.fromJson(Map<String, dynamic> json) {
     final rawPyramid = json['olfactory_pyramid'];
     final pyramid = rawPyramid is Map

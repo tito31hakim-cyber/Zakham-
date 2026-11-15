@@ -30,11 +30,11 @@ class HomePage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('دار زخم للعطور', style: TextStyle(color: gold, fontSize: 14, letterSpacing: .5)),
-                Text('عطرٌ يحمل حضورك', style: TextStyle(color: cream, fontSize: 32, fontWeight: FontWeight.w600)),
+                Text('هيبة حضور.', style: TextStyle(color: gold, fontSize: 16)),
+                Text('أثر يبقى.', style: TextStyle(color: cream, fontSize: 38, fontWeight: FontWeight.w300)),
                 SizedBox(height: 10),
                 Text(
-                  'اكتشف توليفات زخم العطرية، واختر بصمتك الخاصة من عطور صُممت لتترك أثراً.',
+                  'عطور بحضور تترك أثراً. اكتشف بصمتك من توليفات زخم.',
                   style: TextStyle(color: muted, fontSize: 14, height: 1.7),
                 ),
               ],

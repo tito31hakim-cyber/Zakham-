@@ -36,7 +36,7 @@ class ContactPage extends StatelessWidget {
               Icons.chat_outlined,
               'واتساب زخم',
               'راسل فريق خدمة العملاء',
-              'https://wa.me/201042881176',
+              'https://wa.me/201042881176?text=%D9%85%D8%B1%D8%AD%D8%A8%D9%8B%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%B9%D9%86%20%D8%B9%D8%B7%D9%88%D8%B1%20%D8%B2%D8%AE%D9%85',
             ),
             _contact(
               context,
@@ -50,7 +50,7 @@ class ContactPage extends StatelessWidget {
               Icons.camera_alt_outlined,
               'Instagram',
               '@zakham_house',
-              'https://www.instagram.com/zakham_house/',
+              'https://instagram.com/zakham_house',
             ),
             _contact(
               context,
@@ -90,8 +90,14 @@ class ContactPage extends StatelessWidget {
         trailing: const Icon(Icons.open_in_new, color: gold),
         onTap: () async {
           final uri = Uri.parse(url);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          final launched = await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication,
+          );
+          if (!launched && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('تعذر فتح الرابط على هذا الجهاز.')),
+            );
           }
         },
       ),

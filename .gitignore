@@ -46,6 +46,3 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
-
-# Local Android release signing credentials
-/android/key.properties

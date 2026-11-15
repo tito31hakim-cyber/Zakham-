@@ -46,7 +46,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         appBar: AppBar(title: const Text('دخول الإدارة')),
         body: Padding(
           padding: const EdgeInsets.all(24),
-          child: ListView(
+          child: Column(
             children: [
               const Icon(
                 Icons.admin_panel_settings_outlined,
@@ -120,24 +120,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           children: [
             FutureBuilder<Map<String, dynamic>>(
               future: stats,
-              builder: (_, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Padding(
-                    padding: EdgeInsets.all(18),
-                    child: CircularProgressIndicator(color: gold),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      'تعذر تحميل المؤشرات: ${snapshot.error}',
-                      style: const TextStyle(color: muted),
+              builder: (_, snapshot) => snapshot.hasData
+                  ? _stats(snapshot.data!)
+                  : const Padding(
+                      padding: EdgeInsets.all(18),
+                      child: CircularProgressIndicator(color: gold),
                     ),
-                  );
-                }
-                return _stats(snapshot.data ?? const <String, dynamic>{});
-              },
             ),
             Expanded(
               child: IndexedStack(
@@ -145,7 +133,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 children: [
                   _ProductsPanel(api: widget.api),
                   _CustomersPanel(api: widget.api),
-                  _OrdersPanel(api: widget.api),
+                  const _OrdersPanel(),
                 ],
               ),
             ),
@@ -173,22 +161,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  Widget _stats(Map<String, dynamic> data) => SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _stat('الطلبات', data['orders'] ?? 0),
-          const SizedBox(width: 24),
-          _stat('قيد الانتظار', data['pending'] ?? 0),
-          const SizedBox(width: 24),
-          _stat('تم التسليم', data['delivered'] ?? 0),
-          const SizedBox(width: 24),
-          _stat('الإيرادات', '${data['revenue'] ?? 0} ج.م'),
-        ],
-      ),
+  Widget _stats(Map<String, dynamic> data) => Padding(
+    padding: const EdgeInsets.all(12),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _stat('الطلبات', data['orders']),
+        _stat('العملاء', data['customers']),
+      ],
     ),
   );
   Widget _stat(String label, dynamic value) => Column(
@@ -220,8 +200,6 @@ class _ProductsPanelState extends State<_ProductsPanel> {
     super.initState();
     future = widget.api.products();
   }
-
-  void _refresh() => setState(() => future = widget.api.products());
 
   Map<String, dynamic> _payload(
     Map<String, dynamic> p,
@@ -361,24 +339,12 @@ class _ProductsPanelState extends State<_ProductsPanel> {
     return FutureBuilder<List<dynamic>>(
       future: future,
       builder: (_, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (!snapshot.hasData)
           return const Center(child: CircularProgressIndicator(color: gold));
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('تعذر تحميل المنتجات: ${snapshot.error}', style: const TextStyle(color: muted)),
-                OutlinedButton(onPressed: _refresh, child: const Text('إعادة المحاولة')),
-              ],
-            ),
-          );
-        }
-        final products = snapshot.data ?? const [];
         return ListView.builder(
-          itemCount: products.length,
+          itemCount: snapshot.data!.length,
           itemBuilder: (_, index) {
-            final product = Map<String, dynamic>.from(products[index]);
+            final product = Map<String, dynamic>.from(snapshot.data![index]);
             return Card(
               color: card,
               child: ListTile(
@@ -391,15 +357,11 @@ class _ProductsPanelState extends State<_ProductsPanel> {
                   style: const TextStyle(color: muted),
                 ),
                 trailing: PopupMenuButton<String>(
-                  onSelected: (value) => value == 'edit'
-                      ? _edit(product)
-                      : _delete(product),
+                  onSelected: (value) =>
+                      value == 'edit' ? _edit(product) : _delete(product),
                   itemBuilder: (_) => const [
                     PopupMenuItem(value: 'edit', child: Text('تعديل')),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Text('إخفاء المنتج'),
-                    ),
+                    PopupMenuItem(value: 'delete', child: Text('إخفاء المنتج')),
                   ],
                 ),
               ),
@@ -419,22 +381,12 @@ class _CustomersPanel extends StatelessWidget {
     return FutureBuilder<List<dynamic>>(
       future: api.customers(),
       builder: (_, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (!snapshot.hasData)
           return const Center(child: CircularProgressIndicator(color: gold));
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'تعذر تحميل العملاء: ${snapshot.error}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: muted),
-            ),
-          );
-        }
-        final customers = snapshot.data ?? const [];
         return ListView.builder(
-          itemCount: customers.length,
+          itemCount: snapshot.data!.length,
           itemBuilder: (_, index) {
-            final customer = Map<String, dynamic>.from(customers[index]);
+            final customer = Map<String, dynamic>.from(snapshot.data![index]);
             return Card(
               color: card,
               child: ListTile(
@@ -455,146 +407,17 @@ class _CustomersPanel extends StatelessWidget {
   }
 }
 
-class _OrdersPanel extends StatefulWidget {
-  const _OrdersPanel({required this.api});
-  final AdminApi api;
-
+class _OrdersPanel extends StatelessWidget {
+  const _OrdersPanel();
   @override
-  State<_OrdersPanel> createState() => _OrdersPanelState();
-}
-
-class _OrdersPanelState extends State<_OrdersPanel> {
-  late Future<Map<String, dynamic>> future;
-
-  @override
-  void initState() {
-    super.initState();
-    future = widget.api.orders();
-  }
-
-  void _refresh() => setState(() => future = widget.api.orders());
-
-  Future<void> _showDetails(String orderRef) async {
-    try {
-      final response = await widget.api.orderDetail(orderRef);
-      final rawOrder = response['order'];
-      final order = rawOrder is Map
-          ? Map<String, dynamic>.from(rawOrder)
-          : response;
-      if (!mounted) return;
-      final items = order['items'] is List
-          ? (order['items'] as List).map((item) {
-              if (item is! Map) return '$item';
-              final name = item['nameAr'] ?? item['name'] ?? item['productId'] ?? '';
-              final qty = item['quantity'] ?? item['qty'] ?? 1;
-              return '$name × $qty';
-            }).join('\n')
-          : '—';
-      await showDialog<void>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: Text('${order['order_ref'] ?? order['orderRef'] ?? orderRef}'),
-          content: SingleChildScrollView(
-            child: Text(
-              'العميل: ${order['customer_name'] ?? order['customerName'] ?? '—'}\n'
-              'الهاتف: ${order['phone'] ?? '—'}\n'
-              'العنوان: ${order['address'] ?? '—'}\n'
-              'المحافظة: ${order['governorate'] ?? '—'}\n'
-              'الدفع: ${order['payment_method'] ?? order['paymentMethod'] ?? '—'}\n'
-              'حالة الدفع: ${order['payment_status'] ?? order['paymentStatus'] ?? '—'}\n'
-              'الحالة: ${order['status'] ?? '—'}\n'
-              'الإجمالي: ${order['total'] ?? '—'} ج.م\n\n'
-              'المنتجات:\n$items',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('إغلاق'),
-            ),
-          ],
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر تحميل تفاصيل الطلب: $error')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
-    future: future,
-    builder: (_, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator(color: gold));
-      }
-      if (snapshot.hasError) {
-        return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'تعذر تحميل الطلبات: ${snapshot.error}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: muted),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton(onPressed: _refresh, child: const Text('إعادة المحاولة')),
-            ],
-          ),
-        );
-      }
-      final data = snapshot.data ?? const <String, dynamic>{};
-      final rows = data['orders'] is List ? data['orders'] as List : const [];
-      if (rows.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('لا توجد طلبات أو لا تملك صلاحية عرضها.', style: TextStyle(color: muted)),
-              const SizedBox(height: 8),
-              OutlinedButton(onPressed: _refresh, child: const Text('تحديث')),
-            ],
-          ),
-        );
-      }
-      return RefreshIndicator(
-        onRefresh: () async => _refresh(),
-        child: ListView.builder(
-          itemCount: rows.length,
-          itemBuilder: (_, index) {
-            final raw = rows[index];
-            final order = raw is Map
-                ? Map<String, dynamic>.from(raw)
-                : <String, dynamic>{};
-            final ref = '${order['order_ref'] ?? order['orderRef'] ?? ''}';
-            return Card(
-              color: card,
-              child: ListTile(
-                onTap: ref.isEmpty ? null : () => _showDetails(ref),
-                title: Text(
-                  ref.isEmpty ? 'طلب' : ref,
-                  style: const TextStyle(color: cream),
-                ),
-                subtitle: Text(
-                  '${order['created_at'] ?? order['createdAt'] ?? ''} · '
-                  '${order['governorate'] ?? '—'}\n'
-                  'الحالة: ${order['status'] ?? '—'} · '
-                  'الدفع: ${order['payment_status'] ?? order['paymentStatus'] ?? '—'}',
-                  style: const TextStyle(color: muted),
-                ),
-                isThreeLine: true,
-                trailing: Text(
-                  '${order['total'] ?? 0} ج.م',
-                  style: const TextStyle(color: gold),
-                ),
-              ),
-            );
-          },
-        ),
-      );
-    },
+  Widget build(BuildContext context) => const Center(
+    child: Padding(
+      padding: EdgeInsets.all(24),
+      child: Text(
+        'لا يوجد Endpoint إداري للطلبات في api.php الحالي. أضف GET /api/admin/orders وPATCH /api/admin/orders/{orderRef}/status لتمكين هذا القسم.',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: muted),
+      ),
+    ),
   );
 }
