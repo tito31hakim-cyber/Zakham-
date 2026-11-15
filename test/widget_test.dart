@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:house_of_zakham/app.dart';
+import 'package:house_of_zakham/providers/cart_provider.dart';
 
 void main() {
   testWidgets('Dar Zakham home renders brand mark', (tester) async {
-    await tester.pumpWidget(const ZakhamApp());
-    await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => CartProvider(),
+        child: const ZakhamApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
     expect(
       find.byWidgetPredicate(
         (widget) => widget is Image &&
