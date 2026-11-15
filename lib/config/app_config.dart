@@ -4,7 +4,7 @@ class AppConfig {
   static const appName = 'House of Zakham';
   static const apiBaseUrl = 'https://zakhamhouse.shop';
 
-  // Infinity Free serves api.php through the /api/* rewrite rules.
+  // الخادم الحالي serves api.php through the /api/* rewrite rules.
   static const productsPath = '/api/storefront';
   static const ordersPath = '/api/orders';
   static const adminProductsPath = '/api/admin/products';
