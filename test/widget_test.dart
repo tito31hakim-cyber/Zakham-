@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:house_of_zakham/app.dart';
+import 'package:house_of_zakham/providers/cart_provider.dart';
 
 void main() {
   testWidgets('House of Zakham home renders logo', (tester) async {
-    await tester.pumpWidget(const ZakhamApp());
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => CartProvider(),
+        child: const ZakhamApp(),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(
       find.byWidgetPredicate(
@@ -16,5 +23,6 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(BottomNavigationBar), findsNothing);
+    expect(find.text('السلة'), findsOneWidget);
   });
 }

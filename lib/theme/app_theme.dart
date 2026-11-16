@@ -15,6 +15,43 @@ class AppTheme {
           seedColor: gold,
           brightness: Brightness.dark,
         ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF0B0B0B),
+          foregroundColor: cream,
+          centerTitle: true,
+          elevation: 0,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: card,
+          hintStyle: const TextStyle(color: muted),
+          labelStyle: const TextStyle(color: muted),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Colors.white12),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Colors.white12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: gold),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: gold,
+            foregroundColor: const Color(0xFF17130B),
+            minimumSize: const Size(48, 52),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            textStyle: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        cardTheme: const CardThemeData(
+          color: card,
+          elevation: 0,
+        ),
         useMaterial3: true,
       );
 }
