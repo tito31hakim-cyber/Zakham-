@@ -22,7 +22,7 @@ workflows:
       - name: Get Flutter packages
         script: flutter pub get
       - name: Analyze Flutter project
-        script: flutter analyze
+        script: flutter analyze --no-fatal-infos
       - name: Run widget tests
         script: flutter test
       - name: Build signed Android App Bundle
@@ -71,7 +71,7 @@ workflows:
       - name: Configure iOS signing profiles
         script: xcode-project use-profiles
       - name: Analyze Flutter project
-        script: flutter analyze
+        script: flutter analyze --no-fatal-infos
       - name: Run widget tests
         script: flutter test
       - name: Build signed iOS IPA

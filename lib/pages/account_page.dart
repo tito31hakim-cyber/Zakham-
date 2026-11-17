@@ -23,7 +23,7 @@ class AccountPage extends StatelessWidget {
               child: const Row(children: [Icon(Icons.spa_outlined, color: gold, size: 34), SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('أهلاً بك في زخم', style: TextStyle(color: cream, fontSize: 17, fontWeight: FontWeight.w600)), SizedBox(height: 5), Text('عطور مختارة لتترك أثراً يليق بك.', style: TextStyle(color: muted, fontSize: 12))]))]),
             ),
             const SizedBox(height: 20),
-            _item(context, Icons.shopping_bag_outlined, 'سلة المشتريات', 'راجع اختياراتك وأكمل طلبك', const Scaffold(appBar: AppBar(title: Text('سلة المشتريات')), body: CartPage())),
+            _item(context, Icons.shopping_bag_outlined, 'سلة المشتريات', 'راجع اختياراتك وأكمل طلبك', Scaffold(appBar: AppBar(title: Text('سلة المشتريات')), body: const CartPage())),
             _item(context, Icons.notifications_outlined, 'الإشعارات', 'تحديثات الطلبات والعروض والوصلات الجديدة', const NotificationsPage()),
             _item(context, Icons.support_agent, 'تواصل مع زخم', 'يسعدنا مساعدتك', const ContactPage()),
             _item(context, Icons.admin_panel_settings_outlined, 'دخول الإدارة', 'للموظفين المصرح لهم فقط', const AdminLoginPage()),
