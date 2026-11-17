@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "629071151941",
+    "project_id": "zakham-f4b6e",
+    "storage_bucket": "zakham-f4b6e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:629071151941:android:374eb10ed570244241b42c",
+        "android_client_info": {
+          "package_name": "com.houseofzakham.house_of_zakham"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAiGqhSUiu97WER6JnpMekYgsYTB33R6E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
