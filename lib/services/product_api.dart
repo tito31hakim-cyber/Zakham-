@@ -19,7 +19,7 @@ class ProductApi {
     try {
       response = await http.get(uri, headers: {
         'Accept': 'application/json',
-        'User-Agent': 'HouseOfZakham/1.0 (Flutter; Android/iOS)',
+        'User-Agent': 'HouseOfZakham/1.1 (Flutter; Android/iOS)',
         'X-API-Client': 'house-of-zakham-mobile',
         if (token != null && token!.isNotEmpty) 'Authorization': 'Bearer $token',
       }).timeout(const Duration(seconds: 20));
@@ -56,6 +56,9 @@ class ProductApi {
     return items
         .whereType<Map>()
         .map((item) => Product.fromJson(Map<String, dynamic>.from(item)))
+        // المنتجات غير الظاهرة (visible == false) لا تظهر في المتجر الحي
+        // إطلاقاً، فتُستبعد هنا أيضاً.
+        .where((product) => product.visible)
         .toList(growable: false);
   }
 }

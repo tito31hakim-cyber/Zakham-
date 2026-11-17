@@ -150,7 +150,9 @@ class ProductTile extends StatelessWidget {
                         style: const TextStyle(color: cream, fontSize: 19, fontWeight: FontWeight.w600),
                       ),
                       Text(
-                        product.category.toUpperCase(),
+                        product.categoryLabel.isEmpty
+                            ? product.category.toUpperCase()
+                            : product.categoryLabel,
                         style: const TextStyle(color: gold, fontSize: 10, letterSpacing: 1.5),
                       ),
                       const SizedBox(height: 10),

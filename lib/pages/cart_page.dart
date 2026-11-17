@@ -47,16 +47,16 @@ class CartPage extends StatelessWidget {
                             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               Text(item.product.name, style: const TextStyle(color: cream, fontSize: 16, fontWeight: FontWeight.w600)),
                               const SizedBox(height: 4),
-                              Text('${item.product.size} • ${item.product.price.toStringAsFixed(0)} ${item.product.currency}', style: const TextStyle(color: muted, fontSize: 12)),
+                              Text('${item.sizeMl} مل • ${item.product.concentrationLabel(item.concentration)} • ${item.unitPrice.toStringAsFixed(0)} ${item.product.currency}', style: const TextStyle(color: muted, fontSize: 12)),
                               const SizedBox(height: 10),
                               Text('${item.total.toStringAsFixed(0)} ${item.product.currency}', style: const TextStyle(color: gold, fontWeight: FontWeight.w600)),
                             ])),
                             Column(children: [
-                              IconButton(onPressed: () => cart.remove(item.product), icon: const Icon(Icons.delete_outline, color: muted, size: 20), tooltip: 'إزالة'),
+                              IconButton(onPressed: () => cart.remove(item), icon: const Icon(Icons.delete_outline, color: muted, size: 20), tooltip: 'إزالة'),
                               Container(decoration: BoxDecoration(border: Border.all(color: Colors.white12), borderRadius: BorderRadius.circular(12)), child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                IconButton(onPressed: () => cart.decrease(item.product), icon: const Icon(Icons.remove, size: 16, color: cream), visualDensity: VisualDensity.compact),
+                                IconButton(onPressed: () => cart.decrease(item), icon: const Icon(Icons.remove, size: 16, color: cream), visualDensity: VisualDensity.compact),
                                 Text('${item.quantity}', style: const TextStyle(color: cream, fontWeight: FontWeight.w600)),
-                                IconButton(onPressed: () => cart.add(item.product), icon: const Icon(Icons.add, size: 16, color: gold), visualDensity: VisualDensity.compact),
+                                IconButton(onPressed: () => cart.add(item.product, concentration: item.concentration, sizeMl: item.sizeMl), icon: const Icon(Icons.add, size: 16, color: gold), visualDensity: VisualDensity.compact),
                               ])),
                             ]),
                           ]),
@@ -71,7 +71,7 @@ class CartPage extends StatelessWidget {
                 child: SafeArea(top: false, child: Column(children: [
                   Row(children: [const Expanded(child: Text('الإجمالي الفرعي', style: TextStyle(color: muted))), Text('${cart.subtotal.toStringAsFixed(0)} EGP', style: const TextStyle(color: cream, fontSize: 17, fontWeight: FontWeight.w600))]),
                   const SizedBox(height: 5),
-                  const Align(alignment: Alignment.centerRight, child: Text('رسوم التوصيل غير محسوبة بعد؛ تأكد منها مع المتجر قبل الإرسال.', style: TextStyle(color: muted, fontSize: 11))),
+                  const Align(alignment: Alignment.centerRight, child: Text('رسوم التوصيل 120 ج.م لجميع المحافظات، وتُضاف عند إتمام الطلب.', style: TextStyle(color: muted, fontSize: 11))),
                   const SizedBox(height: 14),
                   SizedBox(width: double.infinity, child: FilledButton.icon(
                     onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutPage())),

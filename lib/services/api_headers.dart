@@ -18,7 +18,7 @@ class ApiHeaders {
   }) {
     final headers = <String, String>{
       'Accept': 'application/json',
-      'User-Agent': 'HouseOfZakham/1.0 (Flutter; Android/iOS)',
+      'User-Agent': 'HouseOfZakham/1.1 (Flutter; Android/iOS)',
       'X-API-Client': 'house-of-zakham-mobile',
       if (json) 'Content-Type': 'application/json',
     };

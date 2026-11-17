@@ -10,28 +10,51 @@ class CartProvider extends ChangeNotifier {
       _items.values.fold(0, (sum, item) => sum + item.quantity);
   double get subtotal => _items.values.fold(0, (sum, item) => sum + item.total);
 
-  void add(Product product) {
+  /// رسوم الشحن الموحّدة في المتجر الحي لجميع المحافظات (جنيه).
+  static const double shippingFee = 120;
+
+  double get totalWithShipping => subtotal + shippingFee;
+
+  void add(Product product, {String? concentration, int? sizeMl}) {
     if (!product.inStock) return;
-    final item = _items[product.id];
-    if (item == null) {
-      _items[product.id] = CartItem(product: product);
+    addItem(CartItem(
+      product: product,
+      concentration: concentration,
+      sizeMl: sizeMl,
+    ));
+  }
+
+  void addItem(CartItem item) {
+    if (!item.product.inStock) return;
+    final existing = _items[item.key];
+    if (existing == null) {
+      _items[item.key] = item;
     } else {
-      item.quantity++;
+      existing.quantity += item.quantity;
     }
     notifyListeners();
   }
 
-  void decrease(Product product) {
-    final item = _items[product.id];
-    if (item == null) return;
-    item.quantity > 1 ? item.quantity-- : _items.remove(product.id);
+  void decrease(CartItem item) {
+    final existing = _items[item.key];
+    if (existing == null) return;
+    existing.quantity > 1
+        ? existing.quantity--
+        : _items.remove(item.key);
     notifyListeners();
   }
 
-  void remove(Product product) {
-    _items.remove(product.id);
+  void remove(CartItem item) {
+    _items.remove(item.key);
     notifyListeners();
   }
+
+  /// توافقية: عمليات بالمنتج وحده تستخدم تركيزه وحجمه الافتراضيين.
+  void decreaseProduct(Product product) =>
+      decrease(CartItem(product: product));
+
+  void removeProduct(Product product) =>
+      remove(CartItem(product: product));
 
   void clear() {
     _items.clear();

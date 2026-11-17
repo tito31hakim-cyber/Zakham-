@@ -1,5 +1,16 @@
 import '../config/app_config.dart';
 
+/// منتج من رد `/api/storefront` الحي.
+///
+/// ملاحظات عن شكل الرد الحي (تشكيلة 2027 — 11 عطراً):
+/// - الأسعار تأتي كنصوص أحياناً ("500") وأحياناً أرقاماً (500)، داخل
+///   `prices` وداخل `variants[concentration].prices`؛ لذلك كل تحويل سعري
+///   يقبل النوعين.
+/// - لا يوجد `perfumeCode` ولا `qrPayload` ولا `stockQty` في الرد العام
+///   إطلاقاً — لا يعتمد عليها أي كود هنا.
+/// - `notes.top/middle/base` قد تكون نصاً واحداً أو قائمة نصوص.
+/// - التركيزات: `presence` (حُضور)، `extra` (فَوْحان)، `nuclear` (نووي).
+///   النووي بلا حجم 30 مل (50 و100 فقط).
 class Product {
   const Product({
     required this.id,
@@ -13,7 +24,13 @@ class Product {
     required this.baseNotes,
     required this.image,
     required this.inStock,
+    this.nameEn = '',
+    this.categoryLabel = '',
     this.description = '',
+    this.season = '',
+    this.occasion = '',
+    this.lasting = '',
+    this.visible = true,
     this.defaultConcentration = 'presence',
     this.prices = const <String, dynamic>{},
     this.variants = const <String, dynamic>{},
@@ -21,19 +38,179 @@ class Product {
 
   final String id;
   final String name;
+  final String nameEn;
   final double price;
   final String currency;
   final String size;
   final String category;
+  final String categoryLabel;
   final List<String> topNotes;
   final List<String> heartNotes;
   final List<String> baseNotes;
   final String image;
   final bool inStock;
+  final bool visible;
   final String description;
+  final String season;
+  final String occasion;
+  final String lasting;
   final String defaultConcentration;
   final Map<String, dynamic> prices;
   final Map<String, dynamic> variants;
+
+  /// ترتيب التركيزات المعتمد في المتجر الحي.
+  static const List<String> concentrationOrder = <String>[
+    'presence',
+    'extra',
+    'nuclear',
+  ];
+
+  static const Map<String, String> concentrationNamesAr =
+      <String, String>{
+    'presence': 'حُضور',
+    'extra': 'فَوْحان',
+    'nuclear': 'نووي',
+  };
+
+  static const Map<String, String> concentrationNamesEn =
+      <String, String>{
+    'presence': 'Eau de Parfum',
+    'extra': 'Extrait Prime',
+    'nuclear': 'Extrait Max',
+  };
+
+  /// يحوّل قيمة سعرية قد تكون رقماً أو نصاً رقمياً ("500") إلى double.
+  static double? toDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final cleaned = value.trim().replaceAll(',', '').replaceAll(' ', '');
+      return double.tryParse(cleaned);
+    }
+    return null;
+  }
+
+  static bool _toVisible(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final lower = value.trim().toLowerCase();
+      return lower == '1' || lower == 'true' || lower == 'yes';
+    }
+    return true;
+  }
+
+  /// أسعار تركيز ما: خريطة حجم (30/50/100) إلى سعر، بقيم رقمية.
+  Map<int, double> _variantPrices(String concentration) {
+    final result = <int, double>{};
+    final variant = variants[concentration];
+    if (variant is Map) {
+      final raw = variant['prices'];
+      if (raw is Map) {
+        raw.forEach((key, value) {
+          final size = int.tryParse('$key'.trim());
+          final price = toDouble(value);
+          if (size != null && price != null) result[size] = price;
+        });
+      }
+    }
+    return result;
+  }
+
+  /// الأسعار المسطّحة (بلا تركيز) من `prices`، بقيم رقمية.
+  Map<int, double> get _flatPrices {
+    final result = <int, double>{};
+    prices.forEach((key, value) {
+      final size = int.tryParse('$key'.trim());
+      final price = toDouble(value);
+      if (size != null && price != null) result[size] = price;
+    });
+    return result;
+  }
+
+  /// التركيزات المتوفرة لهذا المنتج بالترتيب المعتمد.
+  List<String> get availableConcentrations {
+    final found = concentrationOrder
+        .where((key) => _variantPrices(key).isNotEmpty)
+        .toList(growable: false);
+    if (found.isNotEmpty) return found;
+    if (concentrationOrder.contains(defaultConcentration)) {
+      return <String>[defaultConcentration];
+    }
+    return const <String>['presence'];
+  }
+
+  /// الأحجام المتوفرة (بالمل) لتركيز معين، مرتبة تصاعدياً.
+  List<int> availableSizes([String? concentration]) {
+    final key = concentration ?? defaultConcentration;
+    var sizes = _variantPrices(key).keys.toList(growable: false);
+    if (sizes.isEmpty) sizes = _flatPrices.keys.toList(growable: false);
+    sizes.sort();
+    return sizes;
+  }
+
+  /// الحجم الافتراضي: 100 مل إن وُجد للتركيز الافتراضي، وإلا أكبر حجم متاح.
+  int get defaultSizeMl {
+    final sizes = availableSizes();
+    if (sizes.isEmpty) return 100;
+    if (sizes.contains(100)) return 100;
+    return sizes.last;
+  }
+
+  /// عدد المللي في `size` (مثل "100 ml")، أو الحجم الافتراضي.
+  int get sizeMl {
+    final parsed =
+        int.tryParse(size.replaceAll(RegExp(r'[^0-9]'), ''));
+    return parsed ?? defaultSizeMl;
+  }
+
+  /// سعر حجم وتركيز محددين من `variants` أولاً ثم من `prices` المسطّحة.
+  double? priceFor({required String concentration, required int sizeMl}) {
+    final variantPrices = _variantPrices(concentration);
+    if (variantPrices.containsKey(sizeMl)) return variantPrices[sizeMl];
+    final flat = _flatPrices;
+    if (flat.containsKey(sizeMl)) return flat[sizeMl];
+    return null;
+  }
+
+  /// اسم التركيز للعرض (من `variants[].label` أولاً ثم الاسم المعتمد).
+  String concentrationLabel(String key) {
+    final variant = variants[key];
+    if (variant is Map) {
+      final label = '${variant['label'] ?? ''}'.trim();
+      if (label.isNotEmpty) return label;
+    }
+    final ar = concentrationNamesAr[key];
+    final en = concentrationNamesEn[key];
+    if (ar != null && en != null) return '$ar · $en';
+    return key;
+  }
+
+  /// نسخة من المنتج بتركيز/حجم/سعر مختارين (تُستخدم عند الإضافة إلى السلة).
+  Product copyWith({double? price, String? size, String? defaultConcentration}) {
+    return Product(
+      id: id,
+      name: name,
+      nameEn: nameEn,
+      price: price ?? this.price,
+      currency: currency,
+      size: size ?? this.size,
+      category: category,
+      categoryLabel: categoryLabel,
+      topNotes: topNotes,
+      heartNotes: heartNotes,
+      baseNotes: baseNotes,
+      image: image,
+      inStock: inStock,
+      visible: visible,
+      description: description,
+      season: season,
+      occasion: occasion,
+      lasting: lasting,
+      defaultConcentration: defaultConcentration ?? this.defaultConcentration,
+      prices: prices,
+      variants: variants,
+    );
+  }
 
   factory Product.fromJson(Map<String, dynamic> json) {
     final rawPyramid = json['olfactory_pyramid'];
@@ -47,8 +224,16 @@ class Product {
 
     List<String> notes(String pyramidKey, String legacyKey) {
       final value = pyramid[pyramidKey] ?? notesMap[legacyKey];
-      if (value is String && value.trim().isNotEmpty) return [value.trim()];
-      if (value is List) return value.whereType<String>().toList(growable: false);
+      if (value is String && value.trim().isNotEmpty) {
+        return <String>[value.trim()];
+      }
+      if (value is List) {
+        return value
+            .whereType<String>()
+            .map((item) => item.trim())
+            .where((item) => item.isNotEmpty)
+            .toList(growable: false);
+      }
       return const <String>[];
     }
 
@@ -61,37 +246,67 @@ class Product {
     final variants = mapValue('variants');
     final defaultConcentration =
         '${json['defaultConcentration'] ?? 'presence'}';
-    final selectedVariant = variants[defaultConcentration];
-    final variantPrices = selectedVariant is Map
-        ? Map<String, dynamic>.from(selectedVariant['prices'] as Map? ?? {})
-        : <String, dynamic>{};
-    final stockQty = (json['stockQty'] as num?)?.toInt() ?? 0;
+    final visible = _toVisible(json['visible']);
+    // الرد العام لا يحمل stockQty إطلاقاً؛ التوفر من stockStatus فقط.
     final inStock = json['in_stock'] == true ||
-        json['stockStatus'] == 'available' ||
-        stockQty > 0;
+        json['stockStatus'] == 'available';
 
-    double priceFrom(Map<String, dynamic> values) {
-      for (final key in const ['100', '50', '30']) {
-        final value = values[key] ?? values[int.parse(key)];
-        if (value is num) return value.toDouble();
+    double priceFrom(Map<int, double> values) {
+      for (final key in const [100, 50, 30]) {
+        if (values.containsKey(key)) return values[key]!;
       }
       return 0;
     }
 
+    // السعر الافتراضي: التركيز الافتراضي بأكبر حجم متاح (100 مل عادةً).
+    final probe = Product(
+      id: '${json['product_id'] ?? json['id'] ?? ''}',
+      name: '${json['name'] ?? json['nameAr'] ?? ''}',
+      price: 0,
+      currency: '${json['currency'] ?? 'EGP'}',
+      size: '100 ml',
+      category: '${json['category'] ?? ''}',
+      topNotes: const <String>[],
+      heartNotes: const <String>[],
+      baseNotes: const <String>[],
+      image: '',
+      inStock: inStock,
+      defaultConcentration: defaultConcentration,
+      prices: prices,
+      variants: variants,
+    );
+    final defaultPrice = probe.priceFor(
+          concentration: defaultConcentration,
+          sizeMl: probe.defaultSizeMl,
+        ) ??
+        toDouble(json['price']) ??
+        priceFrom(probe._flatPrices);
+
+    final season = '${json['season'] ?? ''}'.trim();
+    final category = '${json['category'] ?? ''}';
+    final categoryLabel = '${json['categoryLabel'] ?? ''}'.trim();
+
     return Product(
       id: '${json['product_id'] ?? json['id'] ?? ''}',
       name: '${json['name'] ?? json['nameAr'] ?? ''}',
-      price: (json['price'] as num?)?.toDouble() ??
-          priceFrom(variantPrices.isNotEmpty ? variantPrices : prices),
+      nameEn: '${json['en'] ?? ''}'.trim(),
+      price: defaultPrice,
       currency: '${json['currency'] ?? 'EGP'}',
-      size: '${json['size'] ?? json['sizeMl'] ?? '100 ml'}',
-      category: '${json['category'] ?? ''}',
+      size: '${probe.defaultSizeMl} ml',
+      category: category,
+      categoryLabel: categoryLabel.isEmpty ? category : categoryLabel,
       topNotes: notes('top_notes', 'top'),
       heartNotes: notes('heart_notes', 'middle'),
       baseNotes: notes('base_notes', 'base'),
       image: AppConfig.resolveImageUrl('${json['image'] ?? ''}'),
       inStock: inStock,
-      description: '${json['season'] ?? ''}',
+      visible: visible,
+      // الوصف: نص الموسم/المناسبة كما يرده الخادم (هو النسخة الوصفية
+      // الوحيدة في الرد)، وتُعرض المناسبة والثبات كحقول مستقلة أيضاً.
+      description: season,
+      season: season,
+      occasion: '${json['occasion'] ?? ''}'.trim(),
+      lasting: '${json['lasting'] ?? ''}'.trim(),
       defaultConcentration: defaultConcentration,
       prices: prices,
       variants: variants,

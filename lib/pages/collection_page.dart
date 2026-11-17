@@ -89,7 +89,7 @@ class _CollectionPageState extends State<CollectionPage> {
                   if (snapshot.hasError) return Padding(padding: const EdgeInsets.all(20), child: Column(children: [const Text('تعذر تحميل المنتجات حالياً.', textAlign: TextAlign.center, style: TextStyle(color: muted)), const SizedBox(height: 10), OutlinedButton(onPressed: _refresh, child: const Text('إعادة المحاولة'))]));
                   final query = searchController.text.trim().toLowerCase();
                   final products = (snapshot.data ?? const <Product>[]).where((product) {
-                    final matchesSearch = query.isEmpty || product.name.toLowerCase().contains(query) || product.category.toLowerCase().contains(query);
+                    final matchesSearch = query.isEmpty || product.name.toLowerCase().contains(query) || product.nameEn.toLowerCase().contains(query) || product.category.toLowerCase().contains(query);
                     return matchesSearch && (!availableOnly || product.inStock);
                   }).toList(growable: false);
                   if (products.isEmpty) return const Padding(padding: EdgeInsets.all(24), child: Text('لا توجد عطور تطابق البحث حالياً.', textAlign: TextAlign.center, style: TextStyle(color: muted)));

@@ -16,10 +16,31 @@ class ProductPage extends StatefulWidget {
 
 class _ProductPageState extends State<ProductPage> {
   late bool favorite;
+  late String _concentration;
+  late int _sizeMl;
+
   @override
   void initState() {
     super.initState();
     favorite = widget.favorite;
+    _concentration = widget.product.defaultConcentration;
+    _sizeMl = widget.product.defaultSizeMl;
+  }
+
+  List<int> get _sizes => widget.product.availableSizes(_concentration);
+
+  double get _unitPrice =>
+      widget.product.priceFor(concentration: _concentration, sizeMl: _sizeMl) ??
+      widget.product.price;
+
+  void _selectConcentration(String concentration) {
+    setState(() {
+      _concentration = concentration;
+      // النووي مثلاً بلا 30 مل؛ إن لم يتوفر الحجم الحالي نختار أول حجم متاح.
+      if (!_sizes.contains(_sizeMl)) {
+        _sizeMl = _sizes.isNotEmpty ? _sizes.first : widget.product.defaultSizeMl;
+      }
+    });
   }
 
   void _toggleFavorite() {
@@ -33,13 +54,20 @@ class _ProductPageState extends State<ProductPage> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('هذا المنتج غير متوفر حالياً.')));
       return;
     }
-    context.read<CartProvider>().add(product);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تمت إضافة ${product.name} إلى السلة.')));
+    context.read<CartProvider>().add(
+      product,
+      concentration: _concentration,
+      sizeMl: _sizeMl,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('تمت إضافة ${product.name} — ${product.concentrationLabel(_concentration)} · $_sizeMl مل إلى السلة.'),
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
+    final concentrations = product.availableConcentrations;
     return Scaffold(
       appBar: AppBar(
         title: const Text('تفاصيل العطر'),
@@ -52,19 +80,59 @@ class _ProductPageState extends State<ProductPage> {
             Image.network(product.image, height: 370, width: double.infinity, fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(height: 370, color: const Color(0xFF32261E), child: const Center(child: Icon(Icons.spa_outlined, color: gold, size: 70)))),
             Container(height: 120, decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black87]))),
-            Padding(padding: const EdgeInsets.all(22), child: Text(product.category.toUpperCase(), style: const TextStyle(color: gold, letterSpacing: 2))),
+            Padding(padding: const EdgeInsets.all(22), child: Text(product.categoryLabel.toUpperCase(), style: const TextStyle(color: gold, letterSpacing: 2))),
           ]),
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Text(product.name, textAlign: TextAlign.right, style: const TextStyle(color: cream, fontSize: 32, fontWeight: FontWeight.w600)),
+              if (product.nameEn.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(product.nameEn, textAlign: TextAlign.right, style: const TextStyle(color: muted, fontSize: 13, letterSpacing: 1.5)),
+                ),
               const SizedBox(height: 10),
               Text(product.description.isEmpty ? 'هيبة الملوك ونفحات القصور الفاخرة، صُمم ليترك أثراً يليق بحضورك.' : product.description, textAlign: TextAlign.right, style: const TextStyle(color: muted, height: 1.8)),
+              const SizedBox(height: 16),
+              if (product.occasion.isNotEmpty || product.lasting.isNotEmpty)
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  if (product.occasion.isNotEmpty)
+                    _InfoChip(icon: Icons.event_outlined, label: product.occasion),
+                  if (product.lasting.isNotEmpty)
+                    _InfoChip(icon: Icons.schedule_outlined, label: 'ثبات: ${product.lasting}'),
+                ]),
+              const SizedBox(height: 20),
+              const Text('التركيز', textAlign: TextAlign.right, style: TextStyle(color: cream, fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 10),
+              Wrap(spacing: 8, runSpacing: 8, children: concentrations.map((key) {
+                final selected = key == _concentration;
+                return ChoiceChip(
+                  label: Text(product.concentrationLabel(key)),
+                  selected: selected,
+                  onSelected: (_) => _selectConcentration(key),
+                  selectedColor: gold.withOpacity(.25),
+                  labelStyle: TextStyle(color: selected ? gold : cream, fontWeight: selected ? FontWeight.w700 : FontWeight.normal),
+                );
+              }).toList(growable: false)),
+              const SizedBox(height: 16),
+              const Text('الحجم', textAlign: TextAlign.right, style: TextStyle(color: cream, fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 10),
+              Wrap(spacing: 8, runSpacing: 8, children: _sizes.map((size) {
+                final selected = size == _sizeMl;
+                final price = product.priceFor(concentration: _concentration, sizeMl: size) ?? 0;
+                return ChoiceChip(
+                  label: Text('$size مل • ${price.toStringAsFixed(0)} ${product.currency}'),
+                  selected: selected,
+                  onSelected: (_) => setState(() => _sizeMl = size),
+                  selectedColor: gold.withOpacity(.25),
+                  labelStyle: TextStyle(color: selected ? gold : cream, fontWeight: selected ? FontWeight.w700 : FontWeight.normal),
+                );
+              }).toList(growable: false)),
               const SizedBox(height: 20),
               Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(16)), child: Row(children: [
-                Text('${product.price.toStringAsFixed(0)} ${product.currency}', style: const TextStyle(color: gold, fontSize: 21, fontWeight: FontWeight.bold)),
+                Text('${_unitPrice.toStringAsFixed(0)} ${product.currency}', style: const TextStyle(color: gold, fontSize: 21, fontWeight: FontWeight.bold)),
                 const Spacer(),
-                Text(product.size, style: const TextStyle(color: cream)),
+                Text('$_sizeMl مل · ${product.concentrationLabel(_concentration)}', style: const TextStyle(color: cream)),
                 const SizedBox(width: 7),
                 const Icon(Icons.water_drop_outlined, color: gold),
               ])),
@@ -79,11 +147,31 @@ class _ProductPageState extends State<ProductPage> {
               const SizedBox(height: 20),
               SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: product.inStock ? _addToCart : null, icon: const Icon(Icons.add_shopping_cart), label: Text(product.inStock ? 'أضف إلى السلة' : 'غير متوفر'))),
               const SizedBox(height: 8),
-              const Text('يُرجى مراجعة تفاصيل الطلب قبل التأكيد. رسوم التوصيل تُحتسب عند إتمام الطلب.', textAlign: TextAlign.center, style: TextStyle(color: muted, fontSize: 11)),
+              const Text('رسوم التوصيل 120 ج.م لجميع المحافظات، والدفع مسبقاً عبر إنستاباي أو فودافون كاش.', textAlign: TextAlign.center, style: TextStyle(color: muted, fontSize: 11)),
             ]),
           ),
         ]),
       ),
     );
   }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: card,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: gold, size: 15),
+          const SizedBox(width: 6),
+          Flexible(child: Text(label, style: const TextStyle(color: cream, fontSize: 12))),
+        ]),
+      );
 }

@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="house_of_zakham"
+        android:label="دار زخم"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="false">
@@ -25,6 +25,17 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- روابط المتجر https://zakhamhouse.shop: تفتح التطبيق عند الضغط
+                 على رابط المتجر (دون أن تؤثر على الإطلاق من الأيقونة).
+                 ملاحظة: الربط التلقائي الكامل (App Links) ما زال يحتاج ملف
+                 assetlinks.json على الخادم ومعالجة الرابط داخل Flutter؛
+                 هذا الفلتر يعلن الارتباط فقط ولا يكسر الإطلاق. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="zakhamhouse.shop" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

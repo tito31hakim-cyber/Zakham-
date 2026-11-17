@@ -1,6 +1,10 @@
-# house_of_zakham
+# house_of_zakham — تطبيق دار زخم للعطور
 
-A new Flutter project.
+تطبيق Flutter الرسمي لمتجر دار زخم (zakhamhouse.shop): تشكيلة 2027 — 11 عطراً،
+الدفع المسبق عبر إنستاباي أو فودافون كاش، والشحن 120 ج.م لجميع محافظات مصر.
+
+البناء والإصدار عبر Codemagic (ينتج AAB وAPK معاً) — انظر `codemagic.yaml`
+و`API_INTEGRATION.md` لشكل رد الخادم الحي.
 
 ## Getting Started
 

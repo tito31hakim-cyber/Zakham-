@@ -27,8 +27,12 @@ workflows:
         script: flutter test
       - name: Build signed Android App Bundle
         script: flutter build appbundle --release
+      - name: Build signed Android APK
+        # ملف APK المنشور على الموقع /downloads/zakhamhouse.apk يأتي من هذا البناء.
+        script: flutter build apk --release
     artifacts:
       - build/**/outputs/**/*.aab
+      - build/app/outputs/flutter-apk/app-release.apk
     publishing:
       email:
         recipients:
@@ -72,7 +76,7 @@ workflows:
         script: flutter test
       - name: Build signed iOS IPA
         script: |
-          flutter build ipa --release             --build-name=1.0.0             --build-number=1             --export-options-plist=/Users/builder/export_options.plist
+          flutter build ipa --release             --build-name=1.1.0             --build-number=2             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log

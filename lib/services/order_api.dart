@@ -60,6 +60,16 @@ class OrderApi {
     final uri = baseUrl == AppConfig.apiBaseUrl
         ? AppConfig.ordersUri
         : Uri.parse('$baseUrl${AppConfig.ordersPath}');
+    // الخادم يقبل حصراً قيمتَي الدفع المسبق هاتين حرفياً، وأي قيمة أخرى
+    // (مثل cash_on_delivery أو instapay أو wallet) تُرفض 422
+    // invalid_payment_method — لذلك يتحقق التطبيق منهما قبل الإرسال.
+    const supportedPayments = <String>[
+      'InstaPay | إنستاباي',
+      'Vodafone Cash | فودافون كاش',
+    ];
+    if (!supportedPayments.contains(paymentMethod)) {
+      throw Exception('وسيلة الدفع غير مدعومة. الدفع المسبق متاح عبر إنستاباي أو فودافون كاش فقط.');
+    }
     final headers = ApiHeaders.build(
       credentials: credentials,
       json: true,
@@ -90,16 +100,18 @@ class OrderApi {
                   (item) => {
                     'productId': item.product.id,
                     'nameAr': item.product.name,
-                    'nameEn': '',
+                    'nameEn': item.product.nameEn,
+                    // الخادم يشتق perfumeCode من صف المنتج في قاعدته؛
+                    // الرد العام لا يحمل perfumeCode أصلاً فلا يُرسل هنا.
                     'perfumeCode': '',
-                    'sizeMl': int.tryParse(
-                          item.product.size.replaceAll(RegExp(r'[^0-9]'), ''),
-                        ) ??
-                        0,
+                    // الحجم والتركيز المختاران فعلاً من صفحة المنتج؛
+                    // الخادم يعيد تسعير الصنف منهما ويرفض التركيبة
+                    // غير المتاحة (422 invalid_variant).
+                    'sizeMl': item.sizeMl,
                     'quantity': item.quantity,
-                    'unitPrice': item.product.price,
+                    'unitPrice': item.unitPrice,
                     'lineTotal': item.total,
-                    'concentration': 'presence',
+                    'concentration': item.concentration,
                   },
                 )
                 .toList(),

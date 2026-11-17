@@ -19,7 +19,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final phone = TextEditingController();
   final address = TextEditingController();
   String? selectedGovernorate;
-  String payment = 'cash_on_delivery';
+  String payment = 'InstaPay | إنستاباي';
+
+  /// رسوم الشحن الموحّدة في المتجر الحي لجميع المحافظات (جنيه).
+  /// الخادم يعيد حساب الشحن والإجمالي بنفسه من المحافظة، وهذه القيمة
+  /// للعرض فقط ويجب أن تطابق تعرفة المتجر.
+  static const double shippingFee = 120;
+  static const String shippingLabel = 'شحن لجميع المحافظات — 120 ج.م';
   bool submitting = false;
 
   static const governorates = <String>[
@@ -77,10 +83,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
         address: address.text.trim(),
         paymentMethod: payment,
         items: cart.items,
-        // لا توجد تعرفة شحن أو endpoint لعرضها في التكامل الحالي.
-        // نرسلها كـ"تحدد لاحقاً" بدل عرض رسوم افتراضية للعميل.
-        shippingFee: 0,
-        shippingLabel: 'تحدد بعد تأكيد المحافظة من المتجر',
+        // الشحن موحّد 120 ج.م لجميع المحافظات في المتجر الحي؛
+        // الخادم يعيد حسابه والإجمالي من المحافظة قبل الحفظ.
+        shippingFee: shippingFee,
+        shippingLabel: shippingLabel,
       );
 
       if (!mounted) return;
@@ -92,8 +98,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
           title: const Text('تم استلام طلبك'),
           content: Text(
             'رقم الطلب: ${result.orderRef}\n'
-            'إجمالي المنتجات: ${result.total.toStringAsFixed(2)} EGP\n'
-            'سيؤكد المتجر رسوم التوصيل والإجمالي النهائي قبل تجهيز الطلب.',
+            'الإجمالي شامل الشحن: ${result.total.toStringAsFixed(2)} EGP\n'
+            'الدفع مسبقاً عبر ${payment.split('|').first.trim()}؛ سيتواصل معك فريق زخم عبر واتساب بتعليمات التحويل.',
             textAlign: TextAlign.right,
           ),
           actions: [
@@ -191,24 +197,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     : null,
               ),
               const SizedBox(height: 12),
-              _sectionTitle('٢. طريقة الدفع', 'اختر الطريقة المناسبة لك'),
+              _sectionTitle('٢. طريقة الدفع', 'الدفع مسبقاً — اختر الطريقة المناسبة لك'),
               const SizedBox(height: 10),
               _paymentCard(
-                value: 'cash_on_delivery',
-                title: 'الدفع عند الاستلام',
-                subtitle: 'ادفع عند وصول طلبك. سيؤكد المتجر المبلغ النهائي قبل التجهيز.',
-                icon: Icons.local_shipping_outlined,
-              ),
-              _paymentCard(
-                value: 'instapay',
-                title: 'إنستاباي / تحويل بنكي',
-                subtitle: 'لا تُجرِ التحويل قبل أن يؤكد المتجر قيمة الطلب وتعليمات الدفع.',
+                value: 'InstaPay | إنستاباي',
+                title: 'إنستاباي',
+                subtitle: 'تحويل فوري مسبق. لا تُجرِ التحويل قبل أن يؤكد المتجر قيمة الطلب وتعليمات الدفع عبر واتساب.',
                 icon: Icons.account_balance_outlined,
               ),
               _paymentCard(
-                value: 'wallet',
-                title: 'محفظة إلكترونية',
-                subtitle: 'سيتم تأكيد بيانات التحويل معك من المتجر قبل الدفع.',
+                value: 'Vodafone Cash | فودافون كاش',
+                title: 'فودافون كاش',
+                subtitle: 'محفظة إلكترونية مسبقة الدفع. لا تُجرِ التحويل قبل أن يؤكد المتجر قيمة الطلب وتعليمات الدفع عبر واتساب.',
                 icon: Icons.account_balance_wallet_outlined,
               ),
               const SizedBox(height: 22),
@@ -225,7 +225,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   Icon(Icons.info_outline, color: gold, size: 19),
                   SizedBox(width: 9),
                   Expanded(child: Text(
-                    'رسوم التوصيل غير محسوبة في هذا الإجمالي؛ سيؤكدها المتجر بعد مراجعة المحافظة. لا توجد حالياً تعرفة شحن متاحة داخل التطبيق.',
+                    'رسوم التوصيل 120 ج.م لجميع المحافظات ومضافة إلى الإجمالي أدناه. الدفع مسبقاً عبر إنستاباي أو فودافون كاش بعد تأكيد المتجر لتعليمات التحويل.',
                     style: TextStyle(color: muted, fontSize: 12, height: 1.55),
                   )),
                 ]),
@@ -245,8 +245,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Row(children: [
-                      const Expanded(child: Text('إجمالي المنتجات قبل الشحن', style: TextStyle(color: muted, fontSize: 12))),
-                      Text('${cart.subtotal.toStringAsFixed(2)} EGP', style: const TextStyle(color: cream, fontSize: 18, fontWeight: FontWeight.w700)),
+                      const Expanded(child: Text('إجمالي المنتجات', style: TextStyle(color: muted, fontSize: 12))),
+                      Text('${cart.subtotal.toStringAsFixed(2)} EGP', style: const TextStyle(color: cream, fontSize: 15, fontWeight: FontWeight.w600)),
+                    ]),
+                    const SizedBox(height: 4),
+                    const Row(children: [
+                      Expanded(child: Text('التوصيل (جميع المحافظات)', style: TextStyle(color: muted, fontSize: 12))),
+                      Text('120.00 EGP', style: TextStyle(color: cream, fontSize: 15, fontWeight: FontWeight.w600)),
+                    ]),
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      const Expanded(child: Text('الإجمالي شامل الشحن', style: TextStyle(color: cream, fontSize: 14, fontWeight: FontWeight.w700))),
+                      Text('${(cart.subtotal + shippingFee).toStringAsFixed(2)} EGP', style: const TextStyle(color: gold, fontSize: 18, fontWeight: FontWeight.w700)),
                     ]),
                     const SizedBox(height: 10),
                     SizedBox(
@@ -347,7 +357,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(item.product.name, style: const TextStyle(color: cream, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 3),
-                    Text('${item.product.size} • الكمية: ${item.quantity}', style: const TextStyle(color: muted, fontSize: 11)),
+                    Text('${item.sizeMl} مل • ${item.product.concentrationLabel(item.concentration)} • الكمية: ${item.quantity}', style: const TextStyle(color: muted, fontSize: 11)),
                   ])),
                   const SizedBox(width: 8),
                   Text('${item.total.toStringAsFixed(2)} ${item.product.currency}', style: const TextStyle(color: gold, fontSize: 12, fontWeight: FontWeight.w600)),
@@ -356,9 +366,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
           const Divider(color: Colors.white12),
           _summaryLine('مجموع المنتجات', '${subtotal.toStringAsFixed(2)} EGP'),
           const SizedBox(height: 8),
-          _summaryLine('التوصيل', 'يؤكده المتجر', valueColor: muted),
+          _summaryLine('التوصيل (جميع المحافظات)', '120.00 EGP'),
+          const SizedBox(height: 8),
+          _summaryLine('الإجمالي شامل الشحن', '${(subtotal + shippingFee).toStringAsFixed(2)} EGP'),
           const SizedBox(height: 10),
-          const Text('الإجمالي النهائي سيشمل رسوم التوصيل بعد تأكيدها معك.', style: TextStyle(color: muted, fontSize: 11, height: 1.5)),
+          const Text('الدفع مسبقاً عبر إنستاباي أو فودافون كاش بعد تأكيد المتجر لتعليمات التحويل.', style: TextStyle(color: muted, fontSize: 11, height: 1.5)),
         ]),
       );
 
