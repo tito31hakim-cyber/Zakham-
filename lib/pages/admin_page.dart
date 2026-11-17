@@ -227,9 +227,69 @@ class _ProductsPanelState extends State<_ProductsPanel> {
     'bottleLabel': p['bottleLabel'] ?? '',
   };
 
+  /// مخزون المنتج كما يرده الخادم الإداري.
+  ///
+  /// تنبيه أمني (2026-11-17): نقطة `/api/admin/products` تشارك نفس
+  /// مسلسل `productRow` مع واجهة المتجر العامة، فبعد إزالة حقول الأصالة
+  /// والمخزون الدقيق من الرد العام لم يعد الرد الإداري يحمل `stockQty`
+  /// ولا `codePrefix`/`codeNumber`/`bottleLabel`. إن حُفظ تعديلٌ والقيم
+  /// مفقودة فسيكتب الخادم (PATCH) مخزون 0 وحالة «غير متوفر» ويمسح كود
+  /// الأصالة — لذلك يُمنع الحفظ أدناه عند غياب هذه الحقول، ويُشتق
+  /// المخزون للعرض من `variantRows` (ترد من استعلام منفصل لم يُمس).
+  static int? _adminStock(Map<String, dynamic> p) {
+    final direct = p['stockQty'];
+    if (direct is num) return direct.toInt();
+    if (direct is String) return int.tryParse(direct.trim());
+    final rows = p['variantRows'];
+    if (rows is List) {
+      var total = 0;
+      var found = false;
+      for (final row in rows) {
+        if (row is! Map) continue;
+        final active = row['is_active'];
+        if (active == 0 || active == false || active == '0') continue;
+        final qty = row['stock_qty'];
+        if (qty is num) {
+          total += qty.toInt();
+          found = true;
+        } else if (qty is String) {
+          final parsed = int.tryParse(qty.trim());
+          if (parsed != null) {
+            total += parsed;
+            found = true;
+          }
+        }
+      }
+      if (found) return total;
+    }
+    return null;
+  }
+
+  /// هل تحمل بيانات المنتج الحقول الإدارية اللازمة لحفظ آمن؟
+  /// غيابها يعني أن PATCH سيمسح المخزون وكود الأصالة — فيُمنع الحفظ.
+  static bool _hasAdminFields(Map<String, dynamic> p) =>
+      p.containsKey('codePrefix') &&
+      p.containsKey('codeNumber') &&
+      p.containsKey('bottleLabel') &&
+      (p.containsKey('stockQty') || _adminStock(p) != null);
+
   Future<void> _edit(Map<String, dynamic> p) async {
+    if (!_hasAdminFields(p)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'لا يمكن تعديل هذا المنتج حالياً — الخادم لا يرسل حقول المخزون وكود الأصالة الإدارية، والحفظ الآن سيمسحها. أصلح الخادم أولاً.',
+            ),
+            duration: Duration(seconds: 6),
+          ),
+        );
+      }
+      return;
+    }
+    final stockValue = _adminStock(p) ?? 0;
     final name = TextEditingController(text: '${p['name'] ?? ''}');
-    final stock = TextEditingController(text: '${p['stockQty'] ?? 0}');
+    final stock = TextEditingController(text: '$stockValue');
     var visible = p['visible'] != false;
     final save = await showDialog<bool>(
       context: context,
@@ -353,7 +413,9 @@ class _ProductsPanelState extends State<_ProductsPanel> {
                   style: const TextStyle(color: cream),
                 ),
                 subtitle: Text(
-                  'المخزون: ${product['stockQty'] ?? 0} · ${product['stockStatus'] ?? ''}',
+                  // المخزون من الرد الإداري مباشرةً، أو من variantRows،
+                  // أو «—» عند غيابهما — لا يُعرض 0 زائفاً أبداً.
+                  'المخزون: ${_adminStock(product)?.toString() ?? '—'} · ${product['stockStatus'] ?? ''}',
                   style: const TextStyle(color: muted),
                 ),
                 trailing: PopupMenuButton<String>(
