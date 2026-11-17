@@ -6,16 +6,29 @@
 البناء والإصدار عبر Codemagic (ينتج AAB وAPK معاً) — انظر `codemagic.yaml`
 و`API_INTEGRATION.md` لشكل رد الخادم الحي.
 
-## Getting Started
+## البناء
 
-This project is a starting point for a Flutter application.
+### عبر Codemagic (الطريقة المعتمدة)
 
-A few resources to get you started if this is your first Flutter project:
+الدفع إلى الفرع `main` يبني تلقائياً (انظر `codemagic.yaml`):
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- **Android:** حزمة AAB موقعة + ملف APK موقع (`app-release.apk`) — ملف APK المنشور على الموقع `/downloads/zakhamhouse.apk` يأتي من هذا البناء.
+- **iOS:** ملف IPA موقع عبر App Store Connect.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### بناء محلي
+
+```bash
+flutter pub get
+flutter analyze
+flutter test
+flutter build apk --release      # APK
+flutter build appbundle --release # AAB لمتجر Google Play
+```
+
+توقيع نسخة الإصدار محلياً يتطلب `android/key.properties` (مفتاح التوقيع غير مرفوع للمستودع — انظر `android/key.properties.example`). عبر Codemagic يُستخدم مفتاح التوقيع المحفوظ هناك.
+
+## بيانات المتجر
+
+- النطاق: `https://zakhamhouse.shop` — واجهة الكتالوج `GET /api/storefront` والطلبات `POST /api/orders` (التفاصيل في `API_INTEGRATION.md`).
+- الشحن: 120 ج.م لجميع المحافظات. الدفع المسبق: إنستاباي أو فودافون كاش فقط.
+- الخط: Tajawal (نفس خط الموقع) عبر حزمة `google_fonts` — يُحمَّل من Google Fonts ويُخزَّن على الجهاز بعد أول تشغيل، ومفعّل في `lib/theme/app_theme.dart`.

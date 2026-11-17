@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 const gold = Color(0xFFC9A45C);
 const cream = Color(0xFFF5EFE5);
@@ -8,8 +9,13 @@ const card = Color(0xFF171615);
 class AppTheme {
   AppTheme._();
 
-  static ThemeData dark() => ThemeData(
+  static ThemeData dark() {
+    final base = ThemeData.dark();
+    return ThemeData(
         brightness: Brightness.dark,
+        // خط Tajawal الرسمي للدار (نفس خط الموقع) عبر حزمة google_fonts.
+        fontFamily: 'Tajawal',
+        textTheme: GoogleFonts.tajawalTextTheme(base.textTheme),
         scaffoldBackgroundColor: const Color(0xFF0B0B0B),
         colorScheme: ColorScheme.fromSeed(
           seedColor: gold,
@@ -54,4 +60,5 @@ class AppTheme {
         ),
         useMaterial3: true,
       );
+  }
 }

@@ -37,6 +37,9 @@ dependencies:
   http: ^1.6.0
   provider: ^6.1.5+1
   url_launcher: ^6.3.3
+  # الخط العربي الرسمي للدار (Tajawal — نفس خط الموقع)، يُحمَّل من Google Fonts
+  # ويُخزَّن على الجهاز بعد أول تشغيل.
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
@@ -75,25 +78,8 @@ flutter:
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
 
-  # To add custom fonts to your application, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
-  # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
-  # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
-  #   - family: Trajan Pro
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
-  #
-  # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
+  # الخط يُدار عبر حزمة google_fonts (انظر dependencies) وليس ملفات مضمّنة،
+  # ليبقى المستودع نصياً بالكامل وقابلاً للدفع عبر موصل GitHub.
 
 flutter_launcher_icons:
   android: true
