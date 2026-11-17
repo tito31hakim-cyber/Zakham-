@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'data/featured_product.dart';
 import 'models/product.dart';
 import 'pages/account_page.dart';
@@ -16,8 +17,10 @@ import 'pages/verify_page.dart';
 import 'providers/cart_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/deep_link_service.dart';
+import 'services/favorites_offer_service.dart';
 import 'services/favorites_service.dart';
 import 'services/product_catalog.dart';
+import 'services/reminder_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/common_widgets.dart';
 
@@ -49,19 +52,37 @@ class _StoreShellState extends State<StoreShell> {
   final Map<String, Product> knownProducts = <String, Product>{featuredProduct.id: featuredProduct};
   final FavoritesService _favoritesService = FavoritesService();
   final DeepLinkService _deepLinkService = DeepLinkService();
+  final ReminderService _reminders = ReminderService.instance;
+  final FavoritesOfferService _favOffers = FavoritesOfferService();
+  late final CartProvider _cartProvider;
+
+  /// يظهر تنبيه «السلة الفارغة» داخل الرئيسية (مرة كل 3 أيام كحد أقصى).
+  bool _showEmptyCartNudge = false;
+
+  /// آخر مرة عُرض فيها تنبيه «السلة الفارغة» داخل التطبيق.
+  static const String _nudgeLastShownKey =
+      'zakham_emptycart_nudge_last_shown';
 
   @override
   void initState() {
     super.initState();
+    _cartProvider = context.read<CartProvider>();
+    _cartProvider.addListener(_onCartChanged);
     _loadFavorites();
     // الروابط العميقة best-effort: أي فشل في قناة المنصة يُتجاهل.
     unawaited(
       _deepLinkService.init(onProductSlug: _openProductSlug),
     );
+    // التذكيرات المحلية best-effort: الضغط عليها يوجَّه هنا.
+    _reminders.onNotificationTap = _handleReminderTap;
+    unawaited(_reminders.init());
+    unawaited(_reconcileReminders());
   }
 
   @override
   void dispose() {
+    _cartProvider.removeListener(_onCartChanged);
+    _reminders.onNotificationTap = null;
     _deepLinkService.dispose();
     super.dispose();
   }
@@ -69,8 +90,87 @@ class _StoreShellState extends State<StoreShell> {
   /// يستعيد المفضلة المحفوظة محلياً (مفتاح `zakham_favorites`).
   Future<void> _loadFavorites() async {
     final saved = await _favoritesService.load();
-    if (!mounted || saved.isEmpty) return;
-    setState(() => favoriteIds.addAll(saved));
+    if (!mounted) return;
+    if (saved.isNotEmpty) setState(() => favoriteIds.addAll(saved));
+    // تسجيل الجهاز مع المفضلة best-effort (يتخطى إن لم يتوفر الرمز بعد).
+    unawaited(_favOffers.syncFavorites());
+  }
+
+  /// مزامنة التذكيرات عند التشغيل: يعيد جدولة ما فقده النظام،
+  /// وينبّه داخل التطبيق إن بقيت السلة فارغة.
+  Future<void> _reconcileReminders() async {
+    await _reminders.reconcileOnStart(
+      cartEmpty: _cartProvider.items.isEmpty,
+      cartProductIds:
+          _cartProvider.items.map((item) => item.product.id).toSet(),
+    );
+    await _refreshEmptyCartNudge();
+  }
+
+  /// أي تغيير في السلة يعيد ضبط التذكيرات (تذكير بعد 4 ساعات، أو
+  /// تسليح تذكير «الفارغة») وينبّه داخل التطبيق عند الحاجة.
+  void _onCartChanged() {
+    if (!mounted) return;
+    unawaited(_reminders.onCartChanged(
+      cartEmpty: _cartProvider.items.isEmpty,
+      cartProductIds:
+          _cartProvider.items.map((item) => item.product.id).toSet(),
+    ));
+    unawaited(_refreshEmptyCartNudge());
+  }
+
+  /// يحدّث تنبيه «السلة الفارغة» داخل الرئيسية: يظهر فقط إن بقيت
+  /// السلة فارغة ولم يُعرض خلال الأيام الثلاثة الماضية.
+  Future<void> _refreshEmptyCartNudge() async {
+    try {
+      if (_cartProvider.items.isNotEmpty) {
+        if (_showEmptyCartNudge && mounted) {
+          setState(() => _showEmptyCartNudge = false);
+        }
+        return;
+      }
+      final prefs = await SharedPreferences.getInstance();
+      final lastShownMs = prefs.getInt(_nudgeLastShownKey);
+      final lastShown = lastShownMs == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(lastShownMs);
+      final now = DateTime.now();
+      if (lastShown != null &&
+          now.difference(lastShown) < const Duration(days: 3)) {
+        if (_showEmptyCartNudge && mounted) {
+          setState(() => _showEmptyCartNudge = false);
+        }
+        return;
+      }
+      await prefs.setInt(_nudgeLastShownKey, now.millisecondsSinceEpoch);
+      if (mounted && !_showEmptyCartNudge) {
+        setState(() => _showEmptyCartNudge = true);
+      }
+    } catch (_) {}
+  }
+
+  /// يوجّه الضغط على إشعار تذكير إلى وجهته: السلة، أو التشكيلة،
+  /// أو صفحة العطر (إعادة الشراء / عرض المفضلة).
+  void _handleReminderTap(String payload) {
+    final tap = ReminderTap.parse(payload);
+    if (!mounted) return;
+    switch (tap.kind) {
+      case ReminderTapKind.cart:
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        setState(() => selected = 3);
+        break;
+      case ReminderTapKind.collection:
+        openCollectionTab();
+        break;
+      case ReminderTapKind.reorder:
+      case ReminderTapKind.offer:
+        if (tap.productId != null) {
+          unawaited(_openProductSlug(tap.productId!));
+        }
+        break;
+      case ReminderTapKind.unknown:
+        break;
+    }
   }
 
   /// يفتح عطراً من رابط عميق `zakhamhouse.shop/product/<slug>`: يجرّب
@@ -110,6 +210,8 @@ class _StoreShellState extends State<StoreShell> {
     });
     // الحفظ محلي فقط، وbest-effort — لا يعطّل التبديل أبداً.
     unawaited(_favoritesService.save(favoriteIds));
+    // تسجيل الجهاز مع المفضلة المحدّثة best-effort.
+    unawaited(_favOffers.syncFavorites());
   }
 
   void openProduct(Product product) {
@@ -192,6 +294,11 @@ class _StoreShellState extends State<StoreShell> {
         onOpenSections: openSections,
         onFragranceCards: openFragranceCards,
         onVerify: openVerify,
+        showEmptyCartNudge: _showEmptyCartNudge,
+        onBrowseCollection: openCollectionTab,
+        onDismissEmptyCartNudge: () {
+          if (mounted) setState(() => _showEmptyCartNudge = false);
+        },
       ),
       CollectionPage(
         onProduct: openProduct,

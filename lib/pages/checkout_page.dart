@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,6 +7,7 @@ import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
 import '../providers/customer_provider.dart';
 import '../services/order_api.dart';
+import '../services/reminder_service.dart';
 import '../theme/app_theme.dart';
 import 'auth_page.dart';
 
@@ -152,6 +155,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ),
       );
       if (!mounted) return;
+      // تذكير إعادة الشراء بعد 60 يوماً (best-effort — لا يعطّل الطلب).
+      // يُلتقط محتوى السلة قبل إفراغها، وتذكير السلة يُلغى ضمناً.
+      final orderedItems = cart.items;
+      unawaited(ReminderService.instance.onOrderCompleted(
+        orderRef: result.orderRef,
+        items: orderedItems,
+      ));
       cart.clear();
       Navigator.pop(context);
     } catch (error) {

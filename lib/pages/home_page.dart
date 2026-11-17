@@ -16,6 +16,9 @@ class HomePage extends StatelessWidget {
     required this.onOpenSections,
     required this.onFragranceCards,
     required this.onVerify,
+    this.showEmptyCartNudge = false,
+    this.onBrowseCollection,
+    this.onDismissEmptyCartNudge,
   });
   final Product product;
   final ValueChanged<Product> onProduct;
@@ -34,6 +37,16 @@ class HomePage extends StatelessWidget {
 
   /// يفتح صفحة «تحقق من الأصالة».
   final VoidCallback onVerify;
+
+  /// يظهر تنبيه «السلة الفارغة» اللطيف داخل الرئيسية (مرة كل 3 أيام
+  /// كحد أقصى — يديره الغلاف StoreShell).
+  final bool showEmptyCartNudge;
+
+  /// يفتح تبويب التشكيلة من تنبيه «السلة الفارغة».
+  final VoidCallback? onBrowseCollection;
+
+  /// يخفي تنبيه «السلة الفارغة» لهذه الجلسة.
+  final VoidCallback? onDismissEmptyCartNudge;
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -59,6 +72,14 @@ class HomePage extends StatelessWidget {
               TextButton(onPressed: () => onProduct(product), child: Text('اكتشف زخم رويال', style: TextStyle(color: context.goldText))),
             ]),
           ),
+          if (showEmptyCartNudge)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              child: _EmptyCartNudge(
+                onBrowse: onBrowseCollection ?? () {},
+                onDismiss: onDismissEmptyCartNudge ?? () {},
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
             child: Row(children: [
@@ -151,6 +172,52 @@ class HomePage extends StatelessWidget {
             ]),
           ),
         ],
+      );
+}
+
+class _EmptyCartNudge extends StatelessWidget {
+  const _EmptyCartNudge({required this.onBrowse, required this.onDismiss});
+  final VoidCallback onBrowse;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          color: gold.withOpacity(.10),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: gold.withOpacity(.35)),
+        ),
+        child: InkWell(
+          onTap: onBrowse,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+            child: Row(children: [
+              Icon(Icons.shopping_bag_outlined, color: context.goldText, size: 26),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('سلتك فاضية', style: TextStyle(color: context.ink, fontSize: 15, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Text('تصفح التشكيلة واختر عطرك.', style: TextStyle(color: context.subdued, fontSize: 12)),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: onBrowse,
+                child: Text('تصفح التشكيلة', style: TextStyle(color: context.goldText)),
+              ),
+              IconButton(
+                onPressed: onDismiss,
+                icon: Icon(Icons.close, color: context.subdued, size: 18),
+                tooltip: 'إخفاء',
+                visualDensity: VisualDensity.compact,
+              ),
+            ]),
+          ),
+        ),
       );
 }
 

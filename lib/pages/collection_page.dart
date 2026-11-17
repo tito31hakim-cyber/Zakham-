@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../data/featured_product.dart';
 import '../models/product.dart';
+import '../services/favorites_offer_service.dart';
+import '../services/favorites_service.dart';
 import '../services/product_catalog.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
@@ -68,6 +70,13 @@ class _CollectionPageState extends State<CollectionPage> {
   String? selectedGender;
   bool _autoRetryScheduled = false;
 
+  /// النسخة المحفوظة السابقة (قبل هذا الجلب) — أساس مقارنة أسعار
+  /// المفضلة للتنبيه داخل التطبيق. تُقرأ قبل بدء الجلب الطازج.
+  Future<CatalogResult?>? _previousCachedFuture;
+
+  /// هل فُحصت عروض المفضلة لهذا الجلب؟ مرة واحدة لكل تحميل.
+  bool _favNoticeChecked = false;
+
   @override
   void initState() {
     super.initState();
@@ -82,6 +91,8 @@ class _CollectionPageState extends State<CollectionPage> {
 
   void _loadProducts() {
     _autoRetryScheduled = false;
+    _favNoticeChecked = false;
+    _previousCachedFuture = ProductCatalog().loadCached();
     catalogFuture = ProductCatalog().fetchCatalog();
   }
 
@@ -104,6 +115,34 @@ class _CollectionPageState extends State<CollectionPage> {
         selectedGender = null;
         favoritesOnly = false;
       });
+
+  /// يقارن التشكيلة الطازجة بالمحفوظة، وإن انخفض سعر عطر مفضّل أو
+  /// عاد للمخزون يعرض تنبيهاً داخل التطبيق (بديل تنبيهات العروض
+  /// الذي لا يحتاج الخادم). يُحترم مبدّل تنبيهات عروض المفضلة.
+  Future<void> _checkFavoriteOffers(List<Product> fresh) async {
+    try {
+      if (!await FavoritesOfferService().isEnabled()) return;
+      final previous = await _previousCachedFuture;
+      if (previous == null) return;
+      final favorites = await FavoritesService().load();
+      if (favorites.isEmpty) return;
+      final changes = detectFavoriteChanges(
+        fresh: fresh,
+        previous: previous.products,
+        favoriteIds: favorites,
+      );
+      if (changes.isEmpty || !mounted) return;
+      final change = changes.first;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(change.message),
+        action: SnackBarAction(
+          label: 'عرض العطر',
+          onPressed: () => widget.onProduct(change.product),
+        ),
+        duration: const Duration(seconds: 6),
+      ));
+    } catch (_) {}
+  }
 
   /// يعيد المحاولة في الخلفية مرة واحدة بعد 10 ثوانٍ إن كانت التشكيلة
   /// المعروضة نسخة محفوظة — دون أن يزعج المستخدم.
@@ -178,6 +217,10 @@ class _CollectionPageState extends State<CollectionPage> {
                   final result = snapshot.data!;
                   final all = result.products;
                   if (result.fromCache) _scheduleBackgroundRetry();
+                  if (!result.fromCache && !_favNoticeChecked) {
+                    _favNoticeChecked = true;
+                    unawaited(_checkFavoriteOffers(all));
+                  }
                   final query = searchController.text.trim().toLowerCase();
                   final products = all.where((product) {
                     final matchesSearch = query.isEmpty || product.name.toLowerCase().contains(query) || product.nameEn.toLowerCase().contains(query) || product.category.toLowerCase().contains(query);

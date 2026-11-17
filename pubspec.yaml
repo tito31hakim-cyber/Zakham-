@@ -46,6 +46,8 @@ dependencies:
   firebase_core: ^4.0.0
   firebase_messaging: ^16.0.0
   flutter_local_notifications: ^19.0.0
+  # جدولة التذكيرات المحلية بالتوقيت الصحيح (مطلوبة لـ zonedSchedule).
+  timezone: ^0.10.1
   shared_preferences: ^2.3.0
   flutter_secure_storage: ^11.2.0
   app_links: ^7.2.2

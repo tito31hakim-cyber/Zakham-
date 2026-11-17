@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../providers/customer_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/customer_auth.dart';
+import '../services/favorites_offer_service.dart';
+import '../services/reminder_service.dart';
 import '../theme/app_theme.dart';
 import 'admin_page.dart';
 import 'auth_page.dart';
@@ -43,6 +45,53 @@ class _AccountPageState extends State<AccountPage> {
   bool _loadingOrders = false;
   String? _ordersError;
   String? _ordersLoadedFor;
+  bool? _remindersEnabled;
+  bool? _favOffersEnabled;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReminderPrefs();
+  }
+
+  Future<void> _loadReminderPrefs() async {
+    final reminders = await ReminderService.instance.isEnabled();
+    final favOffers = await FavoritesOfferService().isEnabled();
+    if (mounted) {
+      setState(() {
+        _remindersEnabled = reminders;
+        _favOffersEnabled = favOffers;
+      });
+    }
+  }
+
+  Future<void> _toggleReminders(bool value) async {
+    setState(() => _remindersEnabled = value);
+    await ReminderService.instance.setEnabled(value);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(value
+              ? 'التذكيرات مفعّلة — سنذكّرك بلطف بسلة متروكة وإعادة الشراء.'
+              : 'أُوقفت التذكيرات — لن تصلك تذكيرات السلة أو إعادة الشراء.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleFavOffers(bool value) async {
+    setState(() => _favOffersEnabled = value);
+    await FavoritesOfferService().setEnabled(value);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(value
+              ? 'ستصلك تنبيهات عروض عطورك المفضلة.'
+              : 'أُوقفت تنبيهات عروض المفضلة.'),
+        ),
+      );
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -153,6 +202,10 @@ class _AccountPageState extends State<AccountPage> {
           if (customer == null) _guestCard() else _memberCard(customer),
           const SizedBox(height: 20),
           _themeRow(context),
+          const SizedBox(height: 8),
+          _remindersRow(context),
+          const SizedBox(height: 8),
+          _favOffersRow(context),
           const SizedBox(height: 8),
           _item(
             context,
@@ -268,6 +321,60 @@ class _AccountPageState extends State<AccountPage> {
         value: theme.isLight,
         activeColor: context.goldText,
         onChanged: theme.setLight,
+      ),
+    );
+  }
+
+  /// مبدّل التذكيرات المحلية (تذكير السلة وإعادة الشراء و«السلة الفارغة»).
+  Widget _remindersRow(BuildContext context) {
+    return Card(
+      color: context.surfaceCard,
+      margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+      child: SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        secondary: Icon(
+          (_remindersEnabled ?? true)
+              ? Icons.notifications_active_outlined
+              : Icons.notifications_off_outlined,
+          color: context.goldText,
+        ),
+        title: Text(
+          'تذكيرات السلة والطلبات',
+          style: TextStyle(color: context.ink, fontSize: 15),
+        ),
+        subtitle: Text(
+          'تذكير لطيف عند ترك السلة، وإعادة الشراء بعد فترة',
+          style: TextStyle(color: context.subdued, fontSize: 11),
+        ),
+        value: _remindersEnabled ?? true,
+        activeColor: context.goldText,
+        onChanged: _toggleReminders,
+      ),
+    );
+  }
+
+  /// مبدّل تنبيهات عروض العطور المفضلة.
+  Widget _favOffersRow(BuildContext context) {
+    return Card(
+      color: context.surfaceCard,
+      margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+      child: SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        secondary: Icon(
+          Icons.local_offer_outlined,
+          color: context.goldText,
+        ),
+        title: Text(
+          'تنبيهات عروض المفضلة',
+          style: TextStyle(color: context.ink, fontSize: 15),
+        ),
+        subtitle: Text(
+          'إشعار عند نزول عرض أو انخفاض سعر عطر محفوظ',
+          style: TextStyle(color: context.subdued, fontSize: 11),
+        ),
+        value: _favOffersEnabled ?? true,
+        activeColor: context.goldText,
+        onChanged: _toggleFavOffers,
       ),
     );
   }
