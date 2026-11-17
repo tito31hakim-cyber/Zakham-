@@ -21,6 +21,10 @@ workflows:
         script: echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
       - name: Get Flutter packages
         script: flutter pub get
+      - name: Generate launcher icons
+        # الأيقونات تُولَّد وقت البناء من الشعار النظيف (assets/brand/zakham-brand-mark.png)
+        # لأن ملفات PNG الثنائية لا يمكن دفعها عبر موصل GitHub.
+        script: dart run flutter_launcher_icons
       - name: Analyze Flutter project
         script: flutter analyze --no-fatal-infos
       - name: Run widget tests
@@ -66,6 +70,10 @@ workflows:
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
+      - name: Generate launcher icons
+        # الأيقونات تُولَّد وقت البناء من الشعار النظيف (assets/brand/zakham-brand-mark.png)
+        # لأن ملفات PNG الثنائية لا يمكن دفعها عبر موصل GitHub.
+        script: dart run flutter_launcher_icons
       - name: Install CocoaPods dependencies
         script: pod install --project-directory=ios
       - name: Configure iOS signing profiles

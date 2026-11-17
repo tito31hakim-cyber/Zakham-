@@ -91,6 +91,6 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/brand/zakham-app-icon.png
+  image_path: assets/brand/zakham-brand-mark.png
   adaptive_icon_background: "#050505"
-  adaptive_icon_foreground: assets/brand/zakham-app-icon.png
+  adaptive_icon_foreground: assets/brand/zakham-brand-mark.png
