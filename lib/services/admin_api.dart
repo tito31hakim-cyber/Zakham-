@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
 import 'api_headers.dart';
+import 'secure_http.dart';
 
 /// Thrown when the server requires a two-factor (TOTP) code for this admin
 /// account. The code comes from the admin's authenticator app; the web
@@ -76,7 +77,7 @@ class AdminApi {
   }
 
   Future<Map<String, dynamic>> _get(Uri uri) async {
-    final response = await http
+    final response = await SecureHttp.client
         .get(uri, headers: _headers())
         .timeout(const Duration(seconds: 20));
     _captureCookie(response);
@@ -88,7 +89,7 @@ class AdminApi {
     Map<String, dynamic> body, {
     String? csrf,
   }) async {
-    final response = await http
+    final response = await SecureHttp.client
         .post(
           uri,
           headers: _headers(mutating: true, csrf: csrf),
@@ -103,7 +104,7 @@ class AdminApi {
     Uri uri,
     Map<String, dynamic> body,
   ) async {
-    final response = await http
+    final response = await SecureHttp.client
         .patch(uri, headers: _headers(mutating: true), body: jsonEncode(body))
         .timeout(const Duration(seconds: 20));
     _captureCookie(response);
@@ -111,7 +112,7 @@ class AdminApi {
   }
 
   Future<void> _delete(Uri uri) async {
-    final response = await http
+    final response = await SecureHttp.client
         .delete(uri, headers: _headers(mutating: true))
         .timeout(const Duration(seconds: 20));
     _captureCookie(response);
@@ -141,7 +142,7 @@ class AdminApi {
     };
     final code = totp?.trim() ?? '';
     if (code.isNotEmpty) body['totp'] = code;
-    final response = await http
+    final response = await SecureHttp.client
         .post(
           uri,
           headers: _headers(mutating: true, csrf: loginCsrf),
@@ -272,7 +273,7 @@ class AdminApi {
     required String topic,
   }) async {
     final uri = _url(AppConfig.adminPushSendPath);
-    final response = await http
+    final response = await SecureHttp.client
         .post(
           uri,
           headers: _headers(mutating: true),

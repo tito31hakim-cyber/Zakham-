@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- دار زخم — تثبيت شهادة zakhamhouse.shop (SPKI pins).
+     البصمات من السلسلة الحية (2026-11-17، SHA-256 base64 لمفتاح SPKI):
+       * YE2 (Let's Encrypt intermediate — الأساسي، حتى 2028-09-02)
+       * Root YE (ISRG — احتياطي، حتى 2032-09-02)
+       * ISRG Root X2 (احتياطي ثانٍ، حتى 2032-09-02)
+     الورقة (leaf) عمرها 90 يوماً وتتجدد فلا تُثبَّت أبداً.
+     نفس البصمات في lib/services/secure_http.dart (التثبيت الفعلي
+     لطلبات API من Dart) — هذا الملف يغطي حركة أندرويد الأصلية
+     (Firebase وغيرها). عند تغيير تسلسل الشهادات حدّث المكانين معاً
+     قبل انتهاء السلسلة القديمة، وإلا فشل الاتصال. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">zakhamhouse.shop</domain>
+        <pin-set expiration="2028-09-01">
+            <pin digest="SHA-256">s/tdAOmUzd8syaTuqfgGvFcn6DzA5Cmb+Vby1ST+U3Y=</pin>
+            <pin digest="SHA-256">sCkq5UWXjg+7mKu9lMhhYF5bGLsy7VI/UNW3tccdR7w=</pin>
+            <pin digest="SHA-256">diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=</pin>
+        </pin-set>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

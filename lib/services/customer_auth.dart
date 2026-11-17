@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
 import 'api_headers.dart';
+import 'secure_http.dart';
 
 /// Thrown when the server says the customer session is missing or expired
 /// (401). The caller clears the stored session and asks the customer to
@@ -119,8 +120,8 @@ class CustomerOrder {
 /// responses and sends the cookies back as a `Cookie` header — the same
 /// plumbing AdminApi uses for admin sessions.
 ///
-/// Only the cookie string is persisted (by the provider, in
-/// SharedPreferences). Passwords are never stored or logged.
+/// Only the cookie string is persisted (by the provider, in encrypted
+/// secure storage). Passwords are never stored or logged.
 class CustomerAuth {
   CustomerAuth({this.baseUrl = AppConfig.apiBaseUrl});
 
@@ -272,7 +273,7 @@ class CustomerAuth {
   }
 
   Future<Map<String, dynamic>> _get(Uri uri) async {
-    final response = await http
+    final response = await SecureHttp.client
         .get(uri, headers: _headers())
         .timeout(const Duration(seconds: 20));
     _captureCookies(response);
@@ -283,7 +284,7 @@ class CustomerAuth {
     Uri uri,
     Map<String, dynamic> body,
   ) async {
-    final response = await http
+    final response = await SecureHttp.client
         .post(
           uri,
           headers: _headers(mutating: true),

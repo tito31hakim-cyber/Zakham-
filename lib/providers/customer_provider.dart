@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_headers.dart';
@@ -8,15 +9,24 @@ import '../services/customer_auth.dart';
 ///
 /// The session is the PHP session cookie (+ the long-lived `zk_remember`
 /// cookie) issued by /api/auth/register and /api/auth/login. The cookie
-/// string is persisted in SharedPreferences so sign-in survives restarts;
+/// string is persisted in encrypted secure storage (Android Keystore /
+/// iOS Keychain via flutter_secure_storage) so sign-in survives restarts;
 /// it is validated on startup with GET /api/auth/me and cleared on
 /// logout or on a 401 from the server. Passwords are never stored.
+///
+/// Legacy sessions saved in plain SharedPreferences (app <= 1.1.0) are
+/// migrated once on first launch: the old value is read, moved to secure
+/// storage and deleted from SharedPreferences.
 class CustomerProvider extends ChangeNotifier {
   CustomerProvider({CustomerAuth? auth}) : _auth = auth ?? CustomerAuth();
 
   final CustomerAuth _auth;
 
   static const _cookieKey = 'zakham_customer_cookie';
+
+  /// Encrypted on-device storage (Keystore / Keychain). Never put the
+  /// session cookie in plain SharedPreferences again.
+  static const _storage = FlutterSecureStorage();
 
   Customer? _customer;
   Customer? get customer => _customer;
@@ -48,8 +58,9 @@ class CustomerProvider extends ChangeNotifier {
   /// Never throws — a dead session just means "signed out".
   Future<void> init() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _auth.restoreCookie(prefs.getString(_cookieKey));
+      var cookie = await _storage.read(key: _cookieKey);
+      cookie ??= await _migrateLegacyCookie();
+      _auth.restoreCookie(cookie);
       if (_auth.hasCookie) {
         _customer = await _auth.fetchMe();
         if (_customer == null) _auth.clearCookie();
@@ -62,13 +73,33 @@ class CustomerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _persistCookie() async {
-    final prefs = await SharedPreferences.getInstance();
-    final cookie = _auth.cookie;
-    if (cookie == null || cookie.isEmpty) {
+  /// One-time migration of a session saved by app <= 1.1.0 in plain
+  /// SharedPreferences: move it to secure storage and delete the old key.
+  Future<String?> _migrateLegacyCookie() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final legacy = prefs.getString(_cookieKey);
+      if (legacy == null || legacy.isEmpty) return null;
+      await _storage.write(key: _cookieKey, value: legacy);
       await prefs.remove(_cookieKey);
-    } else {
-      await prefs.setString(_cookieKey, cookie);
+      return legacy;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _persistCookie() async {
+    try {
+      final cookie = _auth.cookie;
+      if (cookie == null || cookie.isEmpty) {
+        await _storage.delete(key: _cookieKey);
+      } else {
+        await _storage.write(key: _cookieKey, value: cookie);
+      }
+    } catch (_) {
+      // Secure storage can fail on a device without a working Keystore /
+      // Keychain; the session still works in memory for this run — it
+      // just won't survive a restart. Never fail sign-in over storage.
     }
   }
 

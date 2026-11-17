@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../services/push_service.dart';
 import '../theme/app_theme.dart';
@@ -148,39 +147,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   ),
                   if (push.token != null) ...[
                     const SizedBox(height: 20),
+                    // رمز الجهاز لا يُعرض ولا يُنسخ: معرف الجهاز للإشعارات
+                    // ولا حاجة لظهوره للمستخدم (أُزيل زر النسخ في 2026-11-17
+                    // ضمن مراجعة الأمان).
                     const Text(
-                      'رمز الجهاز (للدعم الفني)',
+                      'هذا الجهاز مسجّل لاستقبال الإشعارات.',
                       style: TextStyle(color: muted, fontSize: 12),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${push.token!.substring(0, 24)}…',
-                            textDirection: TextDirection.ltr,
-                            style: const TextStyle(
-                              color: muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.copy, color: gold, size: 18),
-                          onPressed: () async {
-                            await Clipboard.setData(
-                              ClipboardData(text: push.token!),
-                            );
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('تم نسخ رمز الجهاز.'),
-                                ),
-                              );
-                            }
-                          },
-                        ),
-                      ],
                     ),
                   ],
                 ],

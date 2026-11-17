@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
 import '../models/product.dart';
+import 'secure_http.dart';
 
 class ProductApi {
   ProductApi({this.baseUrl = AppConfig.apiBaseUrl, this.token});
@@ -17,7 +18,7 @@ class ProductApi {
         : Uri.parse(baseUrl);
     late final http.Response response;
     try {
-      response = await http.get(uri, headers: {
+      response = await SecureHttp.client.get(uri, headers: {
         'Accept': 'application/json',
         'User-Agent': 'HouseOfZakham/1.1 (Flutter; Android/iOS)',
         'X-API-Client': 'house-of-zakham-mobile',

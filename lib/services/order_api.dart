@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:http/http.dart' as http;
-
 import '../config/app_config.dart';
 import '../models/cart_item.dart';
 import 'api_headers.dart';
+import 'secure_http.dart';
 
 class OrderResult {
   const OrderResult({
@@ -86,7 +85,7 @@ class OrderApi {
     )
       ..['Idempotency-Key'] = idempotencyKey;
 
-    final response = await http
+    final response = await SecureHttp.client
         .post(
           uri,
           headers: headers,

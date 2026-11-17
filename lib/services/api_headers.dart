@@ -1,5 +1,8 @@
 /// Credentials are intentionally kept in memory by the caller.
 /// Do not persist adminToken or csrfToken in SharedPreferences or logs.
+/// (The customer session cookie is the one exception: CustomerProvider
+/// persists it separately, in encrypted secure storage only — never in
+/// plain SharedPreferences.)
 class ApiCredentials {
   const ApiCredentials({
     this.bearerToken,
@@ -12,8 +15,11 @@ class ApiCredentials {
   final String? adminToken;
   final String? csrfToken;
 
-  /// Session cookie (e.g. `PHPSESSID=...`) — kept in memory only, never
-  /// persisted. The store backend authenticates admins with PHP sessions.
+  /// Session cookie (e.g. `PHPSESSID=...`). This object itself never
+  /// persists anything: the admin session lives in memory only, while
+  /// the customer session cookie is persisted by CustomerProvider in
+  /// encrypted secure storage (never in plain SharedPreferences).
+  /// The store backend authenticates admins with PHP sessions.
   final String? cookie;
 }
 

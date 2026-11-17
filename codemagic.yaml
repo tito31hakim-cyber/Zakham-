@@ -30,13 +30,17 @@ workflows:
       - name: Run widget tests
         script: flutter test
       - name: Build signed Android App Bundle
-        script: flutter build appbundle --release
+        script: flutter build appbundle --release --obfuscate --split-debug-info="$CM_BUILD_DIR/../zakham-debug-info-aab"
       - name: Build signed Android APK
         # ملف APK المنشور على الموقع /downloads/zakhamhouse.apk يأتي من هذا البناء.
-        script: flutter build apk --release
+        # --obfuscate يخفي أسماء الأصناف والدوال من الثنائي، وملف التعيين
+        # يُحفظ خارج المستودع (مخرجات CI) لا في المستودع.
+        script: flutter build apk --release --obfuscate --split-debug-info="$CM_BUILD_DIR/../zakham-debug-info-apk"
     artifacts:
       - build/**/outputs/**/*.aab
       - build/app/outputs/flutter-apk/app-release.apk
+      - ../zakham-debug-info-aab/**
+      - ../zakham-debug-info-apk/**
     publishing:
       email:
         recipients:
