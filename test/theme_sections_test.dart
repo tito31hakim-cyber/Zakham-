@@ -48,6 +48,8 @@ Future<void> _pumpSections(WidgetTester tester) async {
         onOpenCollection: () {},
         onFragranceCards: () {},
         onVerify: () {},
+        onConsultation: () {},
+        onProduct: (_) {},
       ),
     ),
   );

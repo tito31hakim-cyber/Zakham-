@@ -3,6 +3,7 @@ import '../data/store_sections.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
+import '../widgets/occasions_section.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({
@@ -16,6 +17,7 @@ class HomePage extends StatelessWidget {
     required this.onOpenSections,
     required this.onFragranceCards,
     required this.onVerify,
+    required this.onConsultation,
     this.dailyProduct,
     this.showEmptyCartNudge = false,
     this.onBrowseCollection,
@@ -38,6 +40,9 @@ class HomePage extends StatelessWidget {
 
   /// يفتح صفحة «تحقق من الأصالة».
   final VoidCallback onVerify;
+
+  /// يفتح صفحة «حجز استشارة عطرية».
+  final VoidCallback onConsultation;
 
   /// عطر اليوم (من التشكيلة، من الشبكة أو الكاش) — يخفى إن لم
   /// تُحمَّل التشكيلة بعد؛ لا يظهر فارغاً أبداً.
@@ -151,27 +156,40 @@ class HomePage extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
+            child: GridView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 1.55,
+              ),
               children: [
-                Expanded(
-                  child: _SectionTile(
-                    icon: Icons.style_outlined,
-                    title: 'البطاقات العطرية',
-                    detail: 'المستكشف والرادار',
-                    onTap: onFragranceCards,
-                  ),
+                _SectionTile(
+                  icon: Icons.style_outlined,
+                  title: 'البطاقات العطرية',
+                  detail: 'المستكشف والرادار',
+                  onTap: onFragranceCards,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _SectionTile(
-                    icon: Icons.verified_outlined,
-                    title: 'تحقق من الأصالة',
-                    detail: 'رقم الكرت أو QR',
-                    onTap: onVerify,
-                  ),
+                _SectionTile(
+                  icon: Icons.verified_outlined,
+                  title: 'تحقق من الأصالة',
+                  detail: 'رقم الكرت أو QR',
+                  onTap: onVerify,
+                ),
+                _SectionTile(
+                  icon: Icons.support_agent_outlined,
+                  title: 'استشارة عطرية',
+                  detail: 'احجز مكالمة أو واتساب',
+                  onTap: onConsultation,
                 ),
               ],
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: OccasionsSection(onProduct: onProduct),
           ),
           Padding(padding: const EdgeInsets.fromLTRB(20, 28, 20, 12), child: Text('تجربة تليق بك', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 21, fontWeight: FontWeight.w600))),
           const Padding(

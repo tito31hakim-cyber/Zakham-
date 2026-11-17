@@ -8,10 +8,21 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/cart_item.dart';
+import 'birthday.dart';
 import 'daily_perfume.dart';
+import 'occasions.dart';
 
 /// نتيجة الضغط على إشعار تذكير.
-enum ReminderTapKind { cart, collection, reorder, offer, daily, unknown }
+enum ReminderTapKind {
+  cart,
+  collection,
+  reorder,
+  offer,
+  daily,
+  birthday,
+  occasion,
+  unknown,
+}
 
 /// ما يعنيه الضغط على إشعار تذكير — يُحلَّل من الـ payload.
 class ReminderTap {
@@ -31,6 +42,13 @@ class ReminderTap {
 
   static String dailyPayload(String productId) => 'zakham:daily:$productId';
 
+  /// الضغط على إشعار عيد الميلاد يفتح صفحة الحساب (بانر الهدية).
+  static const String birthdayPayload = 'zakham:birthday';
+
+  /// الضغط على إشعار مناسبة يفتح صفحة أول عطر مقترح كهدية لها.
+  static String occasionPayload(String productId) =>
+      'zakham:occasion:$productId';
+
   static ReminderTap parse(String? payload) {
     if (payload == null || payload.isEmpty) {
       return const ReminderTap(ReminderTapKind.unknown);
@@ -38,6 +56,9 @@ class ReminderTap {
     if (payload == cartPayload) return const ReminderTap(ReminderTapKind.cart);
     if (payload == collectionPayload) {
       return const ReminderTap(ReminderTapKind.collection);
+    }
+    if (payload == birthdayPayload) {
+      return const ReminderTap(ReminderTapKind.birthday);
     }
     const reorderPrefix = 'zakham:reorder:';
     if (payload.startsWith(reorderPrefix)) {
@@ -53,6 +74,11 @@ class ReminderTap {
     if (payload.startsWith(dailyPrefix)) {
       final id = payload.substring(dailyPrefix.length).trim();
       if (id.isNotEmpty) return ReminderTap(ReminderTapKind.daily, id);
+    }
+    const occasionPrefix = 'zakham:occasion:';
+    if (payload.startsWith(occasionPrefix)) {
+      final id = payload.substring(occasionPrefix.length).trim();
+      if (id.isNotEmpty) return ReminderTap(ReminderTapKind.occasion, id);
     }
     return const ReminderTap(ReminderTapKind.unknown);
   }
@@ -156,9 +182,18 @@ class ReminderService {
   /// إشعار «عطر اليوم» اليومي الساعة 18:00.
   static const int dailyPerfumeNotificationId = 1200;
 
+  /// إشعارات المناسبات (واحد لكل نوع مناسبة، بترتيب جدول
+  /// [zakhamOccasions]).
+  static const int occasionNotificationIdBase = 1300;
+
+  /// إشعار هدية عيد الميلاد (قبل عيد الميلاد بـ 3 أيام).
+  static const int birthdayNotificationId = 1400;
+
   static const String _enabledKey = 'zakham_reminders_enabled';
   static const String _dailyPerfumeEnabledKey = 'zakham_daily_perfume_enabled';
   static const String _dailyPerfumeFireKey = 'zakham_daily_perfume_ms';
+  static const String _birthdayFireKey = 'zakham_birthday_reminder_ms';
+  static const String _occasionFireKeyPrefix = 'zakham_occasion_ms_';
   static const String _lastActivityKey = 'zakham_last_activity_ms';
   static const String _emptyCartLastSentKey =
       'zakham_emptycart_last_sent_ms';
@@ -257,6 +292,10 @@ class ReminderService {
     await _runSerialized(() async {
       await _cancelQuietly(cartNotificationId);
       await _cancelQuietly(emptyCartNotificationId);
+      await _cancelQuietly(birthdayNotificationId);
+      for (var i = 0; i < zakhamOccasions.length; i++) {
+        await _cancelQuietly(occasionNotificationIdBase + i);
+      }
       for (var i = 0; i < maxReorderProducts; i++) {
         await _cancelQuietly(reorderNotificationIdBase + i);
       }
@@ -264,6 +303,7 @@ class ReminderService {
         final prefs = await _prefs;
         await prefs.remove(_cartReminderFireKey);
         await prefs.remove(_reorderPendingKey);
+        await prefs.remove(_birthdayFireKey);
       } catch (_) {}
     });
   }
@@ -328,6 +368,75 @@ class ReminderService {
         fireAt,
         ReminderTap.dailyPayload(productId),
       );
+    });
+  }
+
+  /// يجدول إشعار هدية عيد الميلاد: قبل عيد الميلاد بـ 3 أيام الساعة
+  /// 12:00 ظهراً. يُستدعى عند تحميل تاريخ الميلاد وعند حفظه؛ يعيد
+  /// الجدولة فقط إن تغيّر الموعد أو فُقد الإشعار من النظام. بعد
+  /// إطلاق الإشعار يعيد التشغيل التالي جدولته للسنة القادمة.
+  /// best-effort، ولا يعمل إن أوقف العميل مبدّل التذكيرات.
+  Future<void> ensureBirthdayReminder({
+    required DateTime birthday,
+    DateTime? now,
+  }) async {
+    if (!await isEnabled()) return;
+    await _runSerialized(() async {
+      final fireAt = nextBirthdayReminderAt(birthday, now ?? DateTime.now());
+      final prefs = await _prefs;
+      final savedMs = prefs.getInt(_birthdayFireKey);
+      final pending = await _pendingIds();
+      if (savedMs == fireAt.millisecondsSinceEpoch &&
+          pending.contains(birthdayNotificationId)) {
+        return;
+      }
+      await prefs.setInt(_birthdayFireKey, fireAt.millisecondsSinceEpoch);
+      await _scheduleAt(
+        birthdayNotificationId,
+        'دار زخم',
+        'عيد ميلادك بعد 3 أيام — هديتك بانتظارك: خصم 20% على طلب واحد خلال أسبوع عيد ميلادك.',
+        fireAt,
+        ReminderTap.birthdayPayload,
+      );
+    });
+  }
+
+  /// يجدول إشعار كل مناسبة قادمة: قبلها بأسبوع الساعة 12:00 ظهراً،
+  /// بعنوان المناسبة واقتراح إهدائها. يُستدعى عند بدء التشغيل؛
+  /// يُجدول فقط الوقوع القادم لكل نوع مناسبة، ويتخطى ما مضى موعد
+  /// إشعاره (أقل من أسبوع على المناسبة — يبقى قسم المناسبات داخل
+  /// التطبيق يعرضها). best-effort.
+  Future<void> ensureOccasionReminders({DateTime? now}) async {
+    if (!await isEnabled()) return;
+    await _runSerialized(() async {
+      final at = now ?? DateTime.now();
+      final prefs = await _prefs;
+      final pending = await _pendingIds();
+      for (var i = 0; i < zakhamOccasions.length; i++) {
+        final occasion = zakhamOccasions[i];
+        final next = nextOccurrence(occasion, at);
+        if (next == null) continue;
+        final fireAt = occasionReminderFireAt(next);
+        if (!fireAt.isAfter(at)) continue;
+        final id = occasionNotificationIdBase + i;
+        final key = '$_occasionFireKeyPrefix${occasion.id}_${next.year}';
+        final savedMs = prefs.getInt(key);
+        if (savedMs == fireAt.millisecondsSinceEpoch &&
+            pending.contains(id)) {
+          continue;
+        }
+        await prefs.setInt(key, fireAt.millisecondsSinceEpoch);
+        final firstGift = occasion.giftProductIds.isNotEmpty
+            ? occasion.giftProductIds.first
+            : '';
+        await _scheduleAt(
+          id,
+          'دار زخم',
+          'مناسبة «${occasion.title}» بعد أسبوع — ${occasion.giftNote}.',
+          fireAt,
+          ReminderTap.occasionPayload(firstGift),
+        );
+      }
     });
   }
 

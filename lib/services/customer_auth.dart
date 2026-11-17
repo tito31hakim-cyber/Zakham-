@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
 import 'api_headers.dart';
+import 'birthday.dart';
 import 'secure_http.dart';
 
 /// Thrown when the server says the customer session is missing or expired
@@ -16,9 +17,21 @@ class AuthRequiredException implements Exception {
   String toString() => message;
 }
 
+/// Thrown when the server refuses a birthday save because the birthday
+/// is already set (409 birthday_already_set). The birthday is fixed —
+/// it can only be changed through the store.
+class BirthdayAlreadySetException implements Exception {
+  const BirthdayAlreadySetException([
+    this.message = 'تاريخ الميلاد مسجَّل بالفعل ولا يمكن تغييره.',
+  ]);
+  final String message;
+  @override
+  String toString() => message;
+}
+
 /// A store customer, as returned by `customerPayload` on the server
 /// (openId, displayName, email, phone, phoneVerified, discountCode,
-/// discountUsed, createdAt, status, tags, pointsBalance).
+/// discountUsed, createdAt, status, tags, pointsBalance, birthday).
 class Customer {
   const Customer({
     required this.openId,
@@ -29,6 +42,7 @@ class Customer {
     this.discountCode = '',
     this.status = 'active',
     this.pointsBalance,
+    this.birthday = '',
   });
 
   final String openId;
@@ -44,7 +58,15 @@ class Customer {
   /// «قريباً» لا صفراً.
   final int? pointsBalance;
 
-  Customer copyWith({int? pointsBalance}) => Customer(
+  /// تاريخ الميلاد 'YYYY-MM-DD' من الخادم، أو '' إن لم يُسجَّل بعد
+  /// (أو لم تُنشر نقطة عيد الميلاد). ثابت بعد تسجيله — لا يتغير.
+  final String birthday;
+
+  /// تاريخ الميلاد كـ DateTime، أو null إن لم يُسجَّل بعد.
+  DateTime? get birthdayDate =>
+      birthday.isEmpty ? null : parseBirthday(birthday);
+
+  Customer copyWith({int? pointsBalance, String? birthday}) => Customer(
         openId: openId,
         displayName: displayName,
         email: email,
@@ -53,6 +75,7 @@ class Customer {
         discountCode: discountCode,
         status: status,
         pointsBalance: pointsBalance ?? this.pointsBalance,
+        birthday: birthday ?? this.birthday,
       );
 
   factory Customer.fromJson(Map<String, dynamic> json) => Customer(
@@ -66,6 +89,7 @@ class Customer {
         pointsBalance: json['pointsBalance'] is num
             ? (json['pointsBalance'] as num).toInt()
             : null,
+        birthday: '${json['birthday'] ?? ''}',
       );
 }
 
@@ -305,6 +329,52 @@ class CustomerAuth {
     } catch (_) {
       return null;
     }
+  }
+
+  /// تاريخ ميلاد العميل من الخادم (GET /api/account/birthday)، أو null
+  /// عند غياب النقطة (404 — الخادم لم يُنشر بعد) أو عدم تسجيله أو أي
+  /// فشل آخر. best-effort ولا يرمي أبداً.
+  Future<DateTime?> fetchBirthday() async {
+    try {
+      final data = await _get(_url(AppConfig.customerBirthdayPath));
+      final raw = '${data['birthday'] ?? ''}'.trim();
+      if (raw.isEmpty) return null;
+      return parseBirthday(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// يحفظ تاريخ الميلاد على الخادم (POST /api/account/birthday) مرة
+  /// واحدة فقط. يعيد التاريخ المحفوظ. يرمي
+  /// [BirthdayAlreadySetException] إن كان مسجَّلاً من قبل (409)،
+  /// ويرمي Exception برسالة الخادم عند أي فشل آخر (منها غياب النقطة
+  /// 404 — فيسقط المتصل للتخزين المحلي بهدوء).
+  Future<DateTime> saveBirthday(String yyyyMmDd) async {
+    final response = await SecureHttp.client
+        .post(
+          _url(AppConfig.customerBirthdayPath),
+          headers: _headers(mutating: true),
+          body: jsonEncode({'birthday': yyyyMmDd}),
+        )
+        .timeout(const Duration(seconds: 20));
+    _captureCookies(response);
+    final body = _decode(response.body);
+    if (response.statusCode == 409 &&
+        '${body['error'] ?? ''}' == 'birthday_already_set') {
+      throw const BirthdayAlreadySetException();
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        (body['message'] as String?)?.trim().isNotEmpty == true
+            ? body['message'] as String
+            : 'تعذر حفظ تاريخ الميلاد.',
+      );
+    }
+    final raw = '${body['birthday'] ?? ''}'.trim();
+    final saved = parseBirthday(raw);
+    if (saved == null) throw Exception('تعذر حفظ تاريخ الميلاد.');
+    return saved;
   }
 
   /// العناوين المحفوظة (GET /api/account/addresses) — تُرمى عند غياب

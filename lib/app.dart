@@ -8,6 +8,7 @@ import 'models/product.dart';
 import 'pages/account_page.dart';
 import 'pages/cart_page.dart';
 import 'pages/collection_page.dart';
+import 'pages/consultation_page.dart';
 import 'pages/fragrance_cards_page.dart';
 import 'pages/home_page.dart';
 import 'pages/product_page.dart';
@@ -15,6 +16,7 @@ import 'pages/quiz_page.dart';
 import 'pages/sections_page.dart';
 import 'pages/verify_page.dart';
 import 'providers/cart_provider.dart';
+import 'providers/customer_provider.dart';
 import 'providers/discount_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/deep_link_service.dart';
@@ -85,6 +87,8 @@ class _StoreShellState extends State<StoreShell> {
     _reminders.onNotificationTap = _handleReminderTap;
     unawaited(_reminders.init());
     unawaited(_reconcileReminders());
+    // إشعارات المناسبات best-effort: قبل كل مناسبة قادمة بأسبوع.
+    unawaited(_reminders.ensureOccasionReminders());
     // عطر اليوم best-effort: من التشكيلة (شبكة أو كاش) مع إشعاره.
     unawaited(_loadDailyPerfume());
   }
@@ -192,7 +196,8 @@ class _StoreShellState extends State<StoreShell> {
   }
 
   /// يوجّه الضغط على إشعار تذكير إلى وجهته: السلة، أو التشكيلة،
-  /// أو صفحة العطر (إعادة الشراء / عرض المفضلة / عطر اليوم).
+  /// أو صفحة العطر (إعادة الشراء / عرض المفضلة / عطر اليوم /
+  /// مناسبة قادمة)، أو صفحة الحساب (هدية عيد الميلاد).
   void _handleReminderTap(String payload) {
     final tap = ReminderTap.parse(payload);
     if (!mounted) return;
@@ -204,9 +209,14 @@ class _StoreShellState extends State<StoreShell> {
       case ReminderTapKind.collection:
         openCollectionTab();
         break;
+      case ReminderTapKind.birthday:
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        setState(() => selected = 4);
+        break;
       case ReminderTapKind.reorder:
       case ReminderTapKind.offer:
       case ReminderTapKind.daily:
+      case ReminderTapKind.occasion:
         if (tap.productId != null) {
           unawaited(_openProductSlug(tap.productId!));
         }
@@ -271,7 +281,12 @@ class _StoreShellState extends State<StoreShell> {
     ).then((_) => setState(() {}));
   }
 
-  void openQuiz() => Navigator.push(context, MaterialPageRoute(builder: (_) => const QuizPage()));
+  void openQuiz() => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => QuizPage(onViewProduct: () => openProduct(featuredProduct)),
+        ),
+      );
 
   /// يفتح صفحة «البطاقات العطرية» (البطاقات + المستكشف + الرادار).
   void openFragranceCards() => Navigator.push(
@@ -291,6 +306,20 @@ class _StoreShellState extends State<StoreShell> {
         MaterialPageRoute(builder: (_) => const VerifyPage()),
       );
 
+  /// يفتح صفحة «حجز استشارة عطرية».
+  void openConsultation() {
+    final provider = context.read<CustomerProvider>();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ConsultationPage(
+          consultations: provider.consultations,
+          ownerKey: provider.addressOwnerKey,
+        ),
+      ),
+    );
+  }
+
   /// يفتح صفحة «الأقسام» (التشكيلة، طقس زخم، الإهداء، التغليف
   /// الفاخر، باقات التوفير) فوق التبويبات.
   void openSections() => Navigator.push(
@@ -301,6 +330,8 @@ class _StoreShellState extends State<StoreShell> {
             onOpenCollection: openCollectionTab,
             onFragranceCards: openFragranceCards,
             onVerify: openVerify,
+            onConsultation: openConsultation,
+            onProduct: openProduct,
           ),
         ),
       );
@@ -337,6 +368,7 @@ class _StoreShellState extends State<StoreShell> {
         onOpenSections: openSections,
         onFragranceCards: openFragranceCards,
         onVerify: openVerify,
+        onConsultation: openConsultation,
         dailyProduct: _dailyProduct,
         showEmptyCartNudge: _showEmptyCartNudge,
         onBrowseCollection: openCollectionTab,

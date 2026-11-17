@@ -1,17 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/customer_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/birthday.dart';
+import '../services/consultation.dart';
 import '../services/customer_auth.dart';
 import '../services/favorites_offer_service.dart';
 import '../services/invoice_pdf.dart';
+import '../services/occasions.dart';
 import '../services/reminder_service.dart';
 import '../theme/app_theme.dart';
 import 'addresses_page.dart';
 import 'admin_page.dart';
 import 'auth_page.dart';
 import 'cart_page.dart';
+import 'consultation_page.dart';
 import 'contact_page.dart';
 import 'notifications_page.dart';
 
@@ -51,6 +57,8 @@ class _AccountPageState extends State<AccountPage> {
   bool _loadingOrders = false;
   String? _ordersError;
   String? _ordersLoadedFor;
+  String? _birthdayLoadedFor;
+  bool _savingBirthday = false;
 
   /// أرقام الطلبات الجاري توليد فاتورتها الآن (لمنع الضغط المزدوج).
   final Set<String> _generatingInvoices = <String>{};
@@ -128,9 +136,14 @@ class _AccountPageState extends State<AccountPage> {
     final customer = provider.customer;
     if (customer == null) {
       _ordersLoadedFor = null;
+      _birthdayLoadedFor = null;
     } else if (_ordersLoadedFor != customer.openId && !_loadingOrders) {
       _ordersLoadedFor = customer.openId;
       _loadOrders();
+    }
+    if (customer != null && _birthdayLoadedFor != customer.openId) {
+      _birthdayLoadedFor = customer.openId;
+      unawaited(provider.refreshBirthday());
     }
   }
 
@@ -267,6 +280,10 @@ class _AccountPageState extends State<AccountPage> {
           ),
           const SizedBox(height: 22),
           if (customer == null) _guestCard() else _memberCard(customer),
+          if (customer != null) ...[
+            const SizedBox(height: 12),
+            _birthdaySection(provider),
+          ],
           const SizedBox(height: 20),
           _themeRow(context),
           const SizedBox(height: 8),
@@ -275,6 +292,11 @@ class _AccountPageState extends State<AccountPage> {
           _favOffersRow(context),
           const SizedBox(height: 8),
           _dailyPerfumeRow(context),
+          const SizedBox(height: 8),
+          _ConsultationsSection(
+            consultations: provider.consultations,
+            ownerKey: provider.addressOwnerKey,
+          ),
           const SizedBox(height: 8),
           _item(
             context,
@@ -461,6 +483,195 @@ class _AccountPageState extends State<AccountPage> {
         onChanged: _toggleFavOffers,
       ),
     );
+  }
+
+  /// قسم تاريخ الميلاد — يُسجَّل مرة واحدة فقط: الحقل يصبح للقراءة
+  /// فقط بعد أول حفظ (التغيير فقط عن طريق الدار)، وفي أسبوع عيد
+  /// الميلاد يظهر بانر الهدية الذهبي (خصم 20% يُطبَّق من الخادم).
+  Widget _birthdaySection(CustomerProvider provider) {
+    final birthday = provider.birthday;
+    final now = DateTime.now();
+    final inWeek = birthday != null && isInBirthdayWeek(birthday, now);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: inWeek ? gold.withOpacity(.14) : context.surfaceCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: inWeek ? gold.withOpacity(.5) : context.hairline,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.cake_outlined, color: context.goldText, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'تاريخ ميلادي',
+                  style: TextStyle(
+                    color: context.ink,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (birthday != null)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: gold.withOpacity(.16),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'مسجَّل',
+                    style: TextStyle(
+                      color: context.goldText,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (birthday == null) ...[
+            Text(
+              'سجّل تاريخ ميلادك مرة واحدة لتحصل على خصم 20% على طلب واحد كل سنة في أسبوع عيد ميلادك.',
+              style: TextStyle(color: context.subdued, fontSize: 12, height: 1.7),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'يُسجَّل مرة واحدة ولا يمكن تغييره بعدها — احرص على صحته.',
+              style: TextStyle(
+                color: context.goldText,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _savingBirthday ? null : _pickAndSaveBirthday,
+                icon: const Icon(Icons.calendar_today_outlined, size: 17),
+                label: Text(
+                  _savingBirthday ? 'جارٍ الحفظ…' : 'تسجيل تاريخ ميلادي',
+                ),
+              ),
+            ),
+          ] else ...[
+            Text(
+              formatBirthdayAr(formatBirthday(birthday)),
+              style: TextStyle(
+                color: context.ink,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'مسجَّل ولا يمكن تغييره — للتغيير تواصل مع الدار.',
+              style: TextStyle(color: context.subdued, fontSize: 11, height: 1.6),
+            ),
+            if (inWeek) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: gold.withOpacity(.18),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: gold.withOpacity(.4)),
+                ),
+                child: Text(
+                  'عيد ميلاد سعيد! خصم 20% على طلب واحد خلال أسبوع عيد ميلادك — يُطبَّق تلقائياً عند إتمام الطلب.',
+                  style: TextStyle(
+                    color: context.goldText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.7,
+                  ),
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 6),
+              Text(
+                'عيد ميلادك بعد ${daysUntilBirthday(birthday, now)} يوم — هديتك بانتظارك.',
+                style: TextStyle(color: context.subdued, fontSize: 12),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickAndSaveBirthday() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(1995, 1, 1),
+      firstDate: DateTime(1926, 1, 1),
+      lastDate: DateTime.now(),
+      helpText: 'اختر تاريخ ميلادك',
+      cancelText: 'إلغاء',
+      confirmText: 'تأكيد',
+    );
+    if (picked == null || !mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تأكيد تاريخ الميلاد'),
+        content: Text(
+          '${formatBirthdayAr(formatBirthday(picked))}\n\nبعد الحفظ لا يمكن تغييره إطلاقاً — هل أنت متأكد؟',
+          style: const TextStyle(height: 1.8),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('تأكيد الحفظ'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _savingBirthday = true);
+    try {
+      final provider = context.read<CustomerProvider>();
+      await provider.birthdayService.save(
+        ownerKey: provider.addressOwnerKey,
+        birthday: picked,
+      );
+      await provider.refreshBirthday();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم تسجيل تاريخ ميلادك — هديتك بانتظارك كل سنة.'),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.toString().replaceFirst('Exception: ', ''),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingBirthday = false);
+    }
   }
 
   /// مبدّل إشعار «عطر اليوم» اليومي (الساعة 6 مساءً).
@@ -801,4 +1012,139 @@ class _AccountPageState extends State<AccountPage> {
           onTap: onTap,
         ),
       );
+}
+
+/// قسم «استشاراتي» — طلبات الاستشارة العطرية المحفوظة محلياً
+/// (التاريخ والوقت والنوع والحالة) مع زر لحجز استشارة جديدة.
+/// يظهر لكل المستخدمين (حساب أو ضيف) بمفتاح حسابه.
+class _ConsultationsSection extends StatefulWidget {
+  const _ConsultationsSection({
+    required this.consultations,
+    required this.ownerKey,
+  });
+
+  final ConsultationService consultations;
+  final String ownerKey;
+
+  @override
+  State<_ConsultationsSection> createState() => _ConsultationsSectionState();
+}
+
+class _ConsultationsSectionState extends State<_ConsultationsSection> {
+  List<ConsultationRequest> _requests = const <ConsultationRequest>[];
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final requests =
+        await widget.consultations.load(ownerKey: widget.ownerKey);
+    if (mounted) {
+      setState(() {
+        _requests = requests;
+        _loaded = true;
+      });
+    }
+  }
+
+  Future<void> _openBooking() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ConsultationPage(
+          consultations: widget.consultations,
+          ownerKey: widget.ownerKey,
+        ),
+      ),
+    );
+    await _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: context.surfaceCard,
+      margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.support_agent, color: context.goldText, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'استشاراتي',
+                    style: TextStyle(
+                      color: context.ink,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _openBooking,
+                  child: const Text('احجز استشارة'),
+                ),
+              ],
+            ),
+            if (!_loaded)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: LinearProgressIndicator(),
+              )
+            else if (_requests.isEmpty)
+              Text(
+                'لم تحجز أي استشارة بعد — اختر يومك ووقتك المفضلين وسيتواصل معك فريق الدار.',
+                style: TextStyle(color: context.subdued, fontSize: 12, height: 1.7),
+              )
+            else
+              ..._requests.map((request) {
+                final date = DateTime.tryParse(request.date);
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.event_outlined,
+                          color: context.goldText, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${date == null ? request.date : formatArabicDate(date)} • ${request.timeLabel} • ${request.typeLabel}',
+                          style: TextStyle(color: context.ink, fontSize: 13),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: gold.withOpacity(.14),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          request.statusLabel,
+                          style: TextStyle(
+                            color: context.goldText,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        ),
+      ),
+    );
+  }
 }

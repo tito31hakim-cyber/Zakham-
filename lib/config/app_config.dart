@@ -26,6 +26,10 @@ class AppConfig {
   static const customerPointsPath = '/api/account/points';
   static const customerAddressesPath = '/api/account/addresses';
 
+  /// تاريخ ميلاد العميل (GET/POST /api/account/birthday) — نقطة
+  /// هدية عيد الميلاد (المرحلة 6)؛ 404 تعني أن الخادم لم يُنشر بعد.
+  static const customerBirthdayPath = '/api/account/birthday';
+
   /// قائمة المحافظات والمدن المعتمدة (GET /api/locations/eg).
   static const locationsEgPath = '/api/locations/eg';
 

@@ -1,11 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/address_book.dart';
 import '../services/api_headers.dart';
+import '../services/birthday.dart';
+import '../services/birthday_service.dart';
+import '../services/consultation.dart';
 import '../services/customer_auth.dart';
 import '../services/invoice_pdf.dart';
+import '../services/reminder_service.dart';
 
 /// Holds the signed-in store customer for the whole app.
 ///
@@ -60,6 +66,13 @@ class CustomerProvider extends ChangeNotifier {
   /// CustomerAuth) فتصل نقاط `/api/account/addresses` بالكوكيز.
   late final AddressBookService addressBook = AddressBookService(_auth);
 
+  /// تاريخ الميلاد — يشارك جلسة العميل نفسها (نقطة
+  /// `/api/account/birthday`)، ويسقط للمحلي عند غيابها.
+  late final BirthdayService birthdayService = BirthdayService(_auth);
+
+  /// طلبات الاستشارة العطرية — محلية فقط (بلا خادم).
+  late final ConsultationService consultations = ConsultationService();
+
   /// مفتاح التخزين المحلي للعناوين — يفصل عناوين حساب عن آخر على
   /// الجهاز نفسه (الضيف يستخدم 'guest').
   String get addressOwnerKey {
@@ -71,6 +84,10 @@ class CustomerProvider extends ChangeNotifier {
 
   /// رصيد نقاط الولاء كما جاء من الخادم، أو null إن لم يدعمه بعد.
   int? get pointsBalance => _customer?.pointsBalance;
+
+  /// تاريخ ميلاد العميل (من الخادم عند توفره، وإلا محلي) — null إن
+  /// لم يُسجَّل بعد. ثابت بعد تسجيله.
+  DateTime? get birthday => _customer?.birthdayDate;
 
   /// يحدّث رصيد النقاط من الخادم (best-effort): غياب النقطة يعني أن
   /// الخادم لم يُنشر بعد فيبقى الرصيد كما هو (أو null = «قريباً»).
@@ -86,6 +103,24 @@ class CustomerProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// يحدّث تاريخ الميلاد (الخادم أولاً ثم المحلي) ويجدول إشعار
+  /// الهدية قبل عيد الميلاد بـ 3 أيام. best-effort ولا يرمي أبداً.
+  Future<void> refreshBirthday() async {
+    if (_customer == null) return;
+    try {
+      final birthday = await birthdayService.load(
+        ownerKey: addressOwnerKey,
+      );
+      if (birthday != null) {
+        _customer = _customer!.copyWith(birthday: formatBirthday(birthday));
+        notifyListeners();
+        await ReminderService.instance.ensureBirthdayReminder(
+          birthday: birthday,
+        );
+      }
+    } catch (_) {}
+  }
+
   /// Restores the persisted session cookie and validates it with /me.
   /// Never throws — a dead session just means "signed out".
   Future<void> init() async {
@@ -97,6 +132,7 @@ class CustomerProvider extends ChangeNotifier {
         _customer = await _auth.fetchMe();
         if (_customer == null) _auth.clearCookie();
       }
+      if (_customer != null) unawaited(refreshBirthday());
     } catch (_) {
       _customer = null;
     } finally {

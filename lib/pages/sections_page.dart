@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../data/store_sections.dart';
+import '../models/product.dart';
 import '../theme/app_theme.dart';
+import '../widgets/occasions_section.dart';
 
 /// صفحة «الأقسام»: تسرد أقسام الدار الخمسة (التشكيلة، طقس زخم،
 /// الإهداء، التغليف الفاخر، باقات التوفير) كما في الموقع الحي،
@@ -14,6 +16,8 @@ class SectionsPage extends StatelessWidget {
     required this.onOpenCollection,
     required this.onFragranceCards,
     required this.onVerify,
+    required this.onConsultation,
+    required this.onProduct,
   });
 
   final ValueChanged<String> onSection;
@@ -24,6 +28,12 @@ class SectionsPage extends StatelessWidget {
 
   /// يفتح صفحة «تحقق من الأصالة».
   final VoidCallback onVerify;
+
+  /// يفتح صفحة «حجز استشارة عطرية».
+  final VoidCallback onConsultation;
+
+  /// يفتح صفحة عطر (من قسم المناسبات).
+  final ValueChanged<Product> onProduct;
 
   @override
   Widget build(BuildContext context) => Directionality(
@@ -88,6 +98,17 @@ class SectionsPage extends StatelessWidget {
                   onTap: onVerify,
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ServiceCard(
+                  icon: Icons.support_agent_outlined,
+                  title: 'حجز استشارة عطرية',
+                  lead:
+                      'اختر اليوم والوقت المفضلين ونوع الاستشارة — مكالمة أو واتساب مع الدار.',
+                  onTap: onConsultation,
+                ),
+              ),
+              OccasionsSection(onProduct: onProduct),
             ],
           ),
         ),

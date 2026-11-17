@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 class QuizPage extends StatefulWidget {
-  const QuizPage({super.key});
+  const QuizPage({super.key, this.onViewProduct});
+
+  /// يُستدعى عند الضغط على «شاهد العطر» في نافذة النتيجة — يفتح
+  /// الغلاف صفحة العطر المرشَّح (رويال دائماً في هذا الاختبار).
+  /// إن لم يُمرَّر لا يظهر الزر (توافق مع أي استخدام قديم).
+  final VoidCallback? onViewProduct;
   @override
   State<QuizPage> createState() => _QuizPageState();
 }
@@ -29,7 +34,17 @@ class _QuizPageState extends State<QuizPage> {
         content: Text(
           'تفضل الأجواء ${questions[0].$2[answers[0]]}، وترتدي عطرك ${questions[1].$2[answers[1]]}، وتبحث عن ${questions[2].$2[answers[2]]}. نرشح لك زَخَم رويال كبداية لاكتشاف التشكيلة.',
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('حسنًا'))],
+        actions: [
+          if (widget.onViewProduct != null)
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                widget.onViewProduct?.call();
+              },
+              child: const Text('شاهد العطر'),
+            ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('حسنًا')),
+        ],
       ),
     );
   }
