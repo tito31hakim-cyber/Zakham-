@@ -16,6 +16,7 @@ class HomePage extends StatelessWidget {
     required this.onOpenSections,
     required this.onFragranceCards,
     required this.onVerify,
+    this.dailyProduct,
     this.showEmptyCartNudge = false,
     this.onBrowseCollection,
     this.onDismissEmptyCartNudge,
@@ -37,6 +38,10 @@ class HomePage extends StatelessWidget {
 
   /// يفتح صفحة «تحقق من الأصالة».
   final VoidCallback onVerify;
+
+  /// عطر اليوم (من التشكيلة، من الشبكة أو الكاش) — يخفى إن لم
+  /// تُحمَّل التشكيلة بعد؛ لا يظهر فارغاً أبداً.
+  final Product? dailyProduct;
 
   /// يظهر تنبيه «السلة الفارغة» اللطيف داخل الرئيسية (مرة كل 3 أيام
   /// كحد أقصى — يديره الغلاف StoreShell).
@@ -72,6 +77,14 @@ class HomePage extends StatelessWidget {
               TextButton(onPressed: () => onProduct(product), child: Text('اكتشف زخم رويال', style: TextStyle(color: context.goldText))),
             ]),
           ),
+          if (dailyProduct != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              child: _DailyPerfumeCard(
+                product: dailyProduct!,
+                onTap: () => onProduct(dailyProduct!),
+              ),
+            ),
           if (showEmptyCartNudge)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -172,6 +185,62 @@ class HomePage extends StatelessWidget {
             ]),
           ),
         ],
+      );
+}
+
+class _DailyPerfumeCard extends StatelessWidget {
+  const _DailyPerfumeCard({required this.product, required this.onTap});
+  final Product product;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          color: gold.withOpacity(.10),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: gold.withOpacity(.35)),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  product.image,
+                  width: 56,
+                  height: 64,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 56,
+                    height: 64,
+                    color: const Color(0xFF30271D),
+                    child: const Icon(Icons.spa_outlined, color: gold, size: 22),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('عطر اليوم', style: TextStyle(color: context.goldText, fontSize: 12, letterSpacing: 1)),
+                    const SizedBox(height: 3),
+                    Text(product.name, style: TextStyle(color: context.ink, fontSize: 16, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Text('يبدأ من ${product.price.toStringAsFixed(0)} ${product.currency}', style: TextStyle(color: context.subdued, fontSize: 12)),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: onTap,
+                child: Text('عرض العطر', style: TextStyle(color: context.goldText)),
+              ),
+            ]),
+          ),
+        ),
       );
 }
 

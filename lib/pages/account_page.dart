@@ -33,10 +33,14 @@ String _statusLabel(String status) {
 }
 
 class AccountPage extends StatefulWidget {
-  const AccountPage({super.key, required this.onOpenSections});
+  const AccountPage({super.key, required this.onOpenSections, this.onDailyPerfumeEnabled});
 
   /// يفتح صفحة «الأقسام».
   final VoidCallback onOpenSections;
+
+  /// يُستدعى عند تفعيل مبدّل «عطر اليوم» ليعيد الغلاف جدولة إشعاره
+  /// (الغلاف وحده يعرف عطر اليوم الحالي).
+  final VoidCallback? onDailyPerfumeEnabled;
   @override
   State<AccountPage> createState() => _AccountPageState();
 }
@@ -47,6 +51,7 @@ class _AccountPageState extends State<AccountPage> {
   String? _ordersLoadedFor;
   bool? _remindersEnabled;
   bool? _favOffersEnabled;
+  bool? _dailyPerfumeEnabled;
 
   @override
   void initState() {
@@ -57,10 +62,13 @@ class _AccountPageState extends State<AccountPage> {
   Future<void> _loadReminderPrefs() async {
     final reminders = await ReminderService.instance.isEnabled();
     final favOffers = await FavoritesOfferService().isEnabled();
+    final dailyPerfume =
+        await ReminderService.instance.isDailyPerfumeEnabled();
     if (mounted) {
       setState(() {
         _remindersEnabled = reminders;
         _favOffersEnabled = favOffers;
+        _dailyPerfumeEnabled = dailyPerfume;
       });
     }
   }
@@ -88,6 +96,21 @@ class _AccountPageState extends State<AccountPage> {
           content: Text(value
               ? 'ستصلك تنبيهات عروض عطورك المفضلة.'
               : 'أُوقفت تنبيهات عروض المفضلة.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleDailyPerfume(bool value) async {
+    setState(() => _dailyPerfumeEnabled = value);
+    await ReminderService.instance.setDailyPerfumeEnabled(value);
+    if (value) widget.onDailyPerfumeEnabled?.call();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(value
+              ? 'سيصلك إشعار «عطر اليوم» كل يوم الساعة 6 مساءً.'
+              : 'أُوقف إشعار «عطر اليوم» اليومي.'),
         ),
       );
     }
@@ -206,6 +229,8 @@ class _AccountPageState extends State<AccountPage> {
           _remindersRow(context),
           const SizedBox(height: 8),
           _favOffersRow(context),
+          const SizedBox(height: 8),
+          _dailyPerfumeRow(context),
           const SizedBox(height: 8),
           _item(
             context,
@@ -379,6 +404,32 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
+  /// مبدّل إشعار «عطر اليوم» اليومي (الساعة 6 مساءً).
+  Widget _dailyPerfumeRow(BuildContext context) {
+    return Card(
+      color: context.surfaceCard,
+      margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+      child: SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        secondary: Icon(
+          Icons.calendar_today_outlined,
+          color: context.goldText,
+        ),
+        title: Text(
+          'عطر اليوم',
+          style: TextStyle(color: context.ink, fontSize: 15),
+        ),
+        subtitle: Text(
+          'إشعار يومي الساعة 6 مساءً بعطر مختلف كل يوم',
+          style: TextStyle(color: context.subdued, fontSize: 11),
+        ),
+        value: _dailyPerfumeEnabled ?? true,
+        activeColor: context.goldText,
+        onChanged: _toggleDailyPerfume,
+      ),
+    );
+  }
+
   Widget _guestCard() => Container(
         margin: const EdgeInsets.symmetric(horizontal: 20),
         padding: const EdgeInsets.all(18),
@@ -471,6 +522,33 @@ class _AccountPageState extends State<AccountPage> {
                     style: TextStyle(color: context.ink, fontSize: 13),
                   ),
                 ],
+              ),
+            ],
+            // رصيد نقاط الولاء من الخادم؛ غيابه (null) يعني أن نقطة
+            // الولاء لم تُنشر بعد فيُعرض «قريباً» لا صفراً.
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.stars_outlined, color: context.goldText, size: 16),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    customer.pointsBalance == null
+                        ? 'نقاط الولاء — قريباً'
+                        : 'نقاط الولاء: ${customer.pointsBalance} نقطة — تساوي ${customer.pointsBalance} جنيه خصم',
+                    style: TextStyle(color: context.ink, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            if (customer.pointsBalance != null) ...[
+              const SizedBox(height: 3),
+              Padding(
+                padding: const EdgeInsets.only(right: 22),
+                child: Text(
+                  'تُضاف النقاط بعد توصيل طلبك (5 نقاط لكل 100 جنيه من سعر العطور).',
+                  style: TextStyle(color: context.subdued, fontSize: 11, height: 1.5),
+                ),
               ),
             ],
             if (!customer.phoneVerified) ...[

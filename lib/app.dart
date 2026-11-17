@@ -17,6 +17,7 @@ import 'pages/verify_page.dart';
 import 'providers/cart_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/deep_link_service.dart';
+import 'services/daily_perfume.dart';
 import 'services/favorites_offer_service.dart';
 import 'services/favorites_service.dart';
 import 'services/product_catalog.dart';
@@ -59,6 +60,10 @@ class _StoreShellState extends State<StoreShell> {
   /// يظهر تنبيه «السلة الفارغة» داخل الرئيسية (مرة كل 3 أيام كحد أقصى).
   bool _showEmptyCartNudge = false;
 
+  /// عطر اليوم من التشكيلة (من الشبكة أو الكاش) — يخفى إن لم تُحمَّل
+  /// التشكيلة بعد.
+  Product? _dailyProduct;
+
   /// آخر مرة عُرض فيها تنبيه «السلة الفارغة» داخل التطبيق.
   static const String _nudgeLastShownKey =
       'zakham_emptycart_nudge_last_shown';
@@ -77,6 +82,8 @@ class _StoreShellState extends State<StoreShell> {
     _reminders.onNotificationTap = _handleReminderTap;
     unawaited(_reminders.init());
     unawaited(_reconcileReminders());
+    // عطر اليوم best-effort: من التشكيلة (شبكة أو كاش) مع إشعاره.
+    unawaited(_loadDailyPerfume());
   }
 
   @override
@@ -149,8 +156,40 @@ class _StoreShellState extends State<StoreShell> {
     } catch (_) {}
   }
 
+  /// يحمّل عطر اليوم من التشكيلة (من الشبكة أو الكاش عند غياب النت)
+  /// ويجدول إشعاره اليومي — best-effort، لا يعطّل الإطلاق أبداً.
+  Future<void> _loadDailyPerfume() async {
+    try {
+      final catalog = await ProductCatalog().fetchCatalog();
+      final today = perfumeOfTheDay(catalog.products, DateTime.now());
+      if (!mounted || today == null) return;
+      setState(() => _dailyProduct = today);
+      await _reminders.ensureDailyPerfumeScheduled(
+        productId: today.id,
+        productName: today.name,
+        price: today.price,
+        currency: today.currency,
+      );
+    } catch (_) {}
+  }
+
+  /// يعيد جدولة إشعار «عطر اليوم» عند تفعيل مبدّله من صفحة الحساب
+  /// (الغلاف وحده يعرف عطر اليوم الحالي).
+  Future<void> _scheduleDailyPerfume() async {
+    final today = _dailyProduct;
+    if (today == null) return;
+    try {
+      await _reminders.ensureDailyPerfumeScheduled(
+        productId: today.id,
+        productName: today.name,
+        price: today.price,
+        currency: today.currency,
+      );
+    } catch (_) {}
+  }
+
   /// يوجّه الضغط على إشعار تذكير إلى وجهته: السلة، أو التشكيلة،
-  /// أو صفحة العطر (إعادة الشراء / عرض المفضلة).
+  /// أو صفحة العطر (إعادة الشراء / عرض المفضلة / عطر اليوم).
   void _handleReminderTap(String payload) {
     final tap = ReminderTap.parse(payload);
     if (!mounted) return;
@@ -164,6 +203,7 @@ class _StoreShellState extends State<StoreShell> {
         break;
       case ReminderTapKind.reorder:
       case ReminderTapKind.offer:
+      case ReminderTapKind.daily:
         if (tap.productId != null) {
           unawaited(_openProductSlug(tap.productId!));
         }
@@ -294,6 +334,7 @@ class _StoreShellState extends State<StoreShell> {
         onOpenSections: openSections,
         onFragranceCards: openFragranceCards,
         onVerify: openVerify,
+        dailyProduct: _dailyProduct,
         showEmptyCartNudge: _showEmptyCartNudge,
         onBrowseCollection: openCollectionTab,
         onDismissEmptyCartNudge: () {
@@ -307,7 +348,10 @@ class _StoreShellState extends State<StoreShell> {
       ),
       _FavoritesPage(products: savedProducts, onProduct: openProduct, onFavorite: toggleFavorite),
       const CartPage(),
-      AccountPage(onOpenSections: openSections),
+      AccountPage(
+        onOpenSections: openSections,
+        onDailyPerfumeEnabled: _scheduleDailyPerfume,
+      ),
     ];
     return Scaffold(
       body: Directionality(textDirection: TextDirection.rtl, child: pages[selected]),

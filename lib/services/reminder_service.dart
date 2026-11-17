@@ -8,9 +8,10 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/cart_item.dart';
+import 'daily_perfume.dart';
 
 /// نتيجة الضغط على إشعار تذكير.
-enum ReminderTapKind { cart, collection, reorder, offer, unknown }
+enum ReminderTapKind { cart, collection, reorder, offer, daily, unknown }
 
 /// ما يعنيه الضغط على إشعار تذكير — يُحلَّل من الـ payload.
 class ReminderTap {
@@ -27,6 +28,8 @@ class ReminderTap {
   static String reorderPayload(String productId) => 'zakham:reorder:$productId';
 
   static String offerPayload(String productId) => 'zakham:offer:$productId';
+
+  static String dailyPayload(String productId) => 'zakham:daily:$productId';
 
   static ReminderTap parse(String? payload) {
     if (payload == null || payload.isEmpty) {
@@ -45,6 +48,11 @@ class ReminderTap {
     if (payload.startsWith(offerPrefix)) {
       final id = payload.substring(offerPrefix.length).trim();
       if (id.isNotEmpty) return ReminderTap(ReminderTapKind.offer, id);
+    }
+    const dailyPrefix = 'zakham:daily:';
+    if (payload.startsWith(dailyPrefix)) {
+      final id = payload.substring(dailyPrefix.length).trim();
+      if (id.isNotEmpty) return ReminderTap(ReminderTapKind.daily, id);
     }
     return const ReminderTap(ReminderTapKind.unknown);
   }
@@ -145,7 +153,12 @@ class ReminderService {
   static const int emptyCartNotificationId = 1003;
   static const int reorderNotificationIdBase = 1100;
 
+  /// إشعار «عطر اليوم» اليومي الساعة 18:00.
+  static const int dailyPerfumeNotificationId = 1200;
+
   static const String _enabledKey = 'zakham_reminders_enabled';
+  static const String _dailyPerfumeEnabledKey = 'zakham_daily_perfume_enabled';
+  static const String _dailyPerfumeFireKey = 'zakham_daily_perfume_ms';
   static const String _lastActivityKey = 'zakham_last_activity_ms';
   static const String _emptyCartLastSentKey =
       'zakham_emptycart_last_sent_ms';
@@ -253,6 +266,80 @@ class ReminderService {
         await prefs.remove(_reorderPendingKey);
       } catch (_) {}
     });
+  }
+
+  /// هل إشعار «عطر اليوم» اليومي مفعّل؟ الافتراضي نعم — مبدّل مستقل
+  /// عن مبدّل تذكيرات السلة والطلبات.
+  Future<bool> isDailyPerfumeEnabled() async {
+    try {
+      final prefs = await _prefs;
+      return prefs.getBool(_dailyPerfumeEnabledKey) ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// يفعّل/يوقف إشعار «عطر اليوم». الإيقاف يلغي المجدوَل فوراً؛
+  /// التفعيل يترك الجدولة لاستدعاء ensureDailyPerfumeScheduled مع
+  /// عطر اليوم (عند بدء التشغيل أو من مبدّل صفحة الحساب).
+  Future<void> setDailyPerfumeEnabled(bool enabled) async {
+    try {
+      final prefs = await _prefs;
+      await prefs.setBool(_dailyPerfumeEnabledKey, enabled);
+    } catch (_) {}
+    if (enabled) return;
+    await _runSerialized(() async {
+      await _cancelQuietly(dailyPerfumeNotificationId);
+      try {
+        final prefs = await _prefs;
+        await prefs.remove(_dailyPerfumeFireKey);
+      } catch (_) {}
+    });
+  }
+
+  /// يجدول إشعار «عطر اليوم» لموعد 18:00 التالي بعطر ذلك اليوم.
+  /// يُستدعى عند بدء التشغيل وعند تفعيل المبدّل؛ يعيد الجدولة فقط إن
+  /// تغيّر الموعد أو فُقد الإشعار من النظام (مثلاً بعد إعادة تشغيل
+  /// الجهاز). الإشعار لقطة واحدة — لا تكرار يومي بمحتوى ثابت —
+  /// فيُجدَّد محتواه مع كل تشغيل للتطبيق. best-effort.
+  Future<void> ensureDailyPerfumeScheduled({
+    required String productId,
+    required String productName,
+    required double price,
+    String currency = 'EGP',
+    DateTime? now,
+  }) async {
+    if (!await isDailyPerfumeEnabled()) return;
+    await _runSerialized(() async {
+      final fireAt = nextDailyPerfumeFireAt(now ?? DateTime.now());
+      final prefs = await _prefs;
+      final savedMs = prefs.getInt(_dailyPerfumeFireKey);
+      final pending = await _pendingIds();
+      if (savedMs == fireAt.millisecondsSinceEpoch &&
+          pending.contains(dailyPerfumeNotificationId)) {
+        return;
+      }
+      // النية تُحفظ أولاً، ثم تُجدوَل.
+      await prefs.setInt(_dailyPerfumeFireKey, fireAt.millisecondsSinceEpoch);
+      await _scheduleAt(
+        dailyPerfumeNotificationId,
+        'دار زخم',
+        'عطر اليوم: «$productName» — ${price.toStringAsFixed(0)} $currency. اضغط لعرض العطر.',
+        fireAt,
+        ReminderTap.dailyPayload(productId),
+      );
+    });
+  }
+
+  /// موعد إشعار «عطر اليوم» المحفوظ (للاختبارات والتشخيص)، أو null.
+  Future<DateTime?> dailyPerfumeFireTime() async {
+    try {
+      final prefs = await _prefs;
+      final ms = prefs.getInt(_dailyPerfumeFireKey);
+      return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// يسجّل نشاطاً (فتح التطبيق / تغيير السلة / إتمام طلب) — أساس

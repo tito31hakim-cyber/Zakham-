@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
 import '../providers/customer_provider.dart';
+import '../services/loyalty.dart';
 import '../services/order_api.dart';
 import '../services/reminder_service.dart';
 import '../theme/app_theme.dart';
@@ -26,17 +27,37 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String? selectedGovernorate;
   String payment = 'InstaPay | إنستاباي';
   bool _prefilled = false;
+  // نقاط الولاء: تُقرأ من الخادم (best-effort) وتُستبدل كخصم جنيه
+  // بجنيه — الخادم يعيد التحقق والخصم بنفسه، والتطبيق لا يمنح
+  // ولا يخصم محلياً أبداً.
+  bool _usePoints = false;
+  int _pointsToUse = 0;
+  // معرّف الحساب الذي حُدّث رصيد نقاطه آخر مرة — يتغير عند تسجيل
+  // الدخول بعد فتح الصفحة كضيف فيُحدَّث الرصيد حينها.
+  String? _pointsRefreshedFor;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Prefill the delivery form from the signed-in member profile.
-    if (_prefilled) return;
-    final customer = context.read<CustomerProvider>().customer;
-    if (customer != null) {
-      _prefilled = true;
-      if (name.text.isEmpty) name.text = customer.displayName;
-      if (phone.text.isEmpty) phone.text = customer.phone;
+    if (!_prefilled) {
+      final customer = context.read<CustomerProvider>().customer;
+      if (customer != null) {
+        _prefilled = true;
+        if (name.text.isEmpty) name.text = customer.displayName;
+        if (phone.text.isEmpty) phone.text = customer.phone;
+      }
+    }
+    // رصيد النقاط من الخادم (مرة لكل حساب) — غيابه يعني أن نقطة
+    // الولاء لم تُنشر بعد فيُخفى الاستبدال بهدوء.
+    final provider = context.read<CustomerProvider>();
+    final openId = provider.customer?.openId;
+    if (provider.isAuthenticated &&
+        openId != null &&
+        openId.isNotEmpty &&
+        _pointsRefreshedFor != openId) {
+      _pointsRefreshedFor = openId;
+      unawaited(provider.refreshPoints());
     }
   }
 
@@ -82,6 +103,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return output.toString();
   }
 
+  /// الخصم بالنقاط لهذا الطلب (جنيه) كما اختاره العميل: 0 إن لم يفعّل
+  /// الاستبدال، وإلا العدد المختار مقصوصاً إلى المسموح (الرصيد
+  /// والحد الأدنى 50 والسقف = مجموع المنتجات).
+  int _pointsDiscount(double subtotal) {
+    if (!_usePoints) return 0;
+    final balance = context.read<CustomerProvider>().pointsBalance;
+    if (balance == null) return 0;
+    return clampPointsUsed(
+      balance: balance,
+      productsSubtotal: subtotal,
+      requested: _pointsToUse,
+    );
+  }
+
   Future<void> submit() async {
     if (submitting) return;
     if (!formKey.currentState!.validate()) return;
@@ -118,6 +153,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     setState(() => submitting = true);
     try {
+      // الخصم بالنقاط كما يراه العميل؛ الخادم يعيد التحقق من الرصيد
+      // والحد الأدنى والسقف قبل الخصم، وأي رفض منه يُظهر رسالته.
+      final pointsDiscount = _pointsDiscount(cart.subtotal);
       final result = await OrderApi(
         credentials: customerProvider.credentials,
       ).createOrder(
@@ -131,6 +169,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         // الخادم يعيد حسابه والإجمالي من المحافظة قبل الحفظ.
         shippingFee: shippingFee,
         shippingLabel: shippingLabel,
+        pointsUsed: pointsDiscount,
       );
 
       if (!mounted) return;
@@ -162,6 +201,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
         orderRef: result.orderRef,
         items: orderedItems,
       ));
+      // الرصيد تغيّر عند الاستبدال (الخادم خصمه) — يُحدَّث بهدوء.
+      // النقاط المكتسبة من هذا الطلب نفسها لا تظهر إلا بعد التوصيل.
+      unawaited(context.read<CustomerProvider>().refreshPoints());
       cart.clear();
       Navigator.pop(context);
     } catch (error) {
@@ -201,6 +243,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
+    final pointsBalance = context.watch<CustomerProvider>().pointsBalance;
+    final maxRedeem = pointsBalance == null
+        ? 0
+        : maxRedeemablePoints(
+            balance: pointsBalance,
+            productsSubtotal: cart.subtotal,
+          );
+    final pointsDiscount = _usePoints
+        ? clampPointsUsed(
+            balance: pointsBalance ?? 0,
+            productsSubtotal: cart.subtotal,
+            requested: _pointsToUse,
+          )
+        : 0;
+    final total = cart.subtotal - pointsDiscount + shippingFee;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -283,7 +340,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 icon: Icons.account_balance_wallet_outlined,
               ),
               const SizedBox(height: 22),
-              _orderSummary(cart.items, cart.subtotal),
+              if (pointsBalance != null)
+                _loyaltyCard(pointsBalance, maxRedeem, pointsDiscount, cart.subtotal),
+              if (pointsBalance != null) const SizedBox(height: 14),
+              _orderSummary(cart.items, cart.subtotal, pointsDiscount),
               const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(13),
@@ -320,6 +380,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       Text('${cart.subtotal.toStringAsFixed(2)} EGP', style: TextStyle(color: context.ink, fontSize: 15, fontWeight: FontWeight.w600)),
                     ]),
                     const SizedBox(height: 4),
+                    if (pointsDiscount > 0)
+                      Row(children: [
+                        Expanded(child: Text('خصم نقاط الولاء', style: TextStyle(color: context.subdued, fontSize: 12))),
+                        Text('-${pointsDiscount.toStringAsFixed(2)} EGP', style: TextStyle(color: context.goldText, fontSize: 15, fontWeight: FontWeight.w600)),
+                      ]),
+                    if (pointsDiscount > 0) const SizedBox(height: 4),
                     Row(children: [
                       Expanded(child: Text('التوصيل (جميع المحافظات)', style: TextStyle(color: context.subdued, fontSize: 12))),
                       Text('120.00 EGP', style: TextStyle(color: context.ink, fontSize: 15, fontWeight: FontWeight.w600)),
@@ -327,7 +393,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     const SizedBox(height: 6),
                     Row(children: [
                       Expanded(child: Text('الإجمالي شامل الشحن', style: TextStyle(color: context.ink, fontSize: 14, fontWeight: FontWeight.w700))),
-                      Text('${(cart.subtotal + shippingFee).toStringAsFixed(2)} EGP', style: TextStyle(color: context.goldText, fontSize: 18, fontWeight: FontWeight.w700)),
+                      Text('${total.toStringAsFixed(2)} EGP', style: TextStyle(color: context.goldText, fontSize: 18, fontWeight: FontWeight.w700)),
                     ]),
                     const SizedBox(height: 10),
                     SizedBox(
@@ -405,7 +471,113 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  Widget _orderSummary(List<CartItem> items, double subtotal) => Container(
+  /// بطاقة استبدال نقاط الولاء — تظهر فقط عندما يعيد الخادم رصيداً
+  /// (غيابه يعني أن نقطة الولاء لم تُنشر بعد فيُخفى الاستبدال).
+  /// الاستبدال من 50 نقطة، والخصم جنيه بجنيه بحد أقصى مجموع المنتجات.
+  Widget _loyaltyCard(
+    int balance,
+    int maxRedeem,
+    int pointsDiscount,
+    double subtotal,
+  ) {
+    final canRedeem = canRedeemPoints(balance) && maxRedeem >= minRedeemPoints;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: gold.withOpacity(.08),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: gold.withOpacity(.25)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.stars_outlined, color: context.goldText, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'نقاط الولاء',
+              style: TextStyle(
+                color: context.ink,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Text(
+            '$balance نقطة',
+            style: TextStyle(
+              color: context.goldText,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+          canRedeem
+              ? 'رصيدك يساوي $balance جنيه خصم. فعّل الاستبدال واختر عدد النقاط.'
+              : 'اجمع ${minRedeemPoints - balance} نقطة أخرى لتبدأ الاستبدال (من 50 نقطة). النقاط تُضاف بعد توصيل طلبك.',
+          style: TextStyle(color: context.subdued, fontSize: 12, height: 1.6),
+        ),
+        if (canRedeem) ...[
+          const SizedBox(height: 6),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              'استخدم نقاطي في هذا الطلب',
+              style: TextStyle(color: context.ink, fontSize: 14),
+            ),
+            subtitle: Text(
+              'الخصم: $pointsDiscount جنيه من الإجمالي',
+              style: TextStyle(color: context.subdued, fontSize: 11),
+            ),
+            value: _usePoints,
+            activeColor: context.goldText,
+            onChanged: submitting
+                ? null
+                : (value) => setState(() {
+                      _usePoints = value;
+                      if (value) _pointsToUse = maxRedeem;
+                    }),
+          ),
+          if (_usePoints && maxRedeem > minRedeemPoints)
+            Row(children: [
+              Expanded(
+                child: Slider(
+                  value: _pointsToUse
+                      .toDouble()
+                      .clamp(minRedeemPoints.toDouble(), maxRedeem.toDouble()),
+                  min: minRedeemPoints.toDouble(),
+                  max: maxRedeem.toDouble(),
+                  divisions: maxRedeem - minRedeemPoints,
+                  activeColor: context.goldText,
+                  onChanged: submitting
+                      ? null
+                      : (value) => setState(() => _pointsToUse = value.round()),
+                ),
+              ),
+              SizedBox(
+                width: 52,
+                child: Text(
+                  '$_pointsToUse',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: context.goldText,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ]),
+          if (_usePoints)
+            Text(
+              'الإجمالي بعد الخصم: ${(subtotal - pointsDiscount + shippingFee).toStringAsFixed(2)} EGP (الشحن 120 جنيه ثابت).',
+              style: TextStyle(color: context.subdued, fontSize: 11, height: 1.5),
+            ),
+        ],
+      ]),
+    );
+  }
+
+  Widget _orderSummary(List<CartItem> items, double subtotal, int pointsDiscount) => Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(color: context.surfaceCard, borderRadius: BorderRadius.circular(18), border: Border.all(color: context.hairlineSoft)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -437,9 +609,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
           Divider(color: context.hairline),
           _summaryLine('مجموع المنتجات', '${subtotal.toStringAsFixed(2)} EGP'),
           const SizedBox(height: 8),
+          if (pointsDiscount > 0)
+            _summaryLine(
+              'خصم نقاط الولاء',
+              '-${pointsDiscount.toStringAsFixed(2)} EGP',
+              valueColor: context.goldText,
+            ),
+          if (pointsDiscount > 0) const SizedBox(height: 8),
           _summaryLine('التوصيل (جميع المحافظات)', '120.00 EGP'),
           const SizedBox(height: 8),
-          _summaryLine('الإجمالي شامل الشحن', '${(subtotal + shippingFee).toStringAsFixed(2)} EGP'),
+          _summaryLine('الإجمالي شامل الشحن', '${(subtotal - pointsDiscount + shippingFee).toStringAsFixed(2)} EGP'),
           const SizedBox(height: 10),
           Text('الدفع مسبقاً عبر إنستاباي أو فودافون كاش بعد تأكيد المتجر لتعليمات التحويل.', style: TextStyle(color: context.subdued, fontSize: 11, height: 1.5)),
         ]),

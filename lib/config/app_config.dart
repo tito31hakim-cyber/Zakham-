@@ -23,6 +23,7 @@ class AppConfig {
   static const customerMePath = '/api/auth/me';
   static const customerLogoutPath = '/api/auth/logout';
   static const customerOrdersPath = '/api/account/orders';
+  static const customerPointsPath = '/api/account/points';
   static const productImageBaseUrl = '$apiBaseUrl/';
   static const featuredImage =
       '$apiBaseUrl/assets/products/catalog-royal-2026.jpg';

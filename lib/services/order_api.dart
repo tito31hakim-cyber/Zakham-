@@ -60,6 +60,10 @@ class OrderApi {
     String notes = '',
     double shippingFee = 0,
     String shippingLabel = 'يحدد لاحقًا',
+    // نقاط الولاء المستبدَلة في هذا الطلب (0 = بلا استبدال). الخادم
+    // يعيد التحقق والخصم بنفسه من الرصيد الحقيقي؛ أي رفض منه (422)
+    // يظهر رسالته وتبقى السلة محفوظة.
+    int pointsUsed = 0,
   }) async {
     if (items.isEmpty) throw Exception('السلة فارغة.');
 
@@ -109,6 +113,9 @@ class OrderApi {
             'shippingLabel': shippingLabel,
             'total': subtotal + shippingFee,
             'discountCode': '',
+            // نقاط الولاء: تُرسل فقط إن اختار العميل الاستبدال؛ الخادم
+            // يتحقق من الرصيد والحد الأدنى (50) والسقف قبل الخصم.
+            'pointsUsed': pointsUsed,
             'items': items
                 .map(
                   (item) => {

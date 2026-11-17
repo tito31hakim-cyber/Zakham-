@@ -54,6 +54,23 @@ class CustomerProvider extends ChangeNotifier {
 
   ApiCredentials get credentials => _auth.credentials;
 
+  /// رصيد نقاط الولاء كما جاء من الخادم، أو null إن لم يدعمه بعد.
+  int? get pointsBalance => _customer?.pointsBalance;
+
+  /// يحدّث رصيد النقاط من الخادم (best-effort): غياب النقطة يعني أن
+  /// الخادم لم يُنشر بعد فيبقى الرصيد كما هو (أو null = «قريباً»).
+  /// لا يرمي أبداً فلا يعطّل أي شاشة.
+  Future<void> refreshPoints() async {
+    if (_customer == null) return;
+    try {
+      final balance = await _auth.fetchPointsBalance();
+      if (balance != null) {
+        _customer = _customer!.copyWith(pointsBalance: balance);
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
   /// Restores the persisted session cookie and validates it with /me.
   /// Never throws — a dead session just means "signed out".
   Future<void> init() async {

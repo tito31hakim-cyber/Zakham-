@@ -18,7 +18,7 @@ class AuthRequiredException implements Exception {
 
 /// A store customer, as returned by `customerPayload` on the server
 /// (openId, displayName, email, phone, phoneVerified, discountCode,
-/// discountUsed, createdAt, status, tags).
+/// discountUsed, createdAt, status, tags, pointsBalance).
 class Customer {
   const Customer({
     required this.openId,
@@ -28,6 +28,7 @@ class Customer {
     this.phoneVerified = false,
     this.discountCode = '',
     this.status = 'active',
+    this.pointsBalance,
   });
 
   final String openId;
@@ -38,6 +39,22 @@ class Customer {
   final String discountCode;
   final String status;
 
+  /// رصيد نقاط الولاء من الخادم (كل نقطة = جنيه خصم)، أو null عندما
+  /// لا يعيد الخادم الحقل بعد (نقطة الولاء لم تُنشر) — null تعني
+  /// «قريباً» لا صفراً.
+  final int? pointsBalance;
+
+  Customer copyWith({int? pointsBalance}) => Customer(
+        openId: openId,
+        displayName: displayName,
+        email: email,
+        phone: phone,
+        phoneVerified: phoneVerified,
+        discountCode: discountCode,
+        status: status,
+        pointsBalance: pointsBalance ?? this.pointsBalance,
+      );
+
   factory Customer.fromJson(Map<String, dynamic> json) => Customer(
         openId: '${json['openId'] ?? ''}',
         displayName: '${json['displayName'] ?? ''}',
@@ -46,6 +63,9 @@ class Customer {
         phoneVerified: json['phoneVerified'] == true,
         discountCode: '${json['discountCode'] ?? ''}',
         status: '${json['status'] ?? 'active'}',
+        pointsBalance: json['pointsBalance'] is num
+            ? (json['pointsBalance'] as num).toInt()
+            : null,
       );
 }
 
@@ -248,6 +268,21 @@ class CustomerAuth {
     final raw = data['customer'];
     if (raw is Map<String, dynamic>) return Customer.fromJson(raw);
     return null;
+  }
+
+  /// رصيد نقاط الولاء من الخادم (GET /api/account/points)، أو null عند
+  /// غياب النقطة (404 — الخادم لم يُنشر بعد) أو أي فشل آخر. best-effort
+  /// ولا يرمي أبداً؛ غيابه يعني «قريباً» لا صفراً، وجلسة منتهية تُكتشف
+  /// من /api/auth/me لا من هنا.
+  Future<int?> fetchPointsBalance() async {
+    try {
+      final data = await _get(_url(AppConfig.customerPointsPath));
+      final value = data['pointsBalance'];
+      if (value is num) return value.toInt();
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<CustomerOrder>> fetchMyOrders() async {
