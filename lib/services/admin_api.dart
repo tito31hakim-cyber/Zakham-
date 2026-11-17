@@ -307,6 +307,46 @@ class AdminApi {
     );
   }
 
+  /// قواعد خصم «اشترِ 2» (GET/POST/PATCH/DELETE /api/admin/discounts
+  /// بصلاحية offers.manage). النقطة مسودة على الخادم بعد — 404 تعني
+  /// «غير منشورة بعد» وتُظهر رسالة صريحة بدل فشل عام.
+  Future<List<Map<String, dynamic>>> discountRules() async {
+    final data = await _get(_url(AppConfig.adminDiscountsPath));
+    final list = data['rules'];
+    if (list is List) {
+      return list.whereType<Map<String, dynamic>>().toList(growable: false);
+    }
+    return const <Map<String, dynamic>>[];
+  }
+
+  Future<Map<String, dynamic>> createDiscountRule(
+    Map<String, dynamic> body,
+  ) async {
+    final data = await _post(_url(AppConfig.adminDiscountsPath), body);
+    final raw = data['rule'];
+    if (raw is Map<String, dynamic>) return raw;
+    throw Exception('تعذر إنشاء قاعدة الخصم.');
+  }
+
+  Future<Map<String, dynamic>> updateDiscountRule(
+    String id,
+    Map<String, dynamic> body,
+  ) async {
+    final data = await _patch(
+      _url('${AppConfig.adminDiscountsPath}/${Uri.encodeComponent(id)}'),
+      body,
+    );
+    final raw = data['rule'];
+    if (raw is Map<String, dynamic>) return raw;
+    throw Exception('تعذر تحديث قاعدة الخصم.');
+  }
+
+  Future<void> deleteDiscountRule(String id) async {
+    await _delete(
+      _url('${AppConfig.adminDiscountsPath}/${Uri.encodeComponent(id)}'),
+    );
+  }
+
   Map<String, dynamic> _validate(http.Response response) {
     final body = _decode(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {

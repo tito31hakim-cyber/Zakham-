@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:house_of_zakham/app.dart';
 import 'package:house_of_zakham/providers/cart_provider.dart';
+import 'package:house_of_zakham/providers/discount_provider.dart';
 import 'package:house_of_zakham/providers/theme_provider.dart';
 
 void main() {
@@ -12,6 +13,7 @@ void main() {
         providers: [
           ChangeNotifierProvider(create: (_) => CartProvider()),
           ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ChangeNotifierProvider(create: (_) => DiscountProvider()),
         ],
         child: const ZakhamApp(),
       ),

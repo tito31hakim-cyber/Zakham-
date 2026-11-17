@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/cart_provider.dart';
+import '../providers/discount_provider.dart';
 import '../theme/app_theme.dart';
 import 'checkout_page.dart';
 
@@ -11,6 +12,9 @@ class CartPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
+    // خصم «اشترِ 2» من القواعد المفعّلة — غيابها يعني لا خصم.
+    final discount =
+        context.watch<DiscountProvider>().calculationFor(cart.items);
     return Directionality(
       textDirection: TextDirection.rtl,
       child: SafeArea(
@@ -70,6 +74,15 @@ class CartPage extends StatelessWidget {
                 decoration: BoxDecoration(color: context.surfaceCard, border: Border(top: BorderSide(color: context.hairlineSoft))),
                 child: SafeArea(top: false, child: Column(children: [
                   Row(children: [Expanded(child: Text('الإجمالي الفرعي', style: TextStyle(color: context.subdued))), Text('${cart.subtotal.toStringAsFixed(0)} EGP', style: TextStyle(color: context.ink, fontSize: 17, fontWeight: FontWeight.w600))]),
+                  if (discount.hasDiscount) ...[
+                    const SizedBox(height: 5),
+                    Row(children: [
+                      Expanded(child: Text('خصم «${discount.ruleNames.join('، ')}»', style: TextStyle(color: context.goldText))),
+                      Text('− ${discount.amount.toStringAsFixed(0)} EGP', style: TextStyle(color: context.goldText, fontSize: 17, fontWeight: FontWeight.w600)),
+                    ]),
+                    const SizedBox(height: 5),
+                    Row(children: [Expanded(child: Text('بعد الخصم', style: TextStyle(color: context.subdued))), Text('${(cart.subtotal - discount.amount).toStringAsFixed(0)} EGP', style: TextStyle(color: context.ink, fontSize: 17, fontWeight: FontWeight.w600))]),
+                  ],
                   const SizedBox(height: 5),
                   Align(alignment: Alignment.centerRight, child: Text('رسوم التوصيل 120 ج.م لجميع المحافظات، وتُضاف عند إتمام الطلب.', style: TextStyle(color: context.subdued, fontSize: 11))),
                   const SizedBox(height: 14),

@@ -4,8 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/cart_item.dart';
+import '../models/saved_address.dart';
 import '../providers/cart_provider.dart';
 import '../providers/customer_provider.dart';
+import '../providers/discount_provider.dart';
+import '../services/discounts.dart';
+import '../services/egypt_locations.dart';
 import '../services/loyalty.dart';
 import '../services/order_api.dart';
 import '../services/reminder_service.dart';
@@ -27,6 +31,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String? selectedGovernorate;
   String payment = 'InstaPay | إنستاباي';
   bool _prefilled = false;
+  // المدينة: قائمة منسدلة من القائمة المعتمدة (GET /api/locations/eg)
+  // عند توفرها، وإلا حقل نصي حر — كما في المتجر الحي. الخادم يتحقق
+  // منها (422 invalid_city) عند إرسالها.
+  String? _selectedCity;
+  final _cityText = TextEditingController();
+  List<String> _cities = const <String>[];
+  EgyptLocationsData? _locationsData;
+  bool _locationsLoaded = false;
+  // العناوين المحفوظة — تُحمَّل مرة لكل حساب وتُعبَّأ بضغطة واحدة.
+  List<SavedAddress> _savedAddresses = const <SavedAddress>[];
+  String? _selectedAddressId;
+  String? _addressesLoadedFor;
   // نقاط الولاء: تُقرأ من الخادم (best-effort) وتُستبدل كخصم جنيه
   // بجنيه — الخادم يعيد التحقق والخصم بنفسه، والتطبيق لا يمنح
   // ولا يخصم محلياً أبداً.
@@ -59,7 +75,85 @@ class _CheckoutPageState extends State<CheckoutPage> {
       _pointsRefreshedFor = openId;
       unawaited(provider.refreshPoints());
     }
+    // قائمة المدن المعتمدة والعناوين المحفوظة — مرة لكل حساب،
+    // best-effort (غيابهما يعني الحقول اليدوية فقط، لا عطل).
+    if (!_locationsLoaded) {
+      _locationsLoaded = true;
+      unawaited(_loadLocations());
+    }
+    final ownerKey = provider.addressOwnerKey;
+    if (_addressesLoadedFor != ownerKey) {
+      _addressesLoadedFor = ownerKey;
+      unawaited(_loadSavedAddresses(provider));
+    }
   }
+
+  Future<void> _loadLocations() async {
+    final data = await EgyptLocations().load();
+    if (!mounted) return;
+    if (!data.isEmpty) {
+      setState(() {
+        _locationsData = data;
+        // مدينة كُتبت نصاً قبل وصول القائمة تُبقى قابلة للاختيار.
+        if (_cityText.text.trim().isNotEmpty) {
+          _selectedCity = _cityText.text.trim();
+        }
+        _applyCities();
+      });
+    }
+  }
+
+  /// مدن المحافظة المختارة؛ مدينة محفوظة/مكتوبة خارج القائمة المعتمدة
+  /// تُبقى أولاً حتى لا تُفقد.
+  void _applyCities() {
+    final data = _locationsData;
+    if (data == null) return;
+    final cities = selectedGovernorate == null
+        ? const <String>[]
+        : data.citiesFor(selectedGovernorate!);
+    _cities = _selectedCity != null &&
+            _selectedCity!.isNotEmpty &&
+            !cities.contains(_selectedCity)
+        ? <String>[_selectedCity!, ...cities]
+        : cities;
+  }
+
+  Future<void> _loadSavedAddresses(CustomerProvider provider) async {
+    final addresses = await provider.addressBook.load(
+      ownerKey: provider.addressOwnerKey,
+    );
+    if (!mounted) return;
+    setState(() {
+      _savedAddresses = addresses;
+      // العنوان الافتراضي يُعبَّأ تلقائياً إن كان النموذج فارغاً.
+      final defaultAddress = addresses.where((a) => a.isDefault).firstOrNull;
+      if (defaultAddress != null &&
+          selectedGovernorate == null &&
+          address.text.isEmpty) {
+        _applyAddress(defaultAddress);
+      }
+    });
+  }
+
+  /// يعبّئ النموذج من عنوان محفوظ بضغطة واحدة (محافظة/مدينة/شارع/هاتف).
+  void _applyAddress(SavedAddress saved) {
+    setState(() {
+      _selectedAddressId = saved.id;
+      selectedGovernorate = saved.governorate.isEmpty
+          ? selectedGovernorate
+          : saved.governorate;
+      _selectedCity = saved.city.isEmpty ? null : saved.city;
+      address.text = saved.street;
+      if (saved.phone.isNotEmpty) phone.text = saved.phone;
+      _applyCities();
+    });
+  }
+
+  /// المدينة المُرسَلة للخادم: من القائمة المنسدلة عند توفرها،
+  /// وإلا من حقل النص الحر.
+  String get _cityValue => _cities.isNotEmpty
+      ? (_selectedCity ?? '')
+      : _cityText.text.trim();
 
   /// رسوم الشحن الموحّدة في المتجر الحي لجميع المحافظات (جنيه).
   /// الخادم يعيد حساب الشحن والإجمالي بنفسه من المحافظة، وهذه القيمة
@@ -81,6 +175,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     name.dispose();
     phone.dispose();
     address.dispose();
+    _cityText.dispose();
     super.dispose();
   }
 
@@ -162,6 +257,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         customerName: name.text.trim(),
         phone: _normalizeDigits(phone.text),
         governorate: selectedGovernorate!,
+        city: _cityValue,
         address: address.text.trim(),
         paymentMethod: payment,
         items: cart.items,
@@ -182,6 +278,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
           content: Text(
             'رقم الطلب: ${result.orderRef}\n'
             'الإجمالي شامل الشحن: ${result.total.toStringAsFixed(2)} EGP\n'
+            // الخصم الظاهر هنا هو ما أكّده الخادم فعلاً في رد الطلب —
+            // قبل نشر نقطة الخصم يبقى 0 ولا يُزعم خصم.
+            '${result.bundleDiscount > 0 ? 'يشمل خصم عروض الحزم: ${result.bundleDiscount.toStringAsFixed(2)} EGP\n' : ''}'
             'الدفع مسبقاً عبر ${payment.split('|').first.trim()}؛ سيتواصل معك فريق زخم عبر واتساب بتعليمات التحويل.',
             textAlign: TextAlign.right,
           ),
@@ -257,7 +356,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
             requested: _pointsToUse,
           )
         : 0;
-    final total = cart.subtotal - pointsDiscount + shippingFee;
+    // خصم عروض الحزم «اشترِ 2» من القواعد المفعّلة — للعرض فقط؛
+    // الخادم يعيد حسابه والتحقق منه عند إنشاء الطلب وإجماليه هو
+    // المعتمد في نافذة التأكيد.
+    final bundleDiscount =
+        context.watch<DiscountProvider>().calculationFor(cart.items);
+    final total =
+        cart.subtotal - pointsDiscount - bundleDiscount.amount + shippingFee;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -271,6 +376,35 @@ class _CheckoutPageState extends State<CheckoutPage> {
               const SizedBox(height: 22),
               _sectionTitle('١. بيانات التوصيل', 'أدخل معلومات استلام الطلب'),
               const SizedBox(height: 14),
+              if (_savedAddresses.isNotEmpty) ...[
+                const Text(
+                  'عنوان محفوظ؟ اختر بضغطة واحدة',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                ..._savedAddresses.map(
+                  (saved) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: RadioListTile<String>(
+                      value: saved.id,
+                      groupValue: _selectedAddressId,
+                      title: Text(saved.displayTitle),
+                      subtitle: Text(
+                        '${saved.displayLine}\n${saved.phone}',
+                      ),
+                      isThreeLine: true,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        final picked = _savedAddresses.firstWhere(
+                          (item) => item.id == value,
+                        );
+                        _applyAddress(picked);
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+              ],
               _textField(
                 controller: name,
                 label: 'الاسم الكامل',
@@ -309,10 +443,43 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   items: governorates
                       .map((value) => DropdownMenuItem(value: value, child: Text(value)))
                       .toList(growable: false),
-                  onChanged: (value) => setState(() => selectedGovernorate = value),
+                  onChanged: (value) => setState(() {
+                    selectedGovernorate = value;
+                    _selectedCity = null;
+                    _applyCities();
+                  }),
                   validator: (value) => value == null ? 'اختر المحافظة' : null,
                 ),
               ),
+              if (_cities.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: DropdownButtonFormField<String>(
+                    value: _cities.contains(_selectedCity) ? _selectedCity : null,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'المدينة',
+                      hintText: 'اختر المدينة',
+                      prefixIcon: Icon(Icons.location_city_outlined),
+                    ),
+                    items: _cities
+                        .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+                        .toList(growable: false),
+                    onChanged: (value) => setState(() => _selectedCity = value),
+                    validator: (value) => value == null ? 'اختر المدينة' : null,
+                  ),
+                )
+              else
+                _textField(
+                  controller: _cityText,
+                  label: 'المدينة',
+                  hint: 'مدينة التوصيل',
+                  icon: Icons.location_city_outlined,
+                  textInputAction: TextInputAction.next,
+                  validator: (value) => (value?.trim().isEmpty ?? true)
+                      ? 'أدخل المدينة'
+                      : null,
+                ),
               _textField(
                 controller: address,
                 label: 'العنوان بالتفصيل',
@@ -343,7 +510,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
               if (pointsBalance != null)
                 _loyaltyCard(pointsBalance, maxRedeem, pointsDiscount, cart.subtotal),
               if (pointsBalance != null) const SizedBox(height: 14),
-              _orderSummary(cart.items, cart.subtotal, pointsDiscount),
+              _orderSummary(
+                cart.items,
+                cart.subtotal,
+                pointsDiscount,
+                bundleDiscount,
+              ),
               const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(13),
@@ -386,6 +558,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         Text('-${pointsDiscount.toStringAsFixed(2)} EGP', style: TextStyle(color: context.goldText, fontSize: 15, fontWeight: FontWeight.w600)),
                       ]),
                     if (pointsDiscount > 0) const SizedBox(height: 4),
+                    if (bundleDiscount.hasDiscount)
+                      Row(children: [
+                        Expanded(child: Text('خصم «${bundleDiscount.ruleNames.join('، ')}»', style: TextStyle(color: context.subdued, fontSize: 12))),
+                        Text('-${bundleDiscount.amount.toStringAsFixed(2)} EGP', style: TextStyle(color: context.goldText, fontSize: 15, fontWeight: FontWeight.w600)),
+                      ]),
+                    if (bundleDiscount.hasDiscount) const SizedBox(height: 4),
                     Row(children: [
                       Expanded(child: Text('التوصيل (جميع المحافظات)', style: TextStyle(color: context.subdued, fontSize: 12))),
                       Text('120.00 EGP', style: TextStyle(color: context.ink, fontSize: 15, fontWeight: FontWeight.w600)),
@@ -577,7 +755,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  Widget _orderSummary(List<CartItem> items, double subtotal, int pointsDiscount) => Container(
+  Widget _orderSummary(
+    List<CartItem> items,
+    double subtotal,
+    int pointsDiscount,
+    DiscountResult bundleDiscount,
+  ) =>
+      Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(color: context.surfaceCard, borderRadius: BorderRadius.circular(18), border: Border.all(color: context.hairlineSoft)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -616,9 +800,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
               valueColor: context.goldText,
             ),
           if (pointsDiscount > 0) const SizedBox(height: 8),
+          if (bundleDiscount.hasDiscount)
+            _summaryLine(
+              'خصم «${bundleDiscount.ruleNames.join('، ')}»',
+              '-${bundleDiscount.amount.toStringAsFixed(2)} EGP',
+              valueColor: context.goldText,
+            ),
+          if (bundleDiscount.hasDiscount) const SizedBox(height: 8),
           _summaryLine('التوصيل (جميع المحافظات)', '120.00 EGP'),
           const SizedBox(height: 8),
-          _summaryLine('الإجمالي شامل الشحن', '${(subtotal - pointsDiscount + shippingFee).toStringAsFixed(2)} EGP'),
+          _summaryLine('الإجمالي شامل الشحن', '${(subtotal - pointsDiscount - bundleDiscount.amount + shippingFee).toStringAsFixed(2)} EGP'),
           const SizedBox(height: 10),
           Text('الدفع مسبقاً عبر إنستاباي أو فودافون كاش بعد تأكيد المتجر لتعليمات التحويل.', style: TextStyle(color: context.subdued, fontSize: 11, height: 1.5)),
         ]),

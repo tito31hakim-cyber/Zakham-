@@ -11,11 +11,17 @@ class OrderResult {
     required this.orderRef,
     required this.total,
     required this.status,
+    this.bundleDiscount = 0,
   });
 
   final String orderRef;
   final double total;
   final String status;
+
+  /// خصم عروض الحزم كما أكّده الخادم في رد إنشاء الطلب (0 قبل نشر
+  /// نقطة الخصم أو عند عدم انطباق أي قاعدة) — الرقم الوحيد الموثوق،
+  /// فالتطبيق لا يزعم خصماً لم يؤكده الخادم.
+  final double bundleDiscount;
 }
 
 class OrderApi {
@@ -57,6 +63,10 @@ class OrderApi {
     required String paymentMethod,
     required List<CartItem> items,
     String governorate = 'غير محدد',
+    // المدينة — اختياري: تُرسل فقط عند اختيارها من القائمة المعتمدة
+    // (GET /api/locations/eg)؛ الخادم يتحقق منها (422 invalid_city)
+    // عند إرسالها، وتُهمل فارغة.
+    String city = '',
     String notes = '',
     double shippingFee = 0,
     String shippingLabel = 'يحدد لاحقًا',
@@ -103,6 +113,7 @@ class OrderApi {
             'customerName': customerName.trim(),
             'phone': phone.trim(),
             'governorate': governorate,
+            'city': city.trim(),
             'address': address.trim(),
             'paymentMethod': paymentMethod,
             'receiptReference': '',
@@ -157,6 +168,8 @@ class OrderApi {
       orderRef: orderRef,
       total: (order['total'] as num?)?.toDouble() ?? subtotal + shippingFee,
       status: '${order['status'] ?? 'pending_transfer'}',
+      bundleDiscount:
+          (order['bundleDiscount'] as num?)?.toDouble() ?? 0,
     );
   }
 

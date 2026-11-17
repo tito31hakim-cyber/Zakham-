@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/address_book.dart';
 import '../services/api_headers.dart';
 import '../services/customer_auth.dart';
+import '../services/invoice_pdf.dart';
 
 /// Holds the signed-in store customer for the whole app.
 ///
@@ -53,6 +55,19 @@ class CustomerProvider extends ChangeNotifier {
   List<CustomerOrder> get orders => _orders;
 
   ApiCredentials get credentials => _auth.credentials;
+
+  /// دفتر العناوين المحفوظة — يشارك جلسة العميل نفسها (نفس
+  /// CustomerAuth) فتصل نقاط `/api/account/addresses` بالكوكيز.
+  late final AddressBookService addressBook = AddressBookService(_auth);
+
+  /// مفتاح التخزين المحلي للعناوين — يفصل عناوين حساب عن آخر على
+  /// الجهاز نفسه (الضيف يستخدم 'guest').
+  String get addressOwnerKey {
+    final openId = _customer?.openId ?? '';
+    if (openId.isNotEmpty) return openId;
+    final email = _customer?.email ?? '';
+    return email.isNotEmpty ? email : 'guest';
+  }
 
   /// رصيد نقاط الولاء كما جاء من الخادم، أو null إن لم يدعمه بعد.
   int? get pointsBalance => _customer?.pointsBalance;
@@ -228,6 +243,49 @@ class CustomerProvider extends ChangeNotifier {
       rethrow;
     } finally {
       notifyListeners();
+    }
+    // حالة الدفع قد لا تأتي مع قائمة الطلبات بعد (خادم قديم) — تُملأ
+    // بهدوء من تفاصيل الفاتورة لكل طلب غير ملغى ولا يحمل حالة، ليعرض
+    // زر «تنزيل الفاتورة PDF» فقط للمدفوعة. أي فشل يُتجاهل ولا يعطّل
+    // قائمة الطلبات.
+    await _backfillPaymentStatus();
+  }
+
+  Future<void> _backfillPaymentStatus() async {
+    var changed = false;
+    final updated = <CustomerOrder>[];
+    for (final order in _orders) {
+      if (order.paymentStatus.isNotEmpty || order.status == 'cancelled') {
+        updated.add(order);
+        continue;
+      }
+      try {
+        final invoice = await _auth.fetchOrderInvoice(order.orderRef);
+        final paymentStatus = '${invoice['paymentStatus'] ?? ''}';
+        if (paymentStatus.isNotEmpty) {
+          updated.add(order.copyWith(paymentStatus: paymentStatus));
+          changed = true;
+        } else {
+          updated.add(order);
+        }
+      } catch (_) {
+        updated.add(order);
+      }
+    }
+    if (changed) {
+      _orders = updated;
+      notifyListeners();
+    }
+  }
+
+  /// تفاصيل طلب واحد كفاتورة (GET /api/orders/{ref}/invoice) —
+  /// null عند أي فشل. تُستخدم لزر «تنزيل الفاتورة PDF» للطلبات المدفوعة.
+  Future<OrderInvoice?> fetchInvoice(String ref) async {
+    try {
+      final data = await _auth.fetchOrderInvoice(ref);
+      return OrderInvoice.fromJson(data);
+    } catch (_) {
+      return null;
     }
   }
 

@@ -5,8 +5,10 @@ import '../providers/customer_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/customer_auth.dart';
 import '../services/favorites_offer_service.dart';
+import '../services/invoice_pdf.dart';
 import '../services/reminder_service.dart';
 import '../theme/app_theme.dart';
+import 'addresses_page.dart';
 import 'admin_page.dart';
 import 'auth_page.dart';
 import 'cart_page.dart';
@@ -49,6 +51,9 @@ class _AccountPageState extends State<AccountPage> {
   bool _loadingOrders = false;
   String? _ordersError;
   String? _ordersLoadedFor;
+
+  /// أرقام الطلبات الجاري توليد فاتورتها الآن (لمنع الضغط المزدوج).
+  final Set<String> _generatingInvoices = <String>{};
   bool? _remindersEnabled;
   bool? _favOffersEnabled;
   bool? _dailyPerfumeEnabled;
@@ -147,6 +152,45 @@ class _AccountPageState extends State<AccountPage> {
       }
     } finally {
       if (mounted) setState(() => _loadingOrders = false);
+    }
+  }
+
+  /// تنزيل فاتورة طلب مدفوع PDF ومشاركتها — تُجلب تفاصيل الفاتورة
+  /// من الخادم أولاً (أصناف الطلب وحالة الدفع). الزر نفسه لا يظهر
+  /// إلا للطلبات المدفوعة، وأي فشل هنا يظهر رسالة ولا يعطّل الصفحة.
+  Future<void> _downloadInvoice(CustomerOrder order) async {
+    if (_generatingInvoices.contains(order.orderRef)) return;
+    setState(() => _generatingInvoices.add(order.orderRef));
+    try {
+      final provider = context.read<CustomerProvider>();
+      final invoice = await provider.fetchInvoice(order.orderRef);
+      if (!mounted) return;
+      if (invoice == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر تحميل تفاصيل الطلب.')),
+        );
+        return;
+      }
+      if (!invoice.isPaid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('الفاتورة متاحة بعد تأكيد الدفع.'),
+          ),
+        );
+        return;
+      }
+      await InvoicePdfService.sharePdf(invoice, context);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'تعذر توليد الفاتورة. ${error.toString().replaceFirst('Exception: ', '')}',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _generatingInvoices.remove(order.orderRef));
     }
   }
 
@@ -256,6 +300,21 @@ class _AccountPageState extends State<AccountPage> {
             ),
           ] else ...[
             _ordersSection(provider),
+            _item(
+              context,
+              Icons.location_on_outlined,
+              'عناويني المحفوظة',
+              'أضف عناوينك لاختيارها بضغطة واحدة عند إتمام الطلب',
+              () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddressesPage(
+                    addressBook: provider.addressBook,
+                    ownerKey: provider.addressOwnerKey,
+                  ),
+                ),
+              ),
+            ),
           ],
           _item(
             context,
@@ -666,13 +725,43 @@ class _AccountPageState extends State<AccountPage> {
                   '${order.createdAt.length >= 10 ? order.createdAt.substring(0, 10) : order.createdAt} • ${_statusLabel(order.status)}',
                   style: TextStyle(color: context.subdued, fontSize: 11),
                 ),
-                trailing: Text(
-                  '${order.total.toStringAsFixed(2)} EGP',
-                  style: TextStyle(
-                    color: context.goldText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+                // زر الفاتورة يظهر فقط للطلبات المدفوعة (paymentStatus
+                // verified/paid) — غير المدفوعة بلا زر أصلاً.
+                trailing: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${order.total.toStringAsFixed(2)} EGP',
+                      style: TextStyle(
+                        color: context.goldText,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (InvoicePdfService.canDownloadForPaymentStatus(
+                      order.paymentStatus,
+                    ))
+                      TextButton(
+                        onPressed: _generatingInvoices.contains(order.orderRef)
+                            ? null
+                            : () => _downloadInvoice(order),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          _generatingInvoices.contains(order.orderRef)
+                              ? 'جارٍ التجهيز…'
+                              : 'تنزيل الفاتورة PDF',
+                          style: TextStyle(
+                            color: context.goldText,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'providers/cart_provider.dart';
 import 'providers/customer_provider.dart';
+import 'providers/discount_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/push_service.dart';
 
@@ -29,6 +30,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider.value(value: customerProvider),
         ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider(create: (_) => DiscountProvider()),
       ],
       child: const ZakhamApp(),
     ),

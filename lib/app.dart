@@ -15,6 +15,7 @@ import 'pages/quiz_page.dart';
 import 'pages/sections_page.dart';
 import 'pages/verify_page.dart';
 import 'providers/cart_provider.dart';
+import 'providers/discount_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/deep_link_service.dart';
 import 'services/daily_perfume.dart';
@@ -74,6 +75,8 @@ class _StoreShellState extends State<StoreShell> {
     _cartProvider = context.read<CartProvider>();
     _cartProvider.addListener(_onCartChanged);
     _loadFavorites();
+    // قواعد الخصم المفعّلة best-effort (غيابها = لا خصم، لا عطل).
+    unawaited(context.read<DiscountProvider>().refresh());
     // الروابط العميقة best-effort: أي فشل في قناة المنصة يُتجاهل.
     unawaited(
       _deepLinkService.init(onProductSlug: _openProductSlug),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/admin_api.dart';
+import '../services/discounts.dart';
 import '../services/push_service.dart';
 import '../theme/app_theme.dart';
 
@@ -266,6 +267,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   _CustomersPanel(api: widget.api),
                   _OrdersPanel(api: widget.api),
                   _PushPanel(api: widget.api),
+                  _DiscountsPanel(api: widget.api),
                 ],
               ),
             ),
@@ -290,6 +292,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             NavigationDestination(
               icon: Icon(Icons.notifications_outlined),
               label: 'إشعارات',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.local_offer_outlined),
+              label: 'الخصومات',
             ),
           ],
         ),
@@ -1403,6 +1409,379 @@ class _PushPanelState extends State<_PushPanel> {
           Text(
             'ملحوظة: نقطة الإرسال على الخادم تُنشر بشكل منفصل — إن ظهرت رسالة 404 فالإرسال لم يُفعَّل بعد.',
             style: TextStyle(color: context.subdued, fontSize: 11, height: 1.6),
+          ),
+        ],
+      );
+}
+
+/// قسم «الخصومات» — قواعد «اشترِ 2 واحصل على خصم» (GET/POST/PATCH/
+/// DELETE /api/admin/discounts بصلاحية offers.manage).
+///
+/// القاعدة: الأنواع المشمولة + نسبة الخصم (افتراضياً 10%) + تفعيل.
+/// تنطبق تلقائياً في السلة وإتمام الطلب عندما تحوي السلة قطعتين أو
+/// أكثر من الأنواع المشمولة، والخادم يعيد حسابها والتحقق منها عند
+/// إنشاء الطلب — فلا يملك عميل متمرّد اختراع خصم من جهازه.
+/// النقطة مسودة على الخادم بعد؛ 404 تعني «غير منشورة بعد» وتظهر
+/// رسالة صريحة بدل فشل عام.
+class _DiscountsPanel extends StatefulWidget {
+  const _DiscountsPanel({required this.api});
+  final AdminApi api;
+  @override
+  State<_DiscountsPanel> createState() => _DiscountsPanelState();
+}
+
+class _DiscountsPanelState extends State<_DiscountsPanel> {
+  late Future<List<Map<String, dynamic>>> _rulesFuture;
+  late Future<List<dynamic>> _productsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  void _reload() {
+    setState(() {
+      _rulesFuture = widget.api.discountRules();
+      _productsFuture = widget.api.products();
+    });
+  }
+
+  Future<void> _toggle(DiscountRule rule, bool active) async {
+    try {
+      await widget.api.updateDiscountRule(rule.id, {'active': active});
+      _reload();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    }
+  }
+
+  Future<void> _delete(DiscountRule rule) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف قاعدة الخصم'),
+        content: Text('حذف قاعدة «${rule.name}» نهائياً؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('حذف', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await widget.api.deleteDiscountRule(rule.id);
+      _reload();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    }
+  }
+
+  Future<void> _edit(
+    DiscountRule? existing,
+    List<Map<String, dynamic>> products,
+  ) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => _DiscountRuleDialog(
+        api: widget.api,
+        existing: existing,
+        products: products,
+      ),
+    );
+    if (saved == true) _reload();
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<List<dynamic>>(
+        future: _productsFuture,
+        builder: (context, productsSnapshot) {
+          final products = <Map<String, dynamic>>[];
+          if (productsSnapshot.hasData) {
+            for (final row in productsSnapshot.data!) {
+              if (row is Map<String, dynamic>) products.add(row);
+            }
+          }
+          final names = <String, String>{
+            for (final p in products) '${p['id']}': '${p['name'] ?? p['id']}',
+          };
+          return FutureBuilder<List<Map<String, dynamic>>>(
+            future: _rulesFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Text(
+                      'تعذر تحميل قواعد الخصم: ${snapshot.error.toString().replaceFirst('Exception: ', '')}',
+                      style: TextStyle(color: context.subdued, height: 1.6),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: _reload,
+                      child: const Text('إعادة المحاولة'),
+                    ),
+                  ],
+                );
+              }
+              final rules = (snapshot.data ?? [])
+                  .map(DiscountRule.fromJson)
+                  .toList(growable: false);
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Text(
+                    'قواعد خصم «اشترِ 2»',
+                    style: TextStyle(
+                      color: context.ink,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'تنطبق القاعدة تلقائياً عندما تحوي السلة قطعتين أو أكثر من الأنواع المشمولة — بلا كود خصم. الخادم يعيد حساب الخصم والتحقق منه عند إنشاء الطلب.',
+                    style: TextStyle(color: context.subdued, height: 1.6),
+                  ),
+                  const SizedBox(height: 16),
+                  if (rules.isEmpty)
+                    Text(
+                      'لا توجد قواعد بعد — أنشئ أول قاعدة بالزر أدناه.',
+                      style: TextStyle(color: context.subdued, height: 1.6),
+                    ),
+                  ...rules.map(
+                    (rule) => Card(
+                      color: context.surfaceCard,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 5,
+                        ),
+                        title: Text(
+                          rule.name.isEmpty ? 'قاعدة بلا اسم' : rule.name,
+                          style: TextStyle(
+                            color: context.ink,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'خصم ${rule.percent.toStringAsFixed(0)}% على: ${rule.productIds.map((id) => names[id] ?? id).join('، ')}\n${rule.active ? 'مفعّلة' : 'متوقفة'}',
+                          style: TextStyle(color: context.subdued, height: 1.5),
+                        ),
+                        isThreeLine: true,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Switch(
+                              value: rule.active,
+                              onChanged: (value) => _toggle(rule, value),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined),
+                              tooltip: 'تعديل',
+                              onPressed: () => _edit(rule, products),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline),
+                              tooltip: 'حذف',
+                              onPressed: () => _delete(rule),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    onPressed: () => _edit(null, products),
+                    icon: const Icon(Icons.add),
+                    label: const Text('قاعدة خصم جديدة'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+}
+
+/// نافذة إنشاء/تعديل قاعدة خصم: الاسم + نسبة الخصم + الأنواع
+/// المشمولة (مربعات اختيار من منتجات المتجر) + التفعيل.
+class _DiscountRuleDialog extends StatefulWidget {
+  const _DiscountRuleDialog({
+    required this.api,
+    this.existing,
+    required this.products,
+  });
+
+  final AdminApi api;
+  final DiscountRule? existing;
+  final List<Map<String, dynamic>> products;
+
+  @override
+  State<_DiscountRuleDialog> createState() => _DiscountRuleDialogState();
+}
+
+class _DiscountRuleDialogState extends State<_DiscountRuleDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _name;
+  late double _percent;
+  late Set<String> _selected;
+  late bool _active;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existing;
+    _name = TextEditingController(text: existing?.name ?? '');
+    _percent = existing?.percent ?? 10;
+    _selected = {...(existing?.productIds ?? const <String>[])};
+    _active = existing?.active ?? true;
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_selected.isEmpty) {
+      setState(() => _error = 'اختر نوعاً واحداً على الأقل من العطور.');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final body = DiscountRule(
+        id: widget.existing?.id ?? '',
+        name: _name.text.trim(),
+        productIds: _selected.toList(growable: false),
+        percent: _percent,
+        active: _active,
+      ).toRequestJson();
+      if (widget.existing == null) {
+        await widget.api.createDiscountRule(body);
+      } else {
+        await widget.api.updateDiscountRule(widget.existing!.id, body);
+      }
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(
+          widget.existing == null ? 'قاعدة خصم جديدة' : 'تعديل قاعدة الخصم',
+        ),
+        content: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _name,
+                  decoration: const InputDecoration(
+                    labelText: 'اسم العرض',
+                    hintText: 'مثال: خصم الثنائية الملكية',
+                  ),
+                  validator: (value) =>
+                      value == null || value.trim().isEmpty
+                          ? 'اكتب اسماً للعرض'
+                          : null,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'نسبة الخصم: ${_percent.toStringAsFixed(0)}%',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Slider(
+                  value: _percent,
+                  min: 5,
+                  max: 50,
+                  divisions: 45,
+                  label: '${_percent.toStringAsFixed(0)}%',
+                  onChanged: (value) => setState(() => _percent = value),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'الأنواع المشمولة',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                ...widget.products.map(
+                  (product) {
+                    final id = '${product['id']}';
+                    final checked = _selected.contains(id);
+                    return CheckboxListTile(
+                      value: checked,
+                      title: Text('${product['name'] ?? id}'),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: (value) => setState(() {
+                        if (value == true) {
+                          _selected.add(id);
+                        } else {
+                          _selected.remove(id);
+                        }
+                      }),
+                    );
+                  },
+                ),
+                SwitchListTile(
+                  title: const Text('القاعدة مفعّلة'),
+                  value: _active,
+                  onChanged: (value) => setState(() => _active = value),
+                ),
+                if (_error != null)
+                  Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red, height: 1.5),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: _saving ? null : _save,
+            child: Text(_saving ? 'جارٍ الحفظ…' : 'حفظ'),
           ),
         ],
       );

@@ -53,6 +53,12 @@ dependencies:
   app_links: ^7.2.2
   share_plus: ^13.3.1
   mobile_scanner: ^7.5.0
+  pdf: ^3.12.0
+  # مثبّتة عمداً: image ‏4.11+ يستدعي ZLibDecoder.decodeLazy غير
+  # الموجود في archive ‏4.0.9 الذي تقيّده pdf ‏3.12.0 (<4.1.0)؛
+  # وpdf ‏3.13+ يتعارض مع flutter_local_notifications ‏(xml).
+  # image ‏4.5.4 تستخدم decodeBytes وتتوافق مع archive ‏4.0.9.
+  image: 4.5.4
 
 dev_dependencies:
   flutter_test:

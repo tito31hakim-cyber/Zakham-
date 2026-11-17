@@ -6,6 +6,7 @@ import 'package:house_of_zakham/app.dart';
 import 'package:house_of_zakham/data/store_sections.dart';
 import 'package:house_of_zakham/pages/sections_page.dart';
 import 'package:house_of_zakham/providers/cart_provider.dart';
+import 'package:house_of_zakham/providers/discount_provider.dart';
 import 'package:house_of_zakham/providers/theme_provider.dart';
 
 Future<void> _scrollTo(WidgetTester tester, Finder finder) async {
@@ -70,6 +71,7 @@ void main() {
         providers: [
           ChangeNotifierProvider(create: (_) => CartProvider()),
           ChangeNotifierProvider.value(value: theme),
+          ChangeNotifierProvider(create: (_) => DiscountProvider()),
         ],
         child: const ZakhamApp(),
       ),

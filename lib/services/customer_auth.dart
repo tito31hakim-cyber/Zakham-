@@ -100,6 +100,7 @@ class CustomerOrder {
     this.shippingFee = 0,
     this.total = 0,
     this.status = '',
+    this.paymentStatus = '',
   });
 
   final String orderRef;
@@ -114,6 +115,11 @@ class CustomerOrder {
   final double total;
   final String status;
 
+  /// حالة الدفع كما يردها الخادم ('verified' تعني مدفوعاً)، أو ''
+  /// عندما لا يرسلها الرد بعد (قائمة الطلبات القديمة) — يُملأ حينها
+  /// من تفاصيل الفاتورة (GET /api/orders/{ref}/invoice) بهدوء.
+  final String paymentStatus;
+
   factory CustomerOrder.fromJson(Map<String, dynamic> json) => CustomerOrder(
         orderRef: '${json['orderRef'] ?? ''}',
         createdAt: '${json['createdAt'] ?? ''}',
@@ -126,6 +132,22 @@ class CustomerOrder {
         shippingFee: (json['shippingFee'] as num?)?.toDouble() ?? 0,
         total: (json['total'] as num?)?.toDouble() ?? 0,
         status: '${json['status'] ?? ''}',
+        paymentStatus: '${json['paymentStatus'] ?? ''}',
+      );
+
+  CustomerOrder copyWith({String? paymentStatus}) => CustomerOrder(
+        orderRef: orderRef,
+        createdAt: createdAt,
+        customerName: customerName,
+        phone: phone,
+        governorate: governorate,
+        address: address,
+        paymentMethod: paymentMethod,
+        subtotal: subtotal,
+        shippingFee: shippingFee,
+        total: total,
+        status: status,
+        paymentStatus: paymentStatus ?? this.paymentStatus,
       );
 }
 
@@ -283,6 +305,61 @@ class CustomerAuth {
     } catch (_) {
       return null;
     }
+  }
+
+  /// العناوين المحفوظة (GET /api/account/addresses) — تُرمى عند غياب
+  /// النقطة (404) أو أي فشل، فيسقط المتصل للتخزين المحلي بهدوء.
+  Future<List<Map<String, dynamic>>> fetchAddresses() async {
+    final data = await _get(_url(AppConfig.customerAddressesPath));
+    final list = data['addresses'];
+    if (list is List) {
+      return list.whereType<Map<String, dynamic>>().toList(growable: false);
+    }
+    return const <Map<String, dynamic>>[];
+  }
+
+  Future<Map<String, dynamic>> createAddress(
+    Map<String, dynamic> body,
+  ) async {
+    final data = await _post(_url(AppConfig.customerAddressesPath), body);
+    final raw = data['address'];
+    if (raw is Map<String, dynamic>) return raw;
+    throw Exception('تعذر حفظ العنوان.');
+  }
+
+  Future<Map<String, dynamic>> updateAddress(
+    String id,
+    Map<String, dynamic> body,
+  ) async {
+    final uri =
+        _url('${AppConfig.customerAddressesPath}/${Uri.encodeComponent(id)}');
+    final response = await SecureHttp.client
+        .patch(uri, headers: _headers(mutating: true), body: jsonEncode(body))
+        .timeout(const Duration(seconds: 20));
+    _captureCookies(response);
+    final data = _validate(response);
+    final raw = data['address'];
+    if (raw is Map<String, dynamic>) return raw;
+    throw Exception('تعذر تحديث العنوان.');
+  }
+
+  Future<void> deleteAddress(String id) async {
+    final uri = _url('${AppConfig.customerAddressesPath}/${Uri.encodeComponent(id)}');
+    final response = await SecureHttp.client
+        .delete(uri, headers: _headers(mutating: true))
+        .timeout(const Duration(seconds: 20));
+    _captureCookies(response);
+    _validate(response);
+  }
+
+  /// تفاصيل طلب واحد مع أصنافه وحالة الدفع (GET /api/orders/{ref}/invoice).
+  /// النقطة موجودة على الخادم الحي؛ صاحب الطلب المُسجَّل مخوَّل بها
+  /// بجلسة العميل. تُرمى عند أي فشل فيُظهر المتصل رسالة الخادم.
+  Future<Map<String, dynamic>> fetchOrderInvoice(String ref) async {
+    final data = await _get(AppConfig.orderInvoiceUri(ref));
+    final raw = data['order'];
+    if (raw is Map<String, dynamic>) return raw;
+    throw Exception('تعذر تحميل تفاصيل الطلب.');
   }
 
   Future<List<CustomerOrder>> fetchMyOrders() async {

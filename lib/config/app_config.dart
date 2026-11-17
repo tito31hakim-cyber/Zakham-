@@ -24,6 +24,16 @@ class AppConfig {
   static const customerLogoutPath = '/api/auth/logout';
   static const customerOrdersPath = '/api/account/orders';
   static const customerPointsPath = '/api/account/points';
+  static const customerAddressesPath = '/api/account/addresses';
+
+  /// قائمة المحافظات والمدن المعتمدة (GET /api/locations/eg).
+  static const locationsEgPath = '/api/locations/eg';
+
+  /// قواعد الخصم المفعّلة — قراءة عامة (GET /api/discounts/active).
+  static const discountsActivePath = '/api/discounts/active';
+
+  /// إدارة قواعد الخصم — جلسة أدمن + صلاحية offers.manage.
+  static const adminDiscountsPath = '/api/admin/discounts';
   static const productImageBaseUrl = '$apiBaseUrl/';
   static const featuredImage =
       '$apiBaseUrl/assets/products/catalog-royal-2026.jpg';
@@ -37,6 +47,17 @@ class AppConfig {
         '$apiBaseUrl$adminCustomersPath?q=${Uri.encodeQueryComponent(query)}',
       );
   static Uri get analyticsUri => Uri.parse('$apiBaseUrl$analyticsPath');
+  static Uri get customerAddressesUri =>
+      Uri.parse('$apiBaseUrl$customerAddressesPath');
+  static Uri get locationsEgUri => Uri.parse('$apiBaseUrl$locationsEgPath');
+  static Uri get discountsActiveUri =>
+      Uri.parse('$apiBaseUrl$discountsActivePath');
+  static Uri adminDiscountUri(String id) => Uri.parse(
+        '$apiBaseUrl$adminDiscountsPath/${Uri.encodeComponent(id)}',
+      );
+  static Uri orderInvoiceUri(String ref) => Uri.parse(
+        '$apiBaseUrl/api/orders/${Uri.encodeComponent(ref)}/invoice',
+      );
 
   static String resolveImageUrl(String image) {
     final value = image.trim();
