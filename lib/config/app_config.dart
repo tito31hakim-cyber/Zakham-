@@ -13,7 +13,16 @@ class AppConfig {
   static const adminSessionPath = '/api/admin/session';
   static const adminLoginPath = '/api/admin/login';
   static const adminLogoutPath = '/api/admin/logout';
+  static const adminPushSendPath = '/api/admin/push/send';
   static const analyticsPath = '/api/analytics';
+  // حسابات الأعضاء (العملاء) — نفس مسارات المتجر الحي.
+  static const customerRegisterPath = '/api/auth/register';
+  static const customerLoginPath = '/api/auth/login';
+  static const customerVerifyPhonePath = '/api/auth/verify-phone';
+  static const customerResendPhonePath = '/api/auth/resend-phone';
+  static const customerMePath = '/api/auth/me';
+  static const customerLogoutPath = '/api/auth/logout';
+  static const customerOrdersPath = '/api/account/orders';
   static const productImageBaseUrl = '$apiBaseUrl/';
   static const featuredImage =
       '$apiBaseUrl/assets/products/catalog-royal-2026.jpg';

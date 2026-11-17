@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/admin_api.dart';
+import '../services/push_service.dart';
 import '../theme/app_theme.dart';
 
 /// Arabic labels for server order/payment statuses.
@@ -264,6 +265,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   _ProductsPanel(api: widget.api),
                   _CustomersPanel(api: widget.api),
                   _OrdersPanel(api: widget.api),
+                  _PushPanel(api: widget.api),
                 ],
               ),
             ),
@@ -284,6 +286,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             NavigationDestination(
               icon: Icon(Icons.receipt_long_outlined),
               label: 'الطلبات',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.notifications_outlined),
+              label: 'إشعارات',
             ),
           ],
         ),
@@ -1226,5 +1232,178 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
             ),
           ],
         ),
+      );
+}
+
+/// Sends push notifications to customers through the store server
+/// (POST /api/admin/push/send). The audience is one FCM topic, or "all"
+/// which sends to every topic one by one. Until the server endpoint is
+/// deployed the call answers 404 and a clear message is shown.
+class _PushPanel extends StatefulWidget {
+  const _PushPanel({required this.api});
+  final AdminApi api;
+  @override
+  State<_PushPanel> createState() => _PushPanelState();
+}
+
+class _PushPanelState extends State<_PushPanel> {
+  final _title = TextEditingController();
+  final _body = TextEditingController();
+  String _audience = 'all';
+  bool _sending = false;
+  String? _result;
+
+  static const Map<String, String> _audiences = {
+    'all': 'الكل — كل المشتركين',
+    PushService.topicOrders: 'تحديثات الطلبات',
+    PushService.topicOffers: 'العروض والخصومات',
+    PushService.topicNewArrivals: 'وصل حديثاً',
+  };
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _body.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final title = _title.text.trim();
+    final body = _body.text.trim();
+    if (title.isEmpty || body.isEmpty) {
+      setState(() => _result = 'اكتب عنوان الإشعار ونصه أولاً.');
+      return;
+    }
+    setState(() {
+      _sending = true;
+      _result = null;
+    });
+    final topics = _audience == 'all'
+        ? <String>[
+            PushService.topicOrders,
+            PushService.topicOffers,
+            PushService.topicNewArrivals,
+          ]
+        : <String>[_audience];
+    var sent = 0;
+    var failure = '';
+    for (final topic in topics) {
+      try {
+        await widget.api.sendPush(title: title, body: body, topic: topic);
+        sent++;
+      } catch (error) {
+        failure = error.toString().replaceFirst('Exception: ', '');
+        break;
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _sending = false;
+      _result = failure.isNotEmpty
+          ? failure
+          : 'تم إرسال الإشعار إلى $sent ${sent == 1 ? 'موضوع' : 'مواضيع'} بنجاح.';
+    });
+    if (failure.isEmpty) {
+      _title.clear();
+      _body.clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Text(
+            'إرسال إشعار للعملاء',
+            style: TextStyle(
+              color: cream,
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'يصل الإشعار إلى التطبيق عبر Firebase — للمشتركين في الموضوع المختار فقط.',
+            style: TextStyle(color: muted, height: 1.6),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _title,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'عنوان الإشعار',
+              hintText: 'مثال: وصل حديثاً — تشكيلة 2027',
+              prefixIcon: Icon(Icons.title_outlined),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _body,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'نص الإشعار',
+              hintText: 'اكتب رسالتك للعملاء...',
+              prefixIcon: Icon(Icons.message_outlined),
+            ),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _audience,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'الجمهور',
+              prefixIcon: Icon(Icons.groups_outlined),
+            ),
+            items: _audiences.entries
+                .map(
+                  (entry) => DropdownMenuItem(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  ),
+                )
+                .toList(growable: false),
+            onChanged: (value) {
+              if (value != null) setState(() => _audience = value);
+            },
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _sending ? null : _send,
+              icon: _sending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.black,
+                      ),
+                    )
+                  : const Icon(Icons.send_outlined),
+              label: Text(_sending ? 'جارٍ الإرسال...' : 'إرسال الإشعار'),
+            ),
+          ),
+          if (_result != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: gold.withOpacity(.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: gold.withOpacity(.24)),
+              ),
+              child: Text(
+                _result!,
+                style: const TextStyle(color: cream, height: 1.6),
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          const Text(
+            'ملحوظة: نقطة الإرسال على الخادم تُنشر بشكل منفصل — إن ظهرت رسالة 404 فالإرسال لم يُفعَّل بعد.',
+            style: TextStyle(color: muted, fontSize: 11, height: 1.6),
+          ),
+        ],
       );
 }

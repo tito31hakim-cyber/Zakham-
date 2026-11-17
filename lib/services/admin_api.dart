@@ -262,6 +262,44 @@ class AdminApi {
     );
   }
 
+  /// Sends a push notification to one FCM topic via the store server
+  /// (POST /api/admin/push/send). The endpoint is deployed on the server
+  /// separately; until then the server answers 404 and this throws a
+  /// clear message instead of a generic failure.
+  Future<Map<String, dynamic>> sendPush({
+    required String title,
+    required String body,
+    required String topic,
+  }) async {
+    final uri = _url(AppConfig.adminPushSendPath);
+    final response = await http
+        .post(
+          uri,
+          headers: _headers(mutating: true),
+          body: jsonEncode({
+            'title': title.trim(),
+            'body': body.trim(),
+            'topic': topic.trim(),
+          }),
+        )
+        .timeout(const Duration(seconds: 20));
+    _captureCookie(response);
+    final data = _decode(response.body);
+    if (response.statusCode == 404) {
+      throw Exception(
+        'نقطة إرسال الإشعارات غير منشورة على الخادم بعد (404) — فعّلها من المتجر أولاً.',
+      );
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        (data['message'] as String?)?.trim().isNotEmpty == true
+            ? data['message']
+            : 'تعذر إرسال الإشعار.',
+      );
+    }
+    return data;
+  }
+
   Future<void> deleteProduct(String id) async {
     await _delete(
       _url('${AppConfig.adminProductsPath}/${Uri.encodeComponent(id)}'),

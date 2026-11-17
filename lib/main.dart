@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'providers/cart_provider.dart';
+import 'providers/customer_provider.dart';
 import 'services/push_service.dart';
 
 void main() {
@@ -13,9 +14,16 @@ void main() {
   // Firebase project files the service reports unavailable and the app
   // keeps working normally.
   unawaited(PushService.instance.init());
+  final customerProvider = CustomerProvider();
+  // Restoring the member session is best-effort too: a dead cookie just
+  // means "signed out" and the app keeps working as a guest.
+  unawaited(customerProvider.init());
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => CartProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider.value(value: customerProvider),
+      ],
       child: const ZakhamApp(),
     ),
   );

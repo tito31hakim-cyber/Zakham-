@@ -43,6 +43,14 @@ class OrderApi {
         '${hex.substring(20)}';
   }
 
+  /// The server also requires a 64-hex tracking token in the body
+  /// (`trackingToken`, checked before the order is created). The web
+  /// storefront generates one per checkout attempt; the app does the same.
+  String _trackingToken() {
+    final bytes = List<int>.generate(32, (_) => Random.secure().nextInt(256));
+    return bytes.map((value) => value.toRadixString(16).padLeft(2, '0')).join();
+  }
+
   Future<OrderResult> createOrder({
     required String customerName,
     required String phone,
@@ -70,18 +78,25 @@ class OrderApi {
     if (!supportedPayments.contains(paymentMethod)) {
       throw Exception('وسيلة الدفع غير مدعومة. الدفع المسبق متاح عبر إنستاباي أو فودافون كاش فقط.');
     }
+    final idempotencyKey = _idempotencyKey();
     final headers = ApiHeaders.build(
       credentials: credentials,
       json: true,
       mutating: true,
     )
-      ..['Idempotency-Key'] = _idempotencyKey();
+      ..['Idempotency-Key'] = idempotencyKey;
 
     final response = await http
         .post(
           uri,
           headers: headers,
           body: jsonEncode({
+            // الخادم يقرأ المفتاحين من جسم الطلب حصراً (api.php):
+            // idempotencyKey بصيغة [a-f0-9-]{16,64} وtrackingToken
+            // مكوّن من 64 رقماً ست عشرياً — إرسالهما في الترويسة
+            // وحدها لا يكفي ويرفض الطلب 422.
+            'idempotencyKey': idempotencyKey,
+            'trackingToken': _trackingToken(),
             'customerName': customerName.trim(),
             'phone': phone.trim(),
             'governorate': governorate,
@@ -123,14 +138,19 @@ class OrderApi {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(body['message'] ?? 'تعذر إنشاء الطلب.');
     }
-    final orderRef = '${body['orderRef'] ?? ''}';
+    // الخادم يعيد الطلب داخل حقل order (orderDto: orderRef/total/status)
+    // لا في مستوى الرد الأعلى — يُقرأ من هناك مع بديل للمستوى الأعلى.
+    final order = body['order'] is Map<String, dynamic>
+        ? body['order'] as Map<String, dynamic>
+        : body;
+    final orderRef = '${order['orderRef'] ?? ''}';
     if (body['ok'] != true || orderRef.isEmpty) {
       throw Exception(body['message'] ?? 'استجابة إنشاء الطلب غير صالحة.');
     }
     return OrderResult(
       orderRef: orderRef,
-      total: (body['total'] as num?)?.toDouble() ?? subtotal + shippingFee,
-      status: '${body['status'] ?? 'pending_transfer'}',
+      total: (order['total'] as num?)?.toDouble() ?? subtotal + shippingFee,
+      status: '${order['status'] ?? 'pending_transfer'}',
     );
   }
 

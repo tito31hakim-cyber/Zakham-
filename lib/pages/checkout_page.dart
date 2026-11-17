@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../models/cart_item.dart';
 import '../providers/cart_provider.dart';
+import '../providers/customer_provider.dart';
 import '../services/order_api.dart';
 import '../theme/app_theme.dart';
+import 'auth_page.dart';
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
@@ -20,6 +22,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final address = TextEditingController();
   String? selectedGovernorate;
   String payment = 'InstaPay | إنستاباي';
+  bool _prefilled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Prefill the delivery form from the signed-in member profile.
+    if (_prefilled) return;
+    final customer = context.read<CustomerProvider>().customer;
+    if (customer != null) {
+      _prefilled = true;
+      if (name.text.isEmpty) name.text = customer.displayName;
+      if (phone.text.isEmpty) phone.text = customer.phone;
+    }
+  }
 
   /// رسوم الشحن الموحّدة في المتجر الحي لجميع المحافظات (جنيه).
   /// الخادم يعيد حساب الشحن والإجمالي بنفسه من المحافظة، وهذه القيمة
@@ -66,6 +82,29 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Future<void> submit() async {
     if (submitting) return;
     if (!formKey.currentState!.validate()) return;
+    final customerProvider = context.read<CustomerProvider>();
+    // The server refuses guest checkout (401 login_required_for_checkout):
+    // a signed-in member session is required before the order is sent.
+    if (!customerProvider.isAuthenticated) {
+      final signedIn = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const CustomerLoginPage()),
+      );
+      if (!mounted) return;
+      if (signedIn != true || !customerProvider.isAuthenticated) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('سجّل الدخول إلى حسابك أولاً لإتمام الطلب.'),
+          ),
+        );
+        return;
+      }
+      final customer = customerProvider.customer;
+      if (customer != null) {
+        if (name.text.isEmpty) name.text = customer.displayName;
+        if (phone.text.isEmpty) phone.text = customer.phone;
+      }
+    }
     final cart = context.read<CartProvider>();
     if (cart.items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -76,7 +115,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     setState(() => submitting = true);
     try {
-      final result = await OrderApi().createOrder(
+      final result = await OrderApi(
+        credentials: customerProvider.credentials,
+      ).createOrder(
         customerName: name.text.trim(),
         phone: _normalizeDigits(phone.text),
         governorate: selectedGovernorate!,
@@ -115,10 +156,30 @@ class _CheckoutPageState extends State<CheckoutPage> {
       Navigator.pop(context);
     } catch (error) {
       if (!mounted) return;
+      final message = error.toString().replaceFirst('Exception: ', '');
+      // A dead session reports "سجّل الدخول" — forget it locally so the
+      // next attempt asks for sign-in instead of failing the same way.
+      final needsLogin = message.contains('سجّل الدخول');
+      if (needsLogin) {
+        await context.read<CustomerProvider>().dropSession();
+        if (!mounted) return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تعذر إرسال الطلب. بقيت السلة محفوظة.\n$error'),
-          action: SnackBarAction(label: 'حسنًا', onPressed: () {}),
+          content: Text('تعذر إرسال الطلب. بقيت السلة محفوظة.\n$message'),
+          action: needsLogin
+              ? SnackBarAction(
+                  label: 'تسجيل الدخول',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CustomerLoginPage(),
+                      ),
+                    );
+                  },
+                )
+              : SnackBarAction(label: 'حسنًا', onPressed: () {}),
           duration: const Duration(seconds: 6),
         ),
       );
