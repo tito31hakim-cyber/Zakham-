@@ -229,9 +229,12 @@ https://zakhamhouse.shop
 
 التفعيل يحتاج خطوتين خارج المستودع:
 
-1. **ملفات Firebase** (من مشروع Firebase الخاص بالدار):
+1. **ملفات Firebase** (من مشروع Firebase الخاص بالدار — مشروع
+   `zakham-f4b6e`):
    `android/app/google-services.json` و`ios/Runner/GoogleService-Info.plist`
-   (لحزمة `com.houseofzakham.house_of_zakham`). بدونها يبقى
+   (حزمة أندرويد `com.houseofzakham.house_of_zakham`، ومعرّف آيفون
+   `com.houseofzakham.houseofzakham` — بلا شرطات سفلية، لأن Firebase
+   وآبل يرفضانها في معرّف الحزمة). بدونها يبقى
    `PushService.available = false` ويعمل التطبيق طبيعياً دون إشعارات.
 2. **مرسِل الخادم**: نقطة إرسال FCM على المتجر تستقبل رموز الأجهزة
    وترسل تحديثات حالة الطلبات — غير موجودة بعد في `api.php`، وهي
