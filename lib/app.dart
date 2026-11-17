@@ -8,19 +8,26 @@ import 'pages/collection_page.dart';
 import 'pages/home_page.dart';
 import 'pages/product_page.dart';
 import 'pages/quiz_page.dart';
+import 'pages/sections_page.dart';
 import 'providers/cart_provider.dart';
+import 'providers/theme_provider.dart';
 import 'theme/app_theme.dart';
 import 'widgets/common_widgets.dart';
 
 class ZakhamApp extends StatelessWidget {
   const ZakhamApp({super.key});
   @override
-  Widget build(BuildContext context) => MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'دار زخم للعطور',
-        theme: AppTheme.dark(),
-        home: const StoreShell(),
-      );
+  Widget build(BuildContext context) {
+    final themeMode = context.watch<ThemeProvider>().mode;
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'دار زخم للعطور',
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: themeMode,
+      home: const StoreShell(),
+    );
+  }
 }
 
 class StoreShell extends StatefulWidget {
@@ -59,6 +66,35 @@ class _StoreShellState extends State<StoreShell> {
 
   void openQuiz() => Navigator.push(context, MaterialPageRoute(builder: (_) => const QuizPage()));
 
+  /// يفتح صفحة «الأقسام» (التشكيلة، طقس زخم، الإهداء، التغليف
+  /// الفاخر، باقات التوفير) فوق التبويبات.
+  void openSections() => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SectionsPage(
+            onSection: openSection,
+            onOpenCollection: openCollectionTab,
+          ),
+        ),
+      );
+
+  /// يفتح صفحة تفاصيل قسم واحد من الأقسام.
+  void openSection(String id) => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SectionDetailPage(
+            sectionId: id,
+            onOpenCollection: openCollectionTab,
+          ),
+        ),
+      );
+
+  /// يعود إلى تبويب التشكيلة (يغلق أي صفحة مفتوحة فوق التبويبات أولاً).
+  void openCollectionTab() {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    setState(() => selected = 1);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cartCount = context.watch<CartProvider>().itemCount;
@@ -70,6 +106,8 @@ class _StoreShellState extends State<StoreShell> {
         onQuiz: openQuiz,
         favorite: isFavorite(featuredProduct),
         onFavorite: () => toggleFavorite(featuredProduct),
+        onSection: openSection,
+        onOpenSections: openSections,
       ),
       CollectionPage(
         onProduct: openProduct,
@@ -78,25 +116,25 @@ class _StoreShellState extends State<StoreShell> {
       ),
       _FavoritesPage(products: savedProducts, onProduct: openProduct, onFavorite: toggleFavorite),
       const CartPage(),
-      const AccountPage(),
+      AccountPage(onOpenSections: openSections),
     ];
     return Scaffold(
       body: Directionality(textDirection: TextDirection.rtl, child: pages[selected]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: selected,
         onDestinationSelected: (value) => setState(() => selected = value),
-        backgroundColor: const Color(0xFF101010),
+        backgroundColor: context.isLightTheme ? lightCard : darkNavBar,
         indicatorColor: gold.withOpacity(.2),
         destinations: [
-          const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: gold), label: 'الرئيسية'),
-          const NavigationDestination(icon: Icon(Icons.grid_view_rounded), selectedIcon: Icon(Icons.grid_view, color: gold), label: 'التشكيلة'),
-          const NavigationDestination(icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite, color: gold), label: 'المفضلة'),
+          NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: context.goldText), label: 'الرئيسية'),
+          NavigationDestination(icon: const Icon(Icons.grid_view_rounded), selectedIcon: Icon(Icons.grid_view, color: context.goldText), label: 'التشكيلة'),
+          NavigationDestination(icon: const Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite, color: context.goldText), label: 'المفضلة'),
           NavigationDestination(
             icon: _CartDestinationIcon(count: cartCount),
             selectedIcon: _CartDestinationIcon(count: cartCount, selected: true),
             label: 'السلة',
           ),
-          const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person, color: gold), label: 'حسابي'),
+          NavigationDestination(icon: const Icon(Icons.person_outline), selectedIcon: Icon(Icons.person, color: context.goldText), label: 'حسابي'),
         ],
       ),
     );
@@ -109,7 +147,7 @@ class _CartDestinationIcon extends StatelessWidget {
   final bool selected;
   @override
   Widget build(BuildContext context) => Stack(clipBehavior: Clip.none, children: [
-        Icon(selected ? Icons.shopping_bag : Icons.shopping_bag_outlined, color: selected ? gold : null),
+        Icon(selected ? Icons.shopping_bag : Icons.shopping_bag_outlined, color: selected ? context.goldText : null),
         if (count > 0)
           Positioned(
             top: -7,
@@ -136,19 +174,19 @@ class _FavoritesPage extends StatelessWidget {
         children: [
           const Header(),
           const SizedBox(height: 18),
-          const Text('عطورك المحفوظة', textAlign: TextAlign.right, style: TextStyle(color: cream, fontSize: 28, fontWeight: FontWeight.w600)),
+          Text('عطورك المحفوظة', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 28, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          const Text('اختياراتك التي تستحق العودة إليها.', textAlign: TextAlign.right, style: TextStyle(color: muted)),
+          Text('اختياراتك التي تستحق العودة إليها.', textAlign: TextAlign.right, style: TextStyle(color: context.subdued)),
           const SizedBox(height: 22),
           if (products.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 55, horizontal: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 55, horizontal: 16),
               child: Column(children: [
-                Icon(Icons.favorite_border, color: gold, size: 48),
-                SizedBox(height: 16),
-                Text('لم تحفظ أي عطر بعد', style: TextStyle(color: cream, fontSize: 19, fontWeight: FontWeight.w600)),
-                SizedBox(height: 8),
-                Text('اضغط على علامة القلب بجانب عطرك المفضل ليظهر هنا.', textAlign: TextAlign.center, style: TextStyle(color: muted, height: 1.6)),
+                Icon(Icons.favorite_border, color: context.goldText, size: 48),
+                const SizedBox(height: 16),
+                Text('لم تحفظ أي عطر بعد', style: TextStyle(color: context.ink, fontSize: 19, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Text('اضغط على علامة القلب بجانب عطرك المفضل ليظهر هنا.', textAlign: TextAlign.center, style: TextStyle(color: context.subdued, height: 1.6)),
               ]),
             )
           else

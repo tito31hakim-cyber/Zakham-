@@ -15,20 +15,20 @@ class ContactPage extends StatelessWidget {
         body: ListView(
           padding: const EdgeInsets.all(22),
           children: [
-            const Text(
+            Text(
               'نحن هنا لخدمتك',
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: cream,
+                color: context.ink,
                 fontSize: 30,
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'للاستفسار عن العطور أو الطلبات أو الهدايا، تواصل معنا عبر القنوات الرسمية.',
               textAlign: TextAlign.right,
-              style: TextStyle(color: muted, height: 1.7),
+              style: TextStyle(color: context.subdued, height: 1.7),
             ),
             const SizedBox(height: 24),
             _contact(
@@ -73,21 +73,21 @@ class ContactPage extends StatelessWidget {
     String url,
   ) {
     return Card(
-      color: card,
+      color: context.surfaceCard,
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: Icon(icon, color: gold),
+        leading: Icon(icon, color: context.goldText),
         title: Text(
           title,
           textAlign: TextAlign.right,
-          style: const TextStyle(color: cream),
+          style: TextStyle(color: context.ink),
         ),
         subtitle: Text(
           subtitle,
           textAlign: TextAlign.right,
-          style: const TextStyle(color: muted),
+          style: TextStyle(color: context.subdued),
         ),
-        trailing: const Icon(Icons.open_in_new, color: gold),
+        trailing: Icon(Icons.open_in_new, color: context.goldText),
         onTap: () async {
           final uri = Uri.parse(url);
           final launched = await launchUrl(

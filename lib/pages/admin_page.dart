@@ -116,26 +116,26 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         body: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            const Icon(
+            Icon(
               Icons.admin_panel_settings_outlined,
-              color: gold,
+              color: context.goldText,
               size: 70,
             ),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'لوحة إدارة دار زخم',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: cream,
+                color: context.ink,
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'سجّل الدخول ببريد الإدارة وكلمة المرور — نفس حساب لوحة تحكم الموقع.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: muted),
+              style: TextStyle(color: context.subdued),
             ),
             const SizedBox(height: 24),
             TextField(
@@ -238,9 +238,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               future: stats,
               builder: (_, snapshot) {
                 if (!snapshot.hasData) {
-                  return const Padding(
+                  return Padding(
                     padding: EdgeInsets.all(18),
-                    child: CircularProgressIndicator(color: gold),
+                    child: CircularProgressIndicator(color: context.goldText),
                   );
                 }
                 final data = snapshot.data!;
@@ -303,8 +303,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             Text(
               value,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: gold,
+              style: TextStyle(
+                color: context.goldText,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
@@ -312,7 +312,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: muted, fontSize: 12),
+              style: TextStyle(color: context.subdued, fontSize: 12),
             ),
           ],
         ),
@@ -551,13 +551,13 @@ class _ProductsPanelState extends State<_ProductsPanel> {
               child: Text(
                 'تعذر تحميل المنتجات: ${snapshot.error.toString().replaceFirst('Exception: ', '')}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: muted),
+                style: TextStyle(color: context.subdued),
               ),
             ),
           );
         }
         if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator(color: gold));
+          return Center(child: CircularProgressIndicator(color: context.goldText));
         }
         return RefreshIndicator(
           onRefresh: () async =>
@@ -567,17 +567,17 @@ class _ProductsPanelState extends State<_ProductsPanel> {
             itemBuilder: (_, index) {
               final product = Map<String, dynamic>.from(snapshot.data![index]);
               return Card(
-                color: card,
+                color: context.surfaceCard,
                 child: ListTile(
                   title: Text(
                     '${product['name'] ?? ''}',
-                    style: const TextStyle(color: cream),
+                    style: TextStyle(color: context.ink),
                   ),
                   subtitle: Text(
                     // المخزون من الرد الإداري مباشرةً، أو من variantRows،
                     // أو «—» عند غيابهما — لا يُعرض 0 زائفاً أبداً.
                     'المخزون: ${_adminStock(product)?.toString() ?? '—'} · ${product['stockStatus'] ?? ''}',
-                    style: const TextStyle(color: muted),
+                    style: TextStyle(color: context.subdued),
                   ),
                   trailing: PopupMenuButton<String>(
                     onSelected: (value) =>
@@ -659,19 +659,19 @@ class _CustomersPanelState extends State<_CustomersPanel> {
                     child: Text(
                       'تعذر تحميل العملاء: ${snapshot.error.toString().replaceFirst('Exception: ', '')}',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: muted),
+                      style: TextStyle(color: context.subdued),
                     ),
                   ),
                 );
               }
               if (!snapshot.hasData) {
-                return const Center(
-                  child: CircularProgressIndicator(color: gold),
+                return Center(
+                  child: CircularProgressIndicator(color: context.goldText),
                 );
               }
               if (snapshot.data!.isEmpty) {
-                return const Center(
-                  child: Text('لا يوجد عملاء مطابقون.', style: TextStyle(color: muted)),
+                return Center(
+                  child: Text('لا يوجد عملاء مطابقون.', style: TextStyle(color: context.subdued)),
                 );
               }
               return ListView.builder(
@@ -680,15 +680,15 @@ class _CustomersPanelState extends State<_CustomersPanel> {
                   final customer =
                       Map<String, dynamic>.from(snapshot.data![index]);
                   return Card(
-                    color: card,
+                    color: context.surfaceCard,
                     child: ListTile(
                       title: Text(
                         '${customer['displayName'] ?? ''}',
-                        style: const TextStyle(color: cream),
+                        style: TextStyle(color: context.ink),
                       ),
                       subtitle: Text(
                         '${customer['email'] ?? ''} · طلبات: ${customer['ordersCount'] ?? 0}',
-                        style: const TextStyle(color: muted),
+                        style: TextStyle(color: context.subdued),
                       ),
                     ),
                   );
@@ -741,13 +741,13 @@ class _OrdersPanelState extends State<_OrdersPanel> {
               child: Text(
                 'تعذر تحميل الطلبات: ${snapshot.error.toString().replaceFirst('Exception: ', '')}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: muted),
+                style: TextStyle(color: context.subdued),
               ),
             ),
           );
         }
         if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator(color: gold));
+          return Center(child: CircularProgressIndicator(color: context.goldText));
         }
         final data = snapshot.data!;
         final orders = (data['orders'] as List?) ?? [];
@@ -773,10 +773,10 @@ class _OrdersPanelState extends State<_OrdersPanel> {
             ),
             Expanded(
               child: orders.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
                         'لا توجد طلبات في هذا التصنيف.',
-                        style: TextStyle(color: muted),
+                        style: TextStyle(color: context.subdued),
                       ),
                     )
                   : RefreshIndicator(
@@ -788,20 +788,20 @@ class _OrdersPanelState extends State<_OrdersPanel> {
                               Map<String, dynamic>.from(orders[index]);
                           final ref = '${order['order_ref'] ?? ''}';
                           return Card(
-                            color: card,
+                            color: context.surfaceCard,
                             child: ListTile(
                               title: Text(
                                 ref,
-                                style: const TextStyle(color: cream),
+                                style: TextStyle(color: context.ink),
                               ),
                               subtitle: Text(
                                 '${order['created_at'] ?? ''} · ${order['governorate'] ?? ''} · ${orderStatusLabel('${order['status'] ?? ''}')} · ${paymentStatusLabel('${order['payment_status'] ?? ''}')}',
-                                style: const TextStyle(color: muted),
+                                style: TextStyle(color: context.subdued),
                               ),
                               trailing: Text(
                                 '${order['total'] ?? ''} ج.م',
-                                style: const TextStyle(
-                                  color: gold,
+                                style: TextStyle(
+                                  color: context.goldText,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -839,7 +839,7 @@ class _OrdersPanelState extends State<_OrdersPanel> {
                           : null,
                     ),
                     Text('صفحة $page من $totalPages',
-                        style: const TextStyle(color: muted)),
+                        style: TextStyle(color: context.subdued)),
                     IconButton(
                       icon: const Icon(Icons.arrow_back_ios, size: 16),
                       onPressed: page < totalPages
@@ -865,11 +865,11 @@ class _OrdersPanelState extends State<_OrdersPanel> {
       child: ChoiceChip(
         label: Text(
           count is num ? '$label ($count)' : label,
-          style: TextStyle(color: selected ? Colors.black : cream),
+          style: TextStyle(color: selected ? Colors.black : context.ink),
         ),
         selected: selected,
         selectedColor: gold,
-        backgroundColor: card,
+        backgroundColor: context.surfaceCard,
         onSelected: (_) => _pickStatus(value),
       ),
     );
@@ -1033,14 +1033,14 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
                   child: Text(
                     'تعذر تحميل الطلب: ${snapshot.error.toString().replaceFirst('Exception: ', '')}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: muted),
+                    style: TextStyle(color: context.subdued),
                   ),
                 ),
               );
             }
             if (!snapshot.hasData) {
-              return const Center(
-                child: CircularProgressIndicator(color: gold),
+              return Center(
+                child: CircularProgressIndicator(color: context.goldText),
               );
             }
             final order = Map<String, dynamic>.from(
@@ -1092,10 +1092,10 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
                   _row('الإجمالي', '${order['total'] ?? ''} ج.م'),
                 ]),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'تغيير حالة الطلب',
                   style: TextStyle(
-                    color: cream,
+                    color: context.ink,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1106,9 +1106,9 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
                   runSpacing: 8,
                   children: next.isEmpty
                       ? [
-                          const Text(
+                          Text(
                             'لا توجد انتقالات متاحة من هذه الحالة.',
-                            style: TextStyle(color: muted),
+                            style: TextStyle(color: context.subdued),
                           ),
                         ]
                       : next
@@ -1123,10 +1123,10 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
                           .toList(),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'مراجعة الدفع',
                   style: TextStyle(
-                    color: cream,
+                    color: context.ink,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1156,18 +1156,18 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
                         child: const Text('تسجيل استرداد'),
                       ),
                     ] else
-                      const Text(
+                      Text(
                         'لا توجد إجراءات دفع متاحة لهذه الحالة.',
-                        style: TextStyle(color: muted),
+                        style: TextStyle(color: context.subdued),
                       ),
                   ],
                 ),
                 if (history.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'سجل الطلب',
                     style: TextStyle(
-                      color: cream,
+                      color: context.ink,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1179,7 +1179,7 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Text(
                         '${event['createdAt'] ?? ''} · ${event['eventType'] ?? ''}: ${event['oldValue'] ?? ''} ← ${event['newValue'] ?? ''}${(event['reason'] as String?)?.isNotEmpty == true ? ' — ${event['reason']}' : ''}',
-                        style: const TextStyle(color: muted, fontSize: 12),
+                        style: TextStyle(color: context.subdued, fontSize: 12),
                       ),
                     );
                   }),
@@ -1193,7 +1193,7 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
   }
 
   Widget _section(String title, List<Widget> children) => Card(
-        color: card,
+        color: context.surfaceCard,
         margin: const EdgeInsets.only(bottom: 12),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -1202,8 +1202,8 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: gold,
+                style: TextStyle(
+                  color: context.goldText,
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1222,12 +1222,12 @@ class _OrderDetailPageState extends State<_OrderDetailPage> {
           children: [
             SizedBox(
               width: 110,
-              child: Text(label, style: const TextStyle(color: muted)),
+              child: Text(label, style: TextStyle(color: context.subdued)),
             ),
             Expanded(
               child: Text(
                 value,
-                style: const TextStyle(color: cream),
+                style: TextStyle(color: context.ink),
               ),
             ),
           ],
@@ -1313,18 +1313,18 @@ class _PushPanelState extends State<_PushPanel> {
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
+          Text(
             'إرسال إشعار للعملاء',
             style: TextStyle(
-              color: cream,
+              color: context.ink,
               fontSize: 19,
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'يصل الإشعار إلى التطبيق عبر Firebase — للمشتركين في الموضوع المختار فقط.',
-            style: TextStyle(color: muted, height: 1.6),
+            style: TextStyle(color: context.subdued, height: 1.6),
           ),
           const SizedBox(height: 16),
           TextField(
@@ -1395,14 +1395,14 @@ class _PushPanelState extends State<_PushPanel> {
               ),
               child: Text(
                 _result!,
-                style: const TextStyle(color: cream, height: 1.6),
+                style: TextStyle(color: context.ink, height: 1.6),
               ),
             ),
           ],
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'ملحوظة: نقطة الإرسال على الخادم تُنشر بشكل منفصل — إن ظهرت رسالة 404 فالإرسال لم يُفعَّل بعد.',
-            style: TextStyle(color: muted, fontSize: 11, height: 1.6),
+            style: TextStyle(color: context.subdued, fontSize: 11, height: 1.6),
           ),
         ],
       );

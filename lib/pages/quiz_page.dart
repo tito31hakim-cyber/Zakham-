@@ -44,15 +44,15 @@ class _QuizPageState extends State<QuizPage> {
         child: Padding(
           padding: const EdgeInsets.all(22),
           child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('0${step + 1} / 03', style: const TextStyle(color: gold)),
+            Text('0${step + 1} / 03', style: TextStyle(color: context.goldText)),
             const SizedBox(height: 12),
-            ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: (step + 1) / questions.length, minHeight: 5, color: gold, backgroundColor: Colors.white12)),
+            ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: (step + 1) / questions.length, minHeight: 5, color: context.goldText, backgroundColor: context.hairline)),
             const SizedBox(height: 28),
-            Text(question.$1, style: const TextStyle(color: cream, fontSize: 27, fontWeight: FontWeight.w600)),
+            Text(question.$1, style: TextStyle(color: context.ink, fontSize: 27, fontWeight: FontWeight.w600)),
             const SizedBox(height: 25),
             ...List.generate(question.$2.length, (index) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () => answer(index), child: Text(question.$2[index], style: const TextStyle(color: cream)))),
+                  child: SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () => answer(index), child: Text(question.$2[index], style: TextStyle(color: context.ink)))),
                 )),
           ]),
         ),

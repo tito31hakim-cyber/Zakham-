@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/customer_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/customer_auth.dart';
 import '../theme/app_theme.dart';
 import 'admin_page.dart';
@@ -30,7 +31,10 @@ String _statusLabel(String status) {
 }
 
 class AccountPage extends StatefulWidget {
-  const AccountPage({super.key});
+  const AccountPage({super.key, required this.onOpenSections});
+
+  /// يفتح صفحة «الأقسام».
+  final VoidCallback onOpenSections;
   @override
   State<AccountPage> createState() => _AccountPageState();
 }
@@ -127,27 +131,36 @@ class _AccountPageState extends State<AccountPage> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(22, 34, 22, 12),
             child: Text(
               'حسابي',
               style: TextStyle(
-                color: cream,
+                color: context.ink,
                 fontSize: 30,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(horizontal: 22),
             child: Text(
               'كل ما تحتاجه لتجربة تسوّق مريحة مع دار زخم.',
-              style: TextStyle(color: muted, height: 1.6),
+              style: TextStyle(color: context.subdued, height: 1.6),
             ),
           ),
           const SizedBox(height: 22),
           if (customer == null) _guestCard() else _memberCard(customer),
           const SizedBox(height: 20),
+          _themeRow(context),
+          const SizedBox(height: 8),
+          _item(
+            context,
+            Icons.grid_view_rounded,
+            'أقسام زخم',
+            'التشكيلة، طقس زخم، الإهداء، التغليف، باقات التوفير',
+            widget.onOpenSections,
+          ),
           if (customer == null) ...[
             _item(
               context,
@@ -219,15 +232,42 @@ class _AccountPageState extends State<AccountPage> {
               'اخرج من حسابك على هذا الجهاز',
               _logout,
             ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(22, 24, 22, 20),
             child: Text(
               'دار زخم للعطور • مصر',
               textAlign: TextAlign.center,
-              style: TextStyle(color: muted, fontSize: 11),
+              style: TextStyle(color: context.subdued, fontSize: 11),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// مبدّل الواجهة الفاتحة/الداكنة — يحفظ الاختيار على الجهاز.
+  Widget _themeRow(BuildContext context) {
+    final theme = context.watch<ThemeProvider>();
+    return Card(
+      color: context.surfaceCard,
+      margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+      child: SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        secondary: Icon(
+          theme.isLight ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+          color: context.goldText,
+        ),
+        title: Text(
+          'الواجهة الفاتحة',
+          style: TextStyle(color: context.ink, fontSize: 15),
+        ),
+        subtitle: Text(
+          theme.isLight ? 'خلفية عاجية فاتحة' : 'خلفية داكنة سوداء',
+          style: TextStyle(color: context.subdued, fontSize: 11),
+        ),
+        value: theme.isLight,
+        activeColor: context.goldText,
+        onChanged: theme.setLight,
       ),
     );
   }
@@ -237,14 +277,14 @@ class _AccountPageState extends State<AccountPage> {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [gold.withOpacity(.18), card],
+            colors: [gold.withOpacity(.18), context.surfaceCard],
           ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: gold.withOpacity(.25)),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.spa_outlined, color: gold, size: 34),
+            Icon(Icons.spa_outlined, color: context.goldText, size: 34),
             SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -253,7 +293,7 @@ class _AccountPageState extends State<AccountPage> {
                   Text(
                     'أهلاً بك في زخم',
                     style: TextStyle(
-                      color: cream,
+                      color: context.ink,
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
                     ),
@@ -261,7 +301,7 @@ class _AccountPageState extends State<AccountPage> {
                   SizedBox(height: 5),
                   Text(
                     'عطور مختارة لتترك أثراً يليق بك.',
-                    style: TextStyle(color: muted, fontSize: 12),
+                    style: TextStyle(color: context.subdued, fontSize: 12),
                   ),
                 ],
               ),
@@ -275,7 +315,7 @@ class _AccountPageState extends State<AccountPage> {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [gold.withOpacity(.18), card],
+            colors: [gold.withOpacity(.18), context.surfaceCard],
           ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: gold.withOpacity(.25)),
@@ -296,8 +336,8 @@ class _AccountPageState extends State<AccountPage> {
                     children: [
                       Text(
                         customer.displayName,
-                        style: const TextStyle(
-                          color: cream,
+                        style: TextStyle(
+                          color: context.ink,
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
                         ),
@@ -305,7 +345,7 @@ class _AccountPageState extends State<AccountPage> {
                       const SizedBox(height: 3),
                       Text(
                         customer.email,
-                        style: const TextStyle(color: muted, fontSize: 12),
+                        style: TextStyle(color: context.subdued, fontSize: 12),
                       ),
                     ],
                   ),
@@ -317,11 +357,11 @@ class _AccountPageState extends State<AccountPage> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  const Icon(Icons.phone_outlined, color: gold, size: 16),
+                  Icon(Icons.phone_outlined, color: context.goldText, size: 16),
                   const SizedBox(width: 6),
                   Text(
                     customer.phone,
-                    style: const TextStyle(color: cream, fontSize: 13),
+                    style: TextStyle(color: context.ink, fontSize: 13),
                   ),
                 ],
               ),
@@ -344,10 +384,10 @@ class _AccountPageState extends State<AccountPage> {
   Widget _verifiedChip(bool verified) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: verified ? gold.withOpacity(.16) : Colors.white10,
+          color: verified ? gold.withOpacity(.16) : context.hairlineSoft,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: verified ? gold.withOpacity(.4) : Colors.white24,
+            color: verified ? gold.withOpacity(.4) : context.hairline,
           ),
         ),
         child: Row(
@@ -355,14 +395,14 @@ class _AccountPageState extends State<AccountPage> {
           children: [
             Icon(
               verified ? Icons.verified : Icons.warning_amber_outlined,
-              color: verified ? gold : muted,
+              color: verified ? context.goldText : context.subdued,
               size: 14,
             ),
             const SizedBox(width: 4),
             Text(
               verified ? 'موثّق' : 'غير موثّق',
               style: TextStyle(
-                color: verified ? gold : muted,
+                color: verified ? context.goldText : context.subdued,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -380,11 +420,11 @@ class _AccountPageState extends State<AccountPage> {
           padding: const EdgeInsets.fromLTRB(22, 4, 14, 8),
           child: Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'طلباتي',
                   style: TextStyle(
-                    color: cream,
+                    color: context.ink,
                     fontSize: 19,
                     fontWeight: FontWeight.w700,
                   ),
@@ -392,59 +432,59 @@ class _AccountPageState extends State<AccountPage> {
               ),
               IconButton(
                 onPressed: _loadingOrders ? null : _loadOrders,
-                icon: const Icon(Icons.refresh, color: gold),
+                icon: Icon(Icons.refresh, color: context.goldText),
                 tooltip: 'تحديث الطلبات',
               ),
             ],
           ),
         ),
         if (_loadingOrders)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 18),
-            child: Center(child: CircularProgressIndicator(color: gold)),
+            child: Center(child: CircularProgressIndicator(color: context.goldText)),
           )
         else if (_ordersError != null)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
             child: Text(
               _ordersError!,
-              style: const TextStyle(color: muted, height: 1.6),
+              style: TextStyle(color: context.subdued, height: 1.6),
             ),
           )
         else if (orders.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(horizontal: 22, vertical: 6),
             child: Text(
               'لا توجد طلبات بعد — طلبك الأول بانتظارك في التشكيلة.',
-              style: TextStyle(color: muted, height: 1.6),
+              style: TextStyle(color: context.subdued, height: 1.6),
             ),
           )
         else
           ...orders.map(
             (order) => Card(
-              color: card,
+              color: context.surfaceCard,
               margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
               child: ListTile(
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
                 leading:
-                    const Icon(Icons.receipt_long_outlined, color: gold),
+                    Icon(Icons.receipt_long_outlined, color: context.goldText),
                 title: Text(
                   order.orderRef,
-                  style: const TextStyle(
-                    color: cream,
+                  style: TextStyle(
+                    color: context.ink,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 subtitle: Text(
                   '${order.createdAt.length >= 10 ? order.createdAt.substring(0, 10) : order.createdAt} • ${_statusLabel(order.status)}',
-                  style: const TextStyle(color: muted, fontSize: 11),
+                  style: TextStyle(color: context.subdued, fontSize: 11),
                 ),
                 trailing: Text(
                   '${order.total.toStringAsFixed(2)} EGP',
-                  style: const TextStyle(
-                    color: gold,
+                  style: TextStyle(
+                    color: context.goldText,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -465,23 +505,23 @@ class _AccountPageState extends State<AccountPage> {
     VoidCallback onTap,
   ) =>
       Card(
-        color: card,
+        color: context.surfaceCard,
         margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
         child: ListTile(
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-          leading: Icon(icon, color: gold),
+          leading: Icon(icon, color: context.goldText),
           title: Text(
             title,
-            style: const TextStyle(color: cream, fontSize: 15),
+            style: TextStyle(color: context.ink, fontSize: 15),
           ),
           subtitle: Text(
             subtitle,
-            style: const TextStyle(color: muted, fontSize: 11),
+            style: TextStyle(color: context.subdued, fontSize: 11),
           ),
-          trailing: const Icon(
+          trailing: Icon(
             Icons.arrow_back_ios_new,
-            color: gold,
+            color: context.goldText,
             size: 15,
           ),
           onTap: onTap,

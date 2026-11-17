@@ -49,7 +49,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       child: Scaffold(
         appBar: AppBar(title: const Text('الإشعارات')),
         body: loading
-            ? const Center(child: CircularProgressIndicator(color: gold))
+            ? Center(child: CircularProgressIndicator(color: context.goldText))
             : ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
@@ -57,7 +57,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [gold.withOpacity(.18), card],
+                        colors: [gold.withOpacity(.18), context.surfaceCard],
                       ),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: gold.withOpacity(.25)),
@@ -68,7 +68,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           push.available
                               ? Icons.notifications_active_outlined
                               : Icons.notifications_off_outlined,
-                          color: gold,
+                          color: context.goldText,
                           size: 34,
                         ),
                         const SizedBox(width: 14),
@@ -80,8 +80,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                 push.available
                                     ? 'الإشعارات الفورية مفعّلة'
                                     : 'الإشعارات غير مفعّلة بعد',
-                                style: const TextStyle(
-                                  color: cream,
+                                style: TextStyle(
+                                  color: context.ink,
                                   fontSize: 17,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -91,8 +91,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                 push.available
                                     ? 'سيصلك جديد الدار وتحديثات طلباتك فور صدورها.'
                                     : push.unavailableReason,
-                                style: const TextStyle(
-                                  color: muted,
+                                style: TextStyle(
+                                  color: context.subdued,
                                   fontSize: 12,
                                   height: 1.6,
                                 ),
@@ -104,10 +104,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
+                  Text(
                     'ماذا تريد أن يصلك؟',
                     style: TextStyle(
-                      color: cream,
+                      color: context.ink,
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
                     ),
@@ -115,12 +115,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   const SizedBox(height: 8),
                   ...PushService.topicTitles.entries.map(
                     (entry) => Card(
-                      color: card,
+                      color: context.surfaceCard,
                       margin: const EdgeInsets.only(bottom: 6),
                       child: SwitchListTile(
                         title: Text(
                           entry.value,
-                          style: const TextStyle(color: cream),
+                          style: TextStyle(color: context.ink),
                         ),
                         value: topics[entry.key] ?? false,
                         activeColor: gold,
@@ -150,9 +150,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     // رمز الجهاز لا يُعرض ولا يُنسخ: معرف الجهاز للإشعارات
                     // ولا حاجة لظهوره للمستخدم (أُزيل زر النسخ في 2026-11-17
                     // ضمن مراجعة الأمان).
-                    const Text(
+                    Text(
                       'هذا الجهاز مسجّل لاستقبال الإشعارات.',
-                      style: TextStyle(color: muted, fontSize: 12),
+                      style: TextStyle(color: context.subdued, fontSize: 12),
                     ),
                   ],
                 ],

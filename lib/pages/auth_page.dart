@@ -101,18 +101,18 @@ class _CustomerLoginPageState extends State<CustomerLoginPage> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(22, 26, 22, 28),
               children: [
-                const Text(
+                Text(
                   'أهلاً بعودتك إلى زخم',
                   style: TextStyle(
-                    color: cream,
+                    color: context.ink,
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'سجّل الدخول بحسابك لإتمام الطلب ومتابعة طلباتك.',
-                  style: TextStyle(color: muted, height: 1.6),
+                  style: TextStyle(color: context.subdued, height: 1.6),
                 ),
                 const SizedBox(height: 26),
                 TextFormField(
@@ -250,18 +250,18 @@ class _CustomerRegisterPageState extends State<CustomerRegisterPage> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(22, 26, 22, 28),
               children: [
-                const Text(
+                Text(
                   'انضم إلى دار زخم',
                   style: TextStyle(
-                    color: cream,
+                    color: context.ink,
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'حساب واحد لطلباتك كلها — والأرقام المصرية تُوثَّق برمز SMS، والأرقام الدولية تُسجَّل مباشرة.',
-                  style: TextStyle(color: muted, height: 1.6),
+                  style: TextStyle(color: context.subdued, height: 1.6),
                 ),
                 const SizedBox(height: 26),
                 TextFormField(
@@ -422,13 +422,13 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
         body: ListView(
           padding: const EdgeInsets.fromLTRB(22, 26, 22, 28),
           children: [
-            const Icon(Icons.sms_outlined, color: gold, size: 46),
+            Icon(Icons.sms_outlined, color: context.goldText, size: 46),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'أدخل رمز التأكيد',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: cream,
+                color: context.ink,
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
               ),
@@ -439,7 +439,7 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
                   ? 'أرسلنا رمزاً من 6 أرقام إلى $mask.'
                   : 'أرسلنا رمزاً من 6 أرقام إلى هاتفك.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: muted, height: 1.6),
+              style: TextStyle(color: context.subdued, height: 1.6),
             ),
             const SizedBox(height: 26),
             TextField(

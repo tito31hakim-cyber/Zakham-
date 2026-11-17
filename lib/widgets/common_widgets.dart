@@ -1,23 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/product.dart';
+import '../providers/theme_provider.dart';
 import '../theme/app_theme.dart';
 
 class Header extends StatelessWidget {
   const Header({super.key});
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
-        child: SizedBox(
-          height: 112,
-          width: double.infinity,
-          child: Image.asset(
-            'assets/brand/zakham-house-logo.png',
-            fit: BoxFit.contain,
+  Widget build(BuildContext context) {
+    final theme = context.watch<ThemeProvider>();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+      child: Stack(
+        children: [
+          SizedBox(
+            height: 112,
+            width: double.infinity,
+            child: Image.asset(
+              'assets/brand/zakham-house-logo.png',
+              fit: BoxFit.contain,
+            ),
           ),
-        ),
-      );
+          Positioned(
+            top: 0,
+            left: 0,
+            child: IconButton(
+              onPressed: theme.toggle,
+              tooltip: theme.isLight ? 'الواجهة الداكنة' : 'الواجهة الفاتحة',
+              icon: Icon(
+                theme.isLight ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                color: context.goldText,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class HeroBanner extends StatelessWidget {
@@ -41,6 +62,8 @@ class HeroBanner extends StatelessWidget {
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(color: const Color(0xFF32261E)),
               ),
+              // النص فوق الصورة والتدرج الأسود — يبقى بألوانه الداكنة
+              // الثابتة في الوضعين، لأن خلفيته صورة داكنة دائماً.
               const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -82,28 +105,28 @@ class QuizBanner extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 20),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: card,
+            color: context.surfaceCard,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: gold.withOpacity(.3)),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.auto_awesome, color: gold, size: 34),
-              SizedBox(width: 15),
+              Icon(Icons.auto_awesome, color: context.goldText, size: 34),
+              const SizedBox(width: 15),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('ثلاثة أسئلة فقط', style: TextStyle(color: gold, fontSize: 12)),
+                    Text('ثلاثة أسئلة فقط', style: TextStyle(color: context.goldText, fontSize: 12)),
                     Text(
                       'اكتشف الرائحة الأقرب لك',
-                      style: TextStyle(color: cream, fontSize: 17, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: context.ink, fontSize: 17, fontWeight: FontWeight.w600),
                     ),
-                    Text('نرشح لك عطراً يليق بذوقك', style: TextStyle(color: muted, fontSize: 12)),
+                    Text('نرشح لك عطراً يليق بذوقك', style: TextStyle(color: context.subdued, fontSize: 12)),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_back_ios_new, size: 16, color: gold),
+              Icon(Icons.arrow_back_ios_new, size: 16, color: context.goldText),
             ],
           ),
         ),
@@ -129,14 +152,14 @@ class ProductTile extends StatelessWidget {
         onTap: onTap,
         child: Container(
           height: 190,
-          decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(color: context.surfaceCard, borderRadius: BorderRadius.circular(20)),
           child: Row(
             children: [
               IconButton(
                 onPressed: onFavorite,
                 icon: Icon(
                   favorite ? Icons.favorite : Icons.favorite_border,
-                  color: favorite ? Colors.redAccent : gold,
+                  color: favorite ? Colors.redAccent : context.goldText,
                 ),
               ),
               Expanded(
@@ -147,13 +170,13 @@ class ProductTile extends StatelessWidget {
                     children: [
                       Text(
                         product.name,
-                        style: const TextStyle(color: cream, fontSize: 19, fontWeight: FontWeight.w600),
+                        style: TextStyle(color: context.ink, fontSize: 19, fontWeight: FontWeight.w600),
                       ),
                       Text(
                         product.categoryLabel.isEmpty
                             ? product.category.toUpperCase()
                             : product.categoryLabel,
-                        style: const TextStyle(color: gold, fontSize: 10, letterSpacing: 1.5),
+                        style: TextStyle(color: context.goldText, fontSize: 10, letterSpacing: 1.5),
                       ),
                       const SizedBox(height: 10),
                       Text(
@@ -161,12 +184,12 @@ class ProductTile extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
-                        style: const TextStyle(color: muted, fontSize: 12, height: 1.4),
+                        style: TextStyle(color: context.subdued, fontSize: 12, height: 1.4),
                       ),
                       const Spacer(),
                       Text(
                         '${product.price.toStringAsFixed(0)} ${product.currency}',
-                        style: const TextStyle(color: gold, fontSize: 16, fontWeight: FontWeight.w600),
+                        style: TextStyle(color: context.goldText, fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -195,7 +218,7 @@ class ApiProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        color: card,
+        color: context.surfaceCard,
         margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
         child: ListTile(
           onTap: onTap,
@@ -204,13 +227,13 @@ class ApiProductCard extends StatelessWidget {
             width: 48,
             height: 48,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const Icon(Icons.image_outlined, color: gold),
+            errorBuilder: (_, __, ___) => Icon(Icons.image_outlined, color: context.goldText),
           ),
-          title: Text(product.name, textAlign: TextAlign.right, style: const TextStyle(color: cream)),
+          title: Text(product.name, textAlign: TextAlign.right, style: TextStyle(color: context.ink)),
           subtitle: Text(
             '${product.size} • ${product.price.toStringAsFixed(2)} ${product.currency}',
             textAlign: TextAlign.right,
-            style: const TextStyle(color: gold),
+            style: TextStyle(color: context.goldText),
           ),
           trailing: Icon(
             product.inStock ? Icons.check_circle_outline : Icons.remove_circle_outline,
@@ -230,20 +253,20 @@ class NoteCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: context.hairline),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
-            const Icon(Icons.circle, color: gold, size: 8),
+            Icon(Icons.circle, color: context.goldText, size: 8),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 notes.isEmpty ? 'لا توجد بيانات بعد' : notes.join('، '),
-                style: const TextStyle(color: muted, fontSize: 12),
+                style: TextStyle(color: context.subdued, fontSize: 12),
               ),
             ),
-            Text(title, style: const TextStyle(color: cream, fontWeight: FontWeight.w600)),
+            Text(title, style: TextStyle(color: context.ink, fontWeight: FontWeight.w600)),
           ],
         ),
       );

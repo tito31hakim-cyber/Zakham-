@@ -135,7 +135,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         context: context,
         barrierDismissible: false,
         builder: (dialogContext) => AlertDialog(
-          icon: const Icon(Icons.check_circle_outline, color: gold, size: 42),
+          icon: Icon(Icons.check_circle_outline, color: context.goldText, size: 42),
           title: const Text('تم استلام طلبك'),
           content: Text(
             'رقم الطلب: ${result.orderRef}\n'
@@ -282,12 +282,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: gold.withOpacity(.24)),
                 ),
-                child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Icon(Icons.info_outline, color: gold, size: 19),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Icon(Icons.info_outline, color: context.goldText, size: 19),
                   SizedBox(width: 9),
                   Expanded(child: Text(
                     'رسوم التوصيل 120 ج.م لجميع المحافظات ومضافة إلى الإجمالي أدناه. الدفع مسبقاً عبر إنستاباي أو فودافون كاش بعد تأكيد المتجر لتعليمات التحويل.',
-                    style: TextStyle(color: muted, fontSize: 12, height: 1.55),
+                    style: TextStyle(color: context.subdued, fontSize: 12, height: 1.55),
                   )),
                 ]),
               ),
@@ -300,24 +300,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 top: false,
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
-                  decoration: const BoxDecoration(
-                    color: card,
-                    border: Border(top: BorderSide(color: Colors.white12)),
+                  decoration: BoxDecoration(
+                    color: context.surfaceCard,
+                    border: Border(top: BorderSide(color: context.hairline)),
                   ),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Row(children: [
-                      const Expanded(child: Text('إجمالي المنتجات', style: TextStyle(color: muted, fontSize: 12))),
-                      Text('${cart.subtotal.toStringAsFixed(2)} EGP', style: const TextStyle(color: cream, fontSize: 15, fontWeight: FontWeight.w600)),
+                      Expanded(child: Text('إجمالي المنتجات', style: TextStyle(color: context.subdued, fontSize: 12))),
+                      Text('${cart.subtotal.toStringAsFixed(2)} EGP', style: TextStyle(color: context.ink, fontSize: 15, fontWeight: FontWeight.w600)),
                     ]),
                     const SizedBox(height: 4),
-                    const Row(children: [
-                      Expanded(child: Text('التوصيل (جميع المحافظات)', style: TextStyle(color: muted, fontSize: 12))),
-                      Text('120.00 EGP', style: TextStyle(color: cream, fontSize: 15, fontWeight: FontWeight.w600)),
+                    Row(children: [
+                      Expanded(child: Text('التوصيل (جميع المحافظات)', style: TextStyle(color: context.subdued, fontSize: 12))),
+                      Text('120.00 EGP', style: TextStyle(color: context.ink, fontSize: 15, fontWeight: FontWeight.w600)),
                     ]),
                     const SizedBox(height: 6),
                     Row(children: [
-                      const Expanded(child: Text('الإجمالي شامل الشحن', style: TextStyle(color: cream, fontSize: 14, fontWeight: FontWeight.w700))),
-                      Text('${(cart.subtotal + shippingFee).toStringAsFixed(2)} EGP', style: const TextStyle(color: gold, fontSize: 18, fontWeight: FontWeight.w700)),
+                      Expanded(child: Text('الإجمالي شامل الشحن', style: TextStyle(color: context.ink, fontSize: 14, fontWeight: FontWeight.w700))),
+                      Text('${(cart.subtotal + shippingFee).toStringAsFixed(2)} EGP', style: TextStyle(color: context.goldText, fontSize: 18, fontWeight: FontWeight.w700)),
                     ]),
                     const SizedBox(height: 10),
                     SizedBox(
@@ -340,9 +340,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Widget _sectionTitle(String title, String subtitle) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: cream, fontSize: 19, fontWeight: FontWeight.w700)),
+          Text(title, style: TextStyle(color: context.ink, fontSize: 19, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          Text(subtitle, style: const TextStyle(color: muted, fontSize: 12)),
+          Text(subtitle, style: TextStyle(color: context.subdued, fontSize: 12)),
         ],
       );
 
@@ -376,11 +376,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }) {
     final isSelected = payment == value;
     return Card(
-      color: isSelected ? gold.withOpacity(.10) : card,
+      color: isSelected ? gold.withOpacity(.10) : context.surfaceCard,
       margin: const EdgeInsets.only(bottom: 9),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
-        side: BorderSide(color: isSelected ? gold : Colors.white12),
+        side: BorderSide(color: isSelected ? gold : context.hairline),
       ),
       child: RadioListTile<String>(
         value: value,
@@ -388,18 +388,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
         onChanged: submitting ? null : (next) => setState(() => payment = next!),
         activeColor: gold,
         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        secondary: Icon(icon, color: gold),
-        title: Text(title, style: const TextStyle(color: cream, fontWeight: FontWeight.w600)),
-        subtitle: Padding(padding: const EdgeInsets.only(top: 5), child: Text(subtitle, style: const TextStyle(color: muted, fontSize: 11, height: 1.45))),
+        secondary: Icon(icon, color: context.goldText),
+        title: Text(title, style: TextStyle(color: context.ink, fontWeight: FontWeight.w600)),
+        subtitle: Padding(padding: const EdgeInsets.only(top: 5), child: Text(subtitle, style: TextStyle(color: context.subdued, fontSize: 11, height: 1.45))),
       ),
     );
   }
 
   Widget _orderSummary(List<CartItem> items, double subtotal) => Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.white10)),
+        decoration: BoxDecoration(color: context.surfaceCard, borderRadius: BorderRadius.circular(18), border: Border.all(color: context.hairlineSoft)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('٣. مراجعة الطلب', style: TextStyle(color: cream, fontSize: 19, fontWeight: FontWeight.w700)),
+          Text('٣. مراجعة الطلب', style: TextStyle(color: context.ink, fontSize: 19, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
           ...items.map((item) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -416,28 +416,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(item.product.name, style: const TextStyle(color: cream, fontWeight: FontWeight.w600)),
+                    Text(item.product.name, style: TextStyle(color: context.ink, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 3),
-                    Text('${item.sizeMl} مل • ${item.product.concentrationLabel(item.concentration)} • الكمية: ${item.quantity}', style: const TextStyle(color: muted, fontSize: 11)),
+                    Text('${item.sizeMl} مل • ${item.product.concentrationLabel(item.concentration)} • الكمية: ${item.quantity}', style: TextStyle(color: context.subdued, fontSize: 11)),
                   ])),
                   const SizedBox(width: 8),
-                  Text('${item.total.toStringAsFixed(2)} ${item.product.currency}', style: const TextStyle(color: gold, fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text('${item.total.toStringAsFixed(2)} ${item.product.currency}', style: TextStyle(color: context.goldText, fontSize: 12, fontWeight: FontWeight.w600)),
                 ]),
               )),
-          const Divider(color: Colors.white12),
+          Divider(color: context.hairline),
           _summaryLine('مجموع المنتجات', '${subtotal.toStringAsFixed(2)} EGP'),
           const SizedBox(height: 8),
           _summaryLine('التوصيل (جميع المحافظات)', '120.00 EGP'),
           const SizedBox(height: 8),
           _summaryLine('الإجمالي شامل الشحن', '${(subtotal + shippingFee).toStringAsFixed(2)} EGP'),
           const SizedBox(height: 10),
-          const Text('الدفع مسبقاً عبر إنستاباي أو فودافون كاش بعد تأكيد المتجر لتعليمات التحويل.', style: TextStyle(color: muted, fontSize: 11, height: 1.5)),
+          Text('الدفع مسبقاً عبر إنستاباي أو فودافون كاش بعد تأكيد المتجر لتعليمات التحويل.', style: TextStyle(color: context.subdued, fontSize: 11, height: 1.5)),
         ]),
       );
 
-  Widget _summaryLine(String label, String value, {Color valueColor = cream}) => Row(children: [
-        Expanded(child: Text(label, style: const TextStyle(color: muted, fontSize: 13))),
-        Text(value, style: TextStyle(color: valueColor, fontSize: 13, fontWeight: FontWeight.w600)),
+  Widget _summaryLine(String label, String value, {Color? valueColor}) => Row(children: [
+        Expanded(child: Text(label, style: TextStyle(color: context.subdued, fontSize: 13))),
+        Text(value, style: TextStyle(color: valueColor ?? context.ink, fontSize: 13, fontWeight: FontWeight.w600)),
       ]);
 }
 
@@ -446,12 +446,12 @@ class _ProgressHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(16)),
-        child: const Row(children: [
-          Icon(Icons.verified_user_outlined, color: gold, size: 20),
+        decoration: BoxDecoration(color: context.surfaceCard, borderRadius: BorderRadius.circular(16)),
+        child: Row(children: [
+          Icon(Icons.verified_user_outlined, color: context.goldText, size: 20),
           SizedBox(width: 9),
-          Expanded(child: Text('خطوة أخيرة لإتمام طلبك', style: TextStyle(color: cream, fontWeight: FontWeight.w600))),
-          Text('الدفع الآمن', style: TextStyle(color: muted, fontSize: 11)),
+          Expanded(child: Text('خطوة أخيرة لإتمام طلبك', style: TextStyle(color: context.ink, fontWeight: FontWeight.w600))),
+          Text('الدفع الآمن', style: TextStyle(color: context.subdued, fontSize: 11)),
         ]),
       );
 }

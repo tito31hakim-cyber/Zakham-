@@ -3,12 +3,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:house_of_zakham/app.dart';
 import 'package:house_of_zakham/providers/cart_provider.dart';
+import 'package:house_of_zakham/providers/theme_provider.dart';
 
 void main() {
   testWidgets('House of Zakham home renders logo', (tester) async {
     await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (_) => CartProvider(),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => CartProvider()),
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ],
         child: const ZakhamApp(),
       ),
     );

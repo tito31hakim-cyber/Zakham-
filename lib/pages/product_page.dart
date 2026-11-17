@@ -71,7 +71,7 @@ class _ProductPageState extends State<ProductPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('تفاصيل العطر'),
-        actions: [IconButton(onPressed: _toggleFavorite, tooltip: favorite ? 'إزالة من المفضلة' : 'أضف للمفضلة', icon: Icon(favorite ? Icons.favorite : Icons.favorite_border, color: favorite ? Colors.redAccent : gold))],
+        actions: [IconButton(onPressed: _toggleFavorite, tooltip: favorite ? 'إزالة من المفضلة' : 'أضف للمفضلة', icon: Icon(favorite ? Icons.favorite : Icons.favorite_border, color: favorite ? Colors.redAccent : context.goldText))],
       ),
       body: Directionality(
         textDirection: TextDirection.rtl,
@@ -85,14 +85,14 @@ class _ProductPageState extends State<ProductPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text(product.name, textAlign: TextAlign.right, style: const TextStyle(color: cream, fontSize: 32, fontWeight: FontWeight.w600)),
+              Text(product.name, textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 32, fontWeight: FontWeight.w600)),
               if (product.nameEn.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(product.nameEn, textAlign: TextAlign.right, style: const TextStyle(color: muted, fontSize: 13, letterSpacing: 1.5)),
+                  child: Text(product.nameEn, textAlign: TextAlign.right, style: TextStyle(color: context.subdued, fontSize: 13, letterSpacing: 1.5)),
                 ),
               const SizedBox(height: 10),
-              Text(product.description.isEmpty ? 'هيبة الملوك ونفحات القصور الفاخرة، صُمم ليترك أثراً يليق بحضورك.' : product.description, textAlign: TextAlign.right, style: const TextStyle(color: muted, height: 1.8)),
+              Text(product.description.isEmpty ? 'هيبة الملوك ونفحات القصور الفاخرة، صُمم ليترك أثراً يليق بحضورك.' : product.description, textAlign: TextAlign.right, style: TextStyle(color: context.subdued, height: 1.8)),
               const SizedBox(height: 16),
               if (product.occasion.isNotEmpty || product.lasting.isNotEmpty)
                 Wrap(spacing: 8, runSpacing: 8, children: [
@@ -102,7 +102,7 @@ class _ProductPageState extends State<ProductPage> {
                     _InfoChip(icon: Icons.schedule_outlined, label: 'ثبات: ${product.lasting}'),
                 ]),
               const SizedBox(height: 20),
-              const Text('التركيز', textAlign: TextAlign.right, style: TextStyle(color: cream, fontSize: 18, fontWeight: FontWeight.w600)),
+              Text('التركيز', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 18, fontWeight: FontWeight.w600)),
               const SizedBox(height: 10),
               Wrap(spacing: 8, runSpacing: 8, children: concentrations.map((key) {
                 final selected = key == _concentration;
@@ -111,11 +111,11 @@ class _ProductPageState extends State<ProductPage> {
                   selected: selected,
                   onSelected: (_) => _selectConcentration(key),
                   selectedColor: gold.withOpacity(.25),
-                  labelStyle: TextStyle(color: selected ? gold : cream, fontWeight: selected ? FontWeight.w700 : FontWeight.normal),
+                  labelStyle: TextStyle(color: selected ? context.goldText : context.ink, fontWeight: selected ? FontWeight.w700 : FontWeight.normal),
                 );
               }).toList(growable: false)),
               const SizedBox(height: 16),
-              const Text('الحجم', textAlign: TextAlign.right, style: TextStyle(color: cream, fontSize: 18, fontWeight: FontWeight.w600)),
+              Text('الحجم', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 18, fontWeight: FontWeight.w600)),
               const SizedBox(height: 10),
               Wrap(spacing: 8, runSpacing: 8, children: _sizes.map((size) {
                 final selected = size == _sizeMl;
@@ -125,29 +125,29 @@ class _ProductPageState extends State<ProductPage> {
                   selected: selected,
                   onSelected: (_) => setState(() => _sizeMl = size),
                   selectedColor: gold.withOpacity(.25),
-                  labelStyle: TextStyle(color: selected ? gold : cream, fontWeight: selected ? FontWeight.w700 : FontWeight.normal),
+                  labelStyle: TextStyle(color: selected ? context.goldText : context.ink, fontWeight: selected ? FontWeight.w700 : FontWeight.normal),
                 );
               }).toList(growable: false)),
               const SizedBox(height: 20),
-              Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(16)), child: Row(children: [
-                Text('${_unitPrice.toStringAsFixed(0)} ${product.currency}', style: const TextStyle(color: gold, fontSize: 21, fontWeight: FontWeight.bold)),
+              Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: context.surfaceCard, borderRadius: BorderRadius.circular(16)), child: Row(children: [
+                Text('${_unitPrice.toStringAsFixed(0)} ${product.currency}', style: TextStyle(color: context.goldText, fontSize: 21, fontWeight: FontWeight.bold)),
                 const Spacer(),
-                Text('$_sizeMl مل · ${product.concentrationLabel(_concentration)}', style: const TextStyle(color: cream)),
+                Text('$_sizeMl مل · ${product.concentrationLabel(_concentration)}', style: TextStyle(color: context.ink)),
                 const SizedBox(width: 7),
-                const Icon(Icons.water_drop_outlined, color: gold),
+                Icon(Icons.water_drop_outlined, color: context.goldText),
               ])),
               const SizedBox(height: 24),
-              const Text('الهرم العطري', textAlign: TextAlign.right, style: TextStyle(color: cream, fontSize: 20, fontWeight: FontWeight.w600)),
+              Text('الهرم العطري', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 20, fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
               NoteCard(title: 'المقدمة', notes: product.topNotes),
               NoteCard(title: 'القلب', notes: product.heartNotes),
               NoteCard(title: 'القاعدة', notes: product.baseNotes),
               const SizedBox(height: 14),
-              Row(children: [const Icon(Icons.verified_outlined, color: gold, size: 19), const SizedBox(width: 8), Text(product.inStock ? 'متوفر وجاهز للطلب' : 'غير متوفر حالياً', style: TextStyle(color: product.inStock ? cream : muted))]),
+              Row(children: [Icon(Icons.verified_outlined, color: context.goldText, size: 19), const SizedBox(width: 8), Text(product.inStock ? 'متوفر وجاهز للطلب' : 'غير متوفر حالياً', style: TextStyle(color: product.inStock ? context.ink : context.subdued))]),
               const SizedBox(height: 20),
               SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: product.inStock ? _addToCart : null, icon: const Icon(Icons.add_shopping_cart), label: Text(product.inStock ? 'أضف إلى السلة' : 'غير متوفر'))),
               const SizedBox(height: 8),
-              const Text('رسوم التوصيل 120 ج.م لجميع المحافظات، والدفع مسبقاً عبر إنستاباي أو فودافون كاش.', textAlign: TextAlign.center, style: TextStyle(color: muted, fontSize: 11)),
+              Text('رسوم التوصيل 120 ج.م لجميع المحافظات، والدفع مسبقاً عبر إنستاباي أو فودافون كاش.', textAlign: TextAlign.center, style: TextStyle(color: context.subdued, fontSize: 11)),
             ]),
           ),
         ]),
@@ -164,14 +164,14 @@ class _InfoChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          color: card,
+          color: context.surfaceCard,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white12),
+          border: Border.all(color: context.hairline),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: gold, size: 15),
+          Icon(icon, color: context.goldText, size: 15),
           const SizedBox(width: 6),
-          Flexible(child: Text(label, style: const TextStyle(color: cream, fontSize: 12))),
+          Flexible(child: Text(label, style: TextStyle(color: context.ink, fontSize: 12))),
         ]),
       );
 }
