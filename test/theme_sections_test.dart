@@ -13,6 +13,19 @@ Future<void> _scrollTo(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
 }
 
+/// يعيد القائمة إلى الأعلى بسحبات تدريجية — لأن `scrollUntilVisible`
+/// يتطلب أن يكون الهدف مبنياً أصلاً، والعناصر البعيدة عن العرض تُبنى
+/// كسولاً (ListView). بعد إطالة قائمة الأقسام (مجموعة «خدمات الدار»)
+/// صار العودة المباشرة لعنوان علوي تفشل بـ «No element».
+Future<void> _scrollBackToTop(WidgetTester tester) async {
+  final scrollable = find.byType(Scrollable).first;
+  for (var i = 0; i < 6; i++) {
+    if (find.text('تصفّح الدار').evaluate().isNotEmpty) break;
+    await tester.drag(scrollable, const Offset(0, 500));
+    await tester.pumpAndSettle();
+  }
+}
+
 /// يضخ صفحة الأقسام مع تنقّل حقيقي لصفحة التفاصيل (كما يفعل
 /// `StoreShell` في التطبيق).
 Future<void> _pumpSections(WidgetTester tester) async {
@@ -32,6 +45,8 @@ Future<void> _pumpSections(WidgetTester tester) async {
           );
         },
         onOpenCollection: () {},
+        onFragranceCards: () {},
+        onVerify: () {},
       ),
     ),
   );
@@ -81,6 +96,7 @@ void main() {
       expect(find.text(section.title), findsOneWidget);
     }
     // تفاصيل طقس زخم بنصوص الموقع الحقيقية.
+    await _scrollBackToTop(tester);
     await _scrollTo(tester, find.text('طقس زخم'));
     await tester.tap(find.text('طقس زخم'));
     await tester.pumpAndSettle();

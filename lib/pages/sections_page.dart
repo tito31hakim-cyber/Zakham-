@@ -12,10 +12,18 @@ class SectionsPage extends StatelessWidget {
     super.key,
     required this.onSection,
     required this.onOpenCollection,
+    required this.onFragranceCards,
+    required this.onVerify,
   });
 
   final ValueChanged<String> onSection;
   final VoidCallback onOpenCollection;
+
+  /// يفتح صفحة «البطاقات العطرية».
+  final VoidCallback onFragranceCards;
+
+  /// يفتح صفحة «تحقق من الأصالة».
+  final VoidCallback onVerify;
 
   @override
   Widget build(BuildContext context) => Directionality(
@@ -48,6 +56,36 @@ class SectionsPage extends StatelessWidget {
                         ? onOpenCollection()
                         : onSection(section.id),
                   ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'خدمات الدار',
+                style: TextStyle(
+                  color: context.ink,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ServiceCard(
+                  icon: Icons.style_outlined,
+                  title: 'البطاقات العطرية',
+                  lead:
+                      'بطاقات العطور الأحد عشر، والمستكشف الذكي، ورادار يقارن عطرين.',
+                  onTap: onFragranceCards,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ServiceCard(
+                  icon: Icons.verified_outlined,
+                  title: 'تحقق من الأصالة',
+                  lead:
+                      'تحقق من رقم كرت عطرك أو امسح رمز QR للتأكد أنه أصلي من الدار.',
+                  onTap: onVerify,
                 ),
               ),
             ],
@@ -101,6 +139,81 @@ class _SectionCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         section.lead,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: context.subdued,
+                          fontSize: 12,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.arrow_back_ios_new, size: 15, color: context.goldText),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+/// بطاقة خدمة من خدمات الدار (البطاقات العطرية، التحقق من الأصالة)
+/// — بنفس شكل بطاقات الأقسام، لكنها تفتح صفحة خدمة لا قسماً.
+class _ServiceCard extends StatelessWidget {
+  const _ServiceCard({
+    required this.icon,
+    required this.title,
+    required this.lead,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String lead;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        color: context.surfaceCard,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: context.hairline),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: gold.withOpacity(.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: context.goldText, size: 26),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: context.ink,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        lead,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../services/product_share.dart';
+import '../services/reviews_api.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
 
@@ -21,12 +22,32 @@ class _ProductPageState extends State<ProductPage> {
   late int _sizeMl;
   bool _sharing = false;
 
+  /// تقييمات العملاء من `/api/reviews` — تحميل best-effort لا يعطّل
+  /// الصفحة أبداً.
+  final ReviewsApi _reviewsApi = ReviewsApi();
+  List<Review> _reviews = const <Review>[];
+  ReviewSummary? _summary;
+
   @override
   void initState() {
     super.initState();
     favorite = widget.favorite;
     _concentration = widget.product.defaultConcentration;
     _sizeMl = widget.product.defaultSizeMl;
+    _loadReviews();
+  }
+
+  Future<void> _loadReviews() async {
+    final results = await Future.wait([
+      _reviewsApi.fetchReviews(widget.product.id),
+      _reviewsApi.fetchSummary(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _reviews = results[0] as List<Review>;
+      final summaries = results[1] as Map<String, ReviewSummary>;
+      _summary = summaries[widget.product.id];
+    });
   }
 
   List<int> get _sizes => widget.product.availableSizes(_concentration);
@@ -165,6 +186,13 @@ class _ProductPageState extends State<ProductPage> {
               SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: product.inStock ? _addToCart : null, icon: const Icon(Icons.add_shopping_cart), label: Text(product.inStock ? 'أضف إلى السلة' : 'غير متوفر'))),
               const SizedBox(height: 8),
               Text('رسوم التوصيل 120 ج.م لجميع المحافظات، والدفع مسبقاً عبر إنستاباي أو فودافون كاش.', textAlign: TextAlign.center, style: TextStyle(color: context.subdued, fontSize: 11)),
+              const SizedBox(height: 26),
+              _ReviewsSection(
+                product: product,
+                reviews: _reviews,
+                summary: _summary,
+                onSubmitted: _loadReviews,
+              ),
             ]),
           ),
         ]),
@@ -190,5 +218,302 @@ class _InfoChip extends StatelessWidget {
           const SizedBox(width: 6),
           Flexible(child: Text(label, style: TextStyle(color: context.ink, fontSize: 12))),
         ]),
+      );
+}
+
+/// قسم «تقييمات العملاء» في صفحة العطر: متوسط النجوم وعدد التقييمات
+/// من `/api/reviews/summary`، وقائمة المعتمَدة فقط من
+/// `/api/reviews?productId=...`، ونموذج إرسال تقييم جديد (الاسم +
+/// النجوم + التجربة + رقم الطلب اختيارياً للتوثيق). التقييم الجديد
+/// يُحفظ بلا اعتماد فيُنشر بعد مراجعة الإدارة — ورسالة الخادم نفسها
+/// تُعرض للمستخدم.
+class _ReviewsSection extends StatefulWidget {
+  const _ReviewsSection({
+    required this.product,
+    required this.reviews,
+    required this.summary,
+    required this.onSubmitted,
+  });
+
+  final Product product;
+  final List<Review> reviews;
+  final ReviewSummary? summary;
+  final VoidCallback onSubmitted;
+
+  @override
+  State<_ReviewsSection> createState() => _ReviewsSectionState();
+}
+
+class _ReviewsSectionState extends State<_ReviewsSection> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _commentController = TextEditingController();
+  final TextEditingController _orderCodeController = TextEditingController();
+  final ReviewsApi _api = ReviewsApi();
+  int _rating = 5;
+  bool _submitting = false;
+  String? _message;
+  bool _messageOk = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _commentController.dispose();
+    _orderCodeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_submitting) return;
+    final name = _nameController.text.trim();
+    final comment = _commentController.text.trim();
+    if (name.length < 2) {
+      setState(() {
+        _message = 'الاسم مطلوب (حرفان على الأقل).';
+        _messageOk = false;
+      });
+      return;
+    }
+    if (comment.length < 10) {
+      setState(() {
+        _message = 'اكتب تجربتك في 10 أحرف على الأقل.';
+        _messageOk = false;
+      });
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _message = null;
+    });
+    final result = await _api.submitReview(
+      productId: widget.product.id,
+      customerName: name,
+      rating: _rating,
+      comment: comment,
+      orderCode: _orderCodeController.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() {
+      _submitting = false;
+      _message = result.message;
+      _messageOk = result.ok;
+      if (result.ok) {
+        _nameController.clear();
+        _commentController.clear();
+        _orderCodeController.clear();
+        _rating = 5;
+      }
+    });
+    if (result.ok) widget.onSubmitted();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = widget.summary;
+    final count = summary?.count ?? widget.reviews.length;
+    final average = summary?.average ??
+        (widget.reviews.isEmpty
+            ? 0.0
+            : widget.reviews
+                    .map((review) => review.rating)
+                    .reduce((a, b) => a + b) /
+                widget.reviews.length);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'تقييمات العملاء',
+          textAlign: TextAlign.right,
+          style: TextStyle(
+            color: context.ink,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (widget.reviews.isEmpty)
+          Text(
+            'كن أول من يشارك تجربته مع هذا العطر.',
+            textAlign: TextAlign.right,
+            style: TextStyle(color: context.subdued, height: 1.7),
+          )
+        else ...[
+          Row(
+            children: [
+              _StarRow(rating: average.round(), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                average.toStringAsFixed(1),
+                style: TextStyle(
+                  color: context.goldText,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '($count ${count == 1 ? 'تقييم' : 'تقييماً'})',
+                style: TextStyle(color: context.subdued, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...widget.reviews.map(
+            (review) => Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: context.surfaceCard,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: context.hairline),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          review.customerName,
+                          style: TextStyle(
+                            color: context.ink,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (review.verified)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: gold.withOpacity(.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.verified, color: gold, size: 13),
+                              SizedBox(width: 4),
+                              Text(
+                                'عميل موثّق',
+                                style: TextStyle(color: gold, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      _StarRow(rating: review.rating, size: 14),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    review.comment,
+                    style: TextStyle(color: context.subdued, height: 1.7),
+                  ),
+                  if (review.createdAt.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      review.createdAt.length >= 10
+                          ? review.createdAt.substring(0, 10)
+                          : review.createdAt,
+                      style: TextStyle(color: context.subdued, fontSize: 11),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 14),
+        Text(
+          'شارك تجربتك',
+          textAlign: TextAlign.right,
+          style: TextStyle(
+            color: context.ink,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _nameController,
+          decoration: const InputDecoration(hintText: 'اسمك'),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Text('تقييمك: ', style: TextStyle(color: context.ink)),
+            ...List.generate(
+              5,
+              (index) => IconButton(
+                onPressed: () => setState(() => _rating = index + 1),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(
+                  index < _rating ? Icons.star : Icons.star_border,
+                  color: gold,
+                  size: 28,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _commentController,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            hintText: 'اكتب تجربتك مع العطر (10 أحرف على الأقل)',
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _orderCodeController,
+          decoration: const InputDecoration(
+            hintText: 'رقم الطلب (اختياري — لتوثيق تقييمك)',
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: _submitting ? null : _submit,
+            child: Text(_submitting ? 'جارٍ الإرسال…' : 'أرسل تقييمك'),
+          ),
+        ),
+        if (_message != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            _message!,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _messageOk ? context.goldText : Colors.redAccent,
+              height: 1.7,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// صف نجوم للعرض (متوسط أو تقييم واحد) — عدد ممتلئ حسب التقريب.
+class _StarRow extends StatelessWidget {
+  const _StarRow({required this.rating, this.size = 16});
+  final int rating;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(
+          5,
+          (index) => Icon(
+            index < rating.clamp(0, 5) ? Icons.star : Icons.star_border,
+            color: gold,
+            size: size,
+          ),
+        ),
       );
 }

@@ -14,6 +14,8 @@ class HomePage extends StatelessWidget {
     required this.onFavorite,
     required this.onSection,
     required this.onOpenSections,
+    required this.onFragranceCards,
+    required this.onVerify,
   });
   final Product product;
   final ValueChanged<Product> onProduct;
@@ -26,6 +28,12 @@ class HomePage extends StatelessWidget {
 
   /// يفتح صفحة «الأقسام» الكاملة.
   final VoidCallback onOpenSections;
+
+  /// يفتح صفحة «البطاقات العطرية».
+  final VoidCallback onFragranceCards;
+
+  /// يفتح صفحة «تحقق من الأصالة».
+  final VoidCallback onVerify;
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -101,6 +109,34 @@ class HomePage extends StatelessWidget {
                       : onSection(section.id),
                 );
               },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
+            child: Text('خدمات الدار', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 21, fontWeight: FontWeight.w600)),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _SectionTile(
+                    icon: Icons.style_outlined,
+                    title: 'البطاقات العطرية',
+                    detail: 'المستكشف والرادار',
+                    onTap: onFragranceCards,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _SectionTile(
+                    icon: Icons.verified_outlined,
+                    title: 'تحقق من الأصالة',
+                    detail: 'رقم الكرت أو QR',
+                    onTap: onVerify,
+                  ),
+                ),
+              ],
             ),
           ),
           Padding(padding: const EdgeInsets.fromLTRB(20, 28, 20, 12), child: Text('تجربة تليق بك', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 21, fontWeight: FontWeight.w600))),

@@ -7,10 +7,12 @@ import 'models/product.dart';
 import 'pages/account_page.dart';
 import 'pages/cart_page.dart';
 import 'pages/collection_page.dart';
+import 'pages/fragrance_cards_page.dart';
 import 'pages/home_page.dart';
 import 'pages/product_page.dart';
 import 'pages/quiz_page.dart';
 import 'pages/sections_page.dart';
+import 'pages/verify_page.dart';
 import 'providers/cart_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/deep_link_service.dart';
@@ -126,6 +128,24 @@ class _StoreShellState extends State<StoreShell> {
 
   void openQuiz() => Navigator.push(context, MaterialPageRoute(builder: (_) => const QuizPage()));
 
+  /// يفتح صفحة «البطاقات العطرية» (البطاقات + المستكشف + الرادار).
+  void openFragranceCards() => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FragranceCardsPage(
+            onProduct: openProduct,
+            isFavorite: isFavorite,
+            onFavorite: toggleFavorite,
+          ),
+        ),
+      );
+
+  /// يفتح صفحة «تحقق من الأصالة» (إدخال الرقم أو مسح QR).
+  void openVerify() => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const VerifyPage()),
+      );
+
   /// يفتح صفحة «الأقسام» (التشكيلة، طقس زخم، الإهداء، التغليف
   /// الفاخر، باقات التوفير) فوق التبويبات.
   void openSections() => Navigator.push(
@@ -134,6 +154,8 @@ class _StoreShellState extends State<StoreShell> {
           builder: (_) => SectionsPage(
             onSection: openSection,
             onOpenCollection: openCollectionTab,
+            onFragranceCards: openFragranceCards,
+            onVerify: openVerify,
           ),
         ),
       );
@@ -168,6 +190,8 @@ class _StoreShellState extends State<StoreShell> {
         onFavorite: () => toggleFavorite(featuredProduct),
         onSection: openSection,
         onOpenSections: openSections,
+        onFragranceCards: openFragranceCards,
+        onVerify: openVerify,
       ),
       CollectionPage(
         onProduct: openProduct,
