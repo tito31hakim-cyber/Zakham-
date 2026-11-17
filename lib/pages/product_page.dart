@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
+import '../services/product_share.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
 
@@ -18,6 +19,7 @@ class _ProductPageState extends State<ProductPage> {
   late bool favorite;
   late String _concentration;
   late int _sizeMl;
+  bool _sharing = false;
 
   @override
   void initState() {
@@ -48,6 +50,18 @@ class _ProductPageState extends State<ProductPage> {
     setState(() => favorite = !favorite);
   }
 
+  /// مشاركة العطر (نص عربي + صورة العطر الحقيقية) — حارس ضد
+  /// الضغط المزدوج أثناء فتح ورقة المشاركة.
+  Future<void> _shareProduct() async {
+    if (_sharing) return;
+    setState(() => _sharing = true);
+    try {
+      await ProductShare.share(widget.product);
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+
   void _addToCart() {
     final product = widget.product;
     if (!product.inStock) {
@@ -71,7 +85,10 @@ class _ProductPageState extends State<ProductPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('تفاصيل العطر'),
-        actions: [IconButton(onPressed: _toggleFavorite, tooltip: favorite ? 'إزالة من المفضلة' : 'أضف للمفضلة', icon: Icon(favorite ? Icons.favorite : Icons.favorite_border, color: favorite ? Colors.redAccent : context.goldText))],
+        actions: [
+          IconButton(onPressed: _sharing ? null : _shareProduct, tooltip: 'مشاركة العطر', icon: Icon(Icons.share_outlined, color: context.goldText)),
+          IconButton(onPressed: _toggleFavorite, tooltip: favorite ? 'إزالة من المفضلة' : 'أضف للمفضلة', icon: Icon(favorite ? Icons.favorite : Icons.favorite_border, color: favorite ? Colors.redAccent : context.goldText)),
+        ],
       ),
       body: Directionality(
         textDirection: TextDirection.rtl,

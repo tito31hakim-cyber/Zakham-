@@ -34,6 +34,7 @@ class Product {
     this.defaultConcentration = 'presence',
     this.prices = const <String, dynamic>{},
     this.variants = const <String, dynamic>{},
+    this.tags = const <String>[],
   });
 
   final String id;
@@ -57,6 +58,62 @@ class Product {
   final String defaultConcentration;
   final Map<String, dynamic> prices;
   final Map<String, dynamic> variants;
+  /// وسوم الخادم (مثل `gender:unisex` / `gender:male`) — منها يُستنتج النوع.
+  final List<String> tags;
+
+  /// رابط صفحة العطر على الموقع — وهو نفسه رابط المشاركة والرابط العميق.
+  String get productUrl => 'https://zakhamhouse.shop/product/$id';
+
+  /// النوع من الوسوم: `male` / `female` / `unisex`، أو `''` إن لم يحدده الخادم.
+  String get gender {
+    for (final tag in tags) {
+      final value = tag.trim().toLowerCase();
+      if (value == 'gender:male') return 'male';
+      if (value == 'gender:female') return 'female';
+      if (value == 'gender:unisex') return 'unisex';
+    }
+    return '';
+  }
+
+  /// اسم النوع للعرض.
+  String get genderLabel {
+    switch (gender) {
+      case 'male':
+        return 'رجالي';
+      case 'female':
+        return 'نسائي';
+      case 'unisex':
+        return 'للجنسين';
+      default:
+        return '';
+    }
+  }
+
+  /// كل النوتات (مقدمة + قلب + قاعدة) كنص واحد — أساس البحث بالنوتة.
+  String get allNotesText =>
+      <String>[...topNotes, ...heartNotes, ...baseNotes].join(' ');
+
+  /// هل تطابق النوتات كلمة نوتة معينة؟ المقارنة على مستوى الكلمة
+  /// الكاملة (مع «ال» أو بدونها)، حتى لا يطابق «ورد» مثلاً كلمة
+  /// «وردي» في «فلفل وردي».
+  bool matchesNote(String keyword) {
+    final key = keyword.trim();
+    if (key.isEmpty) return false;
+    final words = allNotesText
+        .split(RegExp(r'[\s،,.;:()\[\]"''«»]+'))
+        .map((word) => word.trim())
+        .where((word) => word.isNotEmpty);
+    return words.any((word) => word == key || word == 'ال$key');
+  }
+
+  /// هل يطابق نص الموسم كلمة مفتاحية (مثل «شتو» في «الليالي الشتوية»)
+  /// أو العبارة «كل الفصول»؟
+  bool matchesSeason(String needle) =>
+      needle.isNotEmpty && season.contains(needle);
+
+  /// هل تطابق المناسبة كلمة مفتاحية (مثل «رسمي» في «مناسبات رسمية»)؟
+  bool matchesOccasion(String needle) =>
+      needle.isNotEmpty && occasion.contains(needle);
 
   /// ترتيب التركيزات المعتمد في المتجر الحي.
   static const List<String> concentrationOrder = <String>[
@@ -209,6 +266,7 @@ class Product {
       defaultConcentration: defaultConcentration ?? this.defaultConcentration,
       prices: prices,
       variants: variants,
+      tags: tags,
     );
   }
 
@@ -285,6 +343,14 @@ class Product {
     final season = '${json['season'] ?? ''}'.trim();
     final category = '${json['category'] ?? ''}';
     final categoryLabel = '${json['categoryLabel'] ?? ''}'.trim();
+    final rawTags = json['tags'];
+    final tags = rawTags is List
+        ? rawTags
+            .whereType<String>()
+            .map((tag) => tag.trim())
+            .where((tag) => tag.isNotEmpty)
+            .toList(growable: false)
+        : const <String>[];
 
     return Product(
       id: '${json['product_id'] ?? json['id'] ?? ''}',
@@ -310,6 +376,7 @@ class Product {
       defaultConcentration: defaultConcentration,
       prices: prices,
       variants: variants,
+      tags: tags,
     );
   }
 }

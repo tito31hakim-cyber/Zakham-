@@ -212,9 +212,17 @@ class ProductTile extends StatelessWidget {
 }
 
 class ApiProductCard extends StatelessWidget {
-  const ApiProductCard({super.key, required this.product, required this.onTap});
+  const ApiProductCard({
+    super.key,
+    required this.product,
+    required this.onTap,
+    this.favorite = false,
+    this.onFavorite,
+  });
   final Product product;
   final VoidCallback onTap;
+  final bool favorite;
+  final VoidCallback? onFavorite;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -235,10 +243,22 @@ class ApiProductCard extends StatelessWidget {
             textAlign: TextAlign.right,
             style: TextStyle(color: context.goldText),
           ),
-          trailing: Icon(
-            product.inStock ? Icons.check_circle_outline : Icons.remove_circle_outline,
-            color: product.inStock ? Colors.green : Colors.redAccent,
-          ),
+          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+            if (onFavorite != null)
+              IconButton(
+                onPressed: onFavorite,
+                tooltip: favorite ? 'إزالة من المفضلة' : 'أضف للمفضلة',
+                icon: Icon(
+                  favorite ? Icons.favorite : Icons.favorite_border,
+                  color: favorite ? Colors.redAccent : context.goldText,
+                  size: 20,
+                ),
+              ),
+            Icon(
+              product.inStock ? Icons.check_circle_outline : Icons.remove_circle_outline,
+              color: product.inStock ? Colors.green : Colors.redAccent,
+            ),
+          ]),
         ),
       );
 }

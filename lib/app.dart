@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'data/featured_product.dart';
@@ -11,6 +13,9 @@ import 'pages/quiz_page.dart';
 import 'pages/sections_page.dart';
 import 'providers/cart_provider.dart';
 import 'providers/theme_provider.dart';
+import 'services/deep_link_service.dart';
+import 'services/favorites_service.dart';
+import 'services/product_catalog.dart';
 import 'theme/app_theme.dart';
 import 'widgets/common_widgets.dart';
 
@@ -40,6 +45,59 @@ class _StoreShellState extends State<StoreShell> {
   int selected = 0;
   final Set<String> favoriteIds = <String>{};
   final Map<String, Product> knownProducts = <String, Product>{featuredProduct.id: featuredProduct};
+  final FavoritesService _favoritesService = FavoritesService();
+  final DeepLinkService _deepLinkService = DeepLinkService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+    // الروابط العميقة best-effort: أي فشل في قناة المنصة يُتجاهل.
+    unawaited(
+      _deepLinkService.init(onProductSlug: _openProductSlug),
+    );
+  }
+
+  @override
+  void dispose() {
+    _deepLinkService.dispose();
+    super.dispose();
+  }
+
+  /// يستعيد المفضلة المحفوظة محلياً (مفتاح `zakham_favorites`).
+  Future<void> _loadFavorites() async {
+    final saved = await _favoritesService.load();
+    if (!mounted || saved.isEmpty) return;
+    setState(() => favoriteIds.addAll(saved));
+  }
+
+  /// يفتح عطراً من رابط عميق `zakhamhouse.shop/product/<slug>`: يجرّب
+  /// المنتجات المعروفة أولاً، ثم يجلب التشكيلة (من الشبكة أو الكاش)
+  /// ليطابق الـ slug؛ وإن لم يُوجد يخبر المستخدم بدلاً من الصمت.
+  Future<void> _openProductSlug(String slug) async {
+    var product = knownProducts[slug];
+    if (product == null) {
+      try {
+        final catalog = await ProductCatalog().fetchCatalog();
+        for (final item in catalog.products) {
+          if (item.id == slug) {
+            product = item;
+            break;
+          }
+        }
+      } catch (_) {
+        product = null;
+      }
+    }
+    if (!mounted) return;
+    if (product == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الرابط لا يشير إلى عطر متاح حالياً.')),
+      );
+      return;
+    }
+    openProduct(product);
+  }
 
   bool isFavorite(Product product) => favoriteIds.contains(product.id);
 
@@ -48,6 +106,8 @@ class _StoreShellState extends State<StoreShell> {
       knownProducts[product.id] = product;
       if (!favoriteIds.add(product.id)) favoriteIds.remove(product.id);
     });
+    // الحفظ محلي فقط، وbest-effort — لا يعطّل التبديل أبداً.
+    unawaited(_favoritesService.save(favoriteIds));
   }
 
   void openProduct(Product product) {
@@ -111,8 +171,8 @@ class _StoreShellState extends State<StoreShell> {
       ),
       CollectionPage(
         onProduct: openProduct,
-        favorite: isFavorite(featuredProduct),
-        onFavorite: () => toggleFavorite(featuredProduct),
+        isFavorite: isFavorite,
+        onFavorite: toggleFavorite,
       ),
       _FavoritesPage(products: savedProducts, onProduct: openProduct, onFavorite: toggleFavorite),
       const CartPage(),

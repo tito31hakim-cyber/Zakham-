@@ -12,7 +12,32 @@ class ProductApi {
   final String baseUrl;
   final String? token;
 
-  Future<List<Product>> fetchProducts() async {
+  Future<List<Product>> fetchProducts() async =>
+      parseProducts(await fetchProductsRaw());
+
+  /// يحوّل رد `/api/storefront` الخام (JSON) إلى قائمة منتجات ظاهرة.
+  static List<Product> parseProducts(String body) {
+    final decoded = jsonDecode(body);
+    final List<dynamic> items = decoded is List
+        ? decoded
+        : decoded is Map && decoded['products'] is List
+            ? decoded['products'] as List<dynamic>
+            : decoded is Map && decoded['data'] is List
+                ? decoded['data'] as List<dynamic>
+                : const <dynamic>[];
+
+    return items
+        .whereType<Map>()
+        .map((item) => Product.fromJson(Map<String, dynamic>.from(item)))
+        // المنتجات غير الظاهرة (visible == false) لا تظهر في المتجر الحي
+        // إطلاقاً، فتُستبعد هنا أيضاً.
+        .where((product) => product.visible)
+        .toList(growable: false);
+  }
+
+  /// يجلب رد `/api/storefront` الخام (JSON كنص) — يُستخدم عند الحاجة
+  /// لحفظ الرد نفسه (كتالوج بلا نت) لا المنتجات المحلَّلة فقط.
+  Future<String> fetchProductsRaw() async {
     final uri = baseUrl == AppConfig.apiBaseUrl
         ? AppConfig.productsUri
         : Uri.parse(baseUrl);
@@ -44,22 +69,6 @@ class ProductApi {
     if (!contentType.contains('application/json') || body.startsWith('<')) {
       throw Exception('لم تُرجع خدمة المنتجات JSON صالحًا.');
     }
-
-    final decoded = jsonDecode(body);
-    final List<dynamic> items = decoded is List
-        ? decoded
-        : decoded is Map && decoded['products'] is List
-            ? decoded['products'] as List<dynamic>
-            : decoded is Map && decoded['data'] is List
-                ? decoded['data'] as List<dynamic>
-                : const <dynamic>[];
-
-    return items
-        .whereType<Map>()
-        .map((item) => Product.fromJson(Map<String, dynamic>.from(item)))
-        // المنتجات غير الظاهرة (visible == false) لا تظهر في المتجر الحي
-        // إطلاقاً، فتُستبعد هنا أيضاً.
-        .where((product) => product.visible)
-        .toList(growable: false);
+    return body;
   }
 }

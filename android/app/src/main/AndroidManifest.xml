@@ -35,16 +35,16 @@
                 <action android:name="FLUTTER_NOTIFICATION_CLICK" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <!-- روابط المتجر https://zakhamhouse.shop: تفتح التطبيق عند الضغط
-                 على رابط المتجر (دون أن تؤثر على الإطلاق من الأيقونة).
-                 ملاحظة: الربط التلقائي الكامل (App Links) ما زال يحتاج ملف
-                 assetlinks.json على الخادم ومعالجة الرابط داخل Flutter؛
-                 هذا الفلتر يعلن الارتباط فقط ولا يكسر الإطلاق. -->
+            <!-- روابط منتجات المتجر https://zakhamhouse.shop/product/<slug>:
+                 تفتح التطبيق مباشرة عند الضغط على رابط عطر (App Links).
+                 `autoVerify` يتحقق من ملف `assetlinks.json` على الخادم،
+                 ومعالجة الرابط داخل Flutter في `DeepLinkService`
+                 (يفتح صفحة العطر المطابق للـ slug). -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="zakhamhouse.shop" />
+                <data android:scheme="https" android:host="zakhamhouse.shop" android:pathPrefix="/product/" />
             </intent-filter>
         </activity>
         <!-- Default notification channel for Firebase Cloud Messaging. -->
