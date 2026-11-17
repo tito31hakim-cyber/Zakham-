@@ -3,6 +3,45 @@ import 'package:flutter/material.dart';
 import '../services/admin_api.dart';
 import '../theme/app_theme.dart';
 
+/// Arabic labels for server order/payment statuses.
+String orderStatusLabel(String status) => switch (status) {
+      'pending_transfer' => 'بانتظار التحويل',
+      'paid' => 'مدفوع',
+      'processing' => 'قيد التجهيز',
+      'shipped' => 'تم الشحن',
+      'delivered' => 'تم التوصيل',
+      'cancelled' => 'ملغي',
+      _ => status,
+    };
+
+String paymentStatusLabel(String status) => switch (status) {
+      'unpaid' => 'غير مدفوع',
+      'proof_submitted' => 'تم إرسال الإثبات',
+      'verified' => 'تم التحقق',
+      'rejected' => 'مرفوض',
+      'refunded' => 'مسترد',
+      _ => status,
+    };
+
+/// Allowed next order statuses, exactly as the server enforces them.
+const Map<String, List<String>> _nextStatuses = {
+  'pending_transfer': ['paid', 'cancelled'],
+  'paid': ['processing', 'cancelled'],
+  'processing': ['shipped', 'cancelled'],
+  'shipped': ['delivered'],
+  'delivered': [],
+  'cancelled': ['pending_transfer'],
+};
+
+const Map<String, String> _statusActionLabel = {
+  'paid': 'تأكيد الدفع',
+  'processing': 'بدء التجهيز',
+  'shipped': 'تم الشحن',
+  'delivered': 'تم التوصيل',
+  'cancelled': 'إلغاء الطلب',
+  'pending_transfer': 'إعادة فتح الطلب',
+};
+
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});
   @override
@@ -10,29 +49,58 @@ class AdminLoginPage extends StatefulWidget {
 }
 
 class _AdminLoginPageState extends State<AdminLoginPage> {
-  final token = TextEditingController();
+  final email = TextEditingController();
+  final password = TextEditingController();
+  final totp = TextEditingController();
   bool loading = false;
+  bool totpRequired = false;
+  String? error;
+
   @override
   void dispose() {
-    token.dispose();
+    email.dispose();
+    password.dispose();
+    totp.dispose();
     super.dispose();
   }
 
   Future<void> open() async {
-    if (token.text.trim().isEmpty) return;
-    setState(() => loading = true);
+    if (email.text.trim().isEmpty || password.text.isEmpty) {
+      setState(() => error = 'أدخل البريد وكلمة المرور.');
+      return;
+    }
+    if (totpRequired && totp.text.trim().isEmpty) {
+      setState(() => error = 'أدخل رمز التحقق الثنائي من تطبيق المصادقة.');
+      return;
+    }
+    setState(() {
+      loading = true;
+      error = null;
+    });
     try {
-      final api = AdminApi(token: token.text.trim());
-      await api.analytics();
-      if (mounted)
+      final api = AdminApi();
+      await api.login(
+        email: email.text.trim(),
+        password: password.text,
+        totp: totpRequired ? totp.text.trim() : null,
+      );
+      if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => AdminDashboardPage(api: api)),
         );
-    } catch (error) {
-      if (mounted)
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('تعذر التحقق: $error')));
+      }
+    } on TotpRequiredException {
+      if (mounted) {
+        setState(() {
+          totpRequired = true;
+          error = 'هذا الحساب محمي برمز تحقق ثنائي — أدخل الرمز من تطبيق المصادقة.';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -44,42 +112,77 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(title: const Text('دخول الإدارة')),
-        body: Padding(
+        body: ListView(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              const Icon(
-                Icons.admin_panel_settings_outlined,
-                color: gold,
-                size: 70,
+          children: [
+            const Icon(
+              Icons.admin_panel_settings_outlined,
+              color: gold,
+              size: 70,
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'لوحة إدارة دار زخم',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: cream,
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 18),
-              const Text(
-                'لوحة إدارة دار زخم',
-                style: TextStyle(
-                  color: cream,
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'سجّل الدخول ببريد الإدارة وكلمة المرور — نفس حساب لوحة تحكم الموقع.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: muted),
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: email,
+              keyboardType: TextInputType.emailAddress,
+              textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(
+                labelText: 'بريد الإدارة',
+                prefixIcon: Icon(Icons.email_outlined),
               ),
-              const SizedBox(height: 24),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: password,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'كلمة المرور',
+                prefixIcon: Icon(Icons.lock_outline),
+              ),
+            ),
+            if (totpRequired) ...[
+              const SizedBox(height: 14),
               TextField(
-                controller: token,
-                obscureText: true,
+                controller: totp,
+                keyboardType: TextInputType.number,
+                textDirection: TextDirection.ltr,
                 decoration: const InputDecoration(
-                  labelText: 'رمز الإدارة',
-                  prefixIcon: Icon(Icons.key_outlined),
+                  labelText: 'رمز التحقق الثنائي',
+                  prefixIcon: Icon(Icons.security_outlined),
                 ),
-              ),
-              const SizedBox(height: 18),
-              FilledButton(
-                onPressed: loading ? null : open,
-                child: loading
-                    ? const CircularProgressIndicator()
-                    : const Text('دخول آمن'),
               ),
             ],
-          ),
+            if (error != null) ...[
+              const SizedBox(height: 14),
+              Text(error!, style: const TextStyle(color: Colors.redAccent)),
+            ],
+            const SizedBox(height: 18),
+            FilledButton(
+              onPressed: loading ? null : open,
+              child: loading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('دخول آمن'),
+            ),
+          ],
         ),
       ),
     );
@@ -96,10 +199,21 @@ class AdminDashboardPage extends StatefulWidget {
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
   int tab = 0;
   late Future<Map<String, dynamic>> stats;
+
   @override
   void initState() {
     super.initState();
     stats = widget.api.analytics();
+  }
+
+  Future<void> _logout() async {
+    await widget.api.logout();
+    if (mounted) Navigator.pop(context);
+  }
+
+  String _money(dynamic value) {
+    if (value is num) return '${value.toStringAsFixed(0)} ج.م';
+    return '—';
   }
 
   @override
@@ -111,8 +225,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           title: const Text('لوحة الإدارة'),
           actions: [
             IconButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: _logout,
               icon: const Icon(Icons.logout),
+              tooltip: 'تسجيل الخروج',
             ),
           ],
         ),
@@ -120,12 +235,27 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           children: [
             FutureBuilder<Map<String, dynamic>>(
               future: stats,
-              builder: (_, snapshot) => snapshot.hasData
-                  ? _stats(snapshot.data!)
-                  : const Padding(
-                      padding: EdgeInsets.all(18),
-                      child: CircularProgressIndicator(color: gold),
-                    ),
+              builder: (_, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Padding(
+                    padding: EdgeInsets.all(18),
+                    child: CircularProgressIndicator(color: gold),
+                  );
+                }
+                final data = snapshot.data!;
+                return Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _stat('الطلبات', '${data['orders'] ?? '—'}'),
+                      _stat('الإيرادات', _money(data['revenue'])),
+                      _stat('بانتظار الدفع', '${data['pending'] ?? '—'}'),
+                      _stat('تم التوصيل', '${data['delivered'] ?? '—'}'),
+                    ],
+                  ),
+                );
+              },
             ),
             Expanded(
               child: IndexedStack(
@@ -133,7 +263,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 children: [
                   _ProductsPanel(api: widget.api),
                   _CustomersPanel(api: widget.api),
-                  const _OrdersPanel(),
+                  _OrdersPanel(api: widget.api),
                 ],
               ),
             ),
@@ -161,29 +291,26 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  Widget _stats(Map<String, dynamic> data) => Padding(
-    padding: const EdgeInsets.all(12),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _stat('الطلبات', data['orders']),
-        _stat('العملاء', data['customers']),
-      ],
-    ),
-  );
-  Widget _stat(String label, dynamic value) => Column(
-    children: [
-      Text(
-        '$value',
-        style: const TextStyle(
-          color: gold,
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
+  Widget _stat(String label, String value) => Expanded(
+        child: Column(
+          children: [
+            Text(
+              value,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: gold,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: muted, fontSize: 12),
+            ),
+          ],
         ),
-      ),
-      Text(label, style: const TextStyle(color: muted)),
-    ],
-  );
+      );
 }
 
 class _ProductsPanel extends StatefulWidget {
@@ -349,9 +476,15 @@ class _ProductsPanelState extends State<_ProductsPanel> {
             .showSnackBar(const SnackBar(content: Text('تم حفظ المنتج')));
       }
     } catch (error) {
-      if (mounted)
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('تعذر الحفظ: $error')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'تعذر الحفظ: ${error.toString().replaceFirst('Exception: ', '')}',
+            ),
+          ),
+        );
+      }
     }
     name.dispose();
     stock.dispose();
@@ -388,9 +521,15 @@ class _ProductsPanelState extends State<_ProductsPanel> {
             .showSnackBar(const SnackBar(content: Text('تم إخفاء المنتج')));
       }
     } catch (error) {
-      if (mounted)
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('تعذر الإخفاء: $error')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'تعذر الإخفاء: ${error.toString().replaceFirst('Exception: ', '')}',
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -399,87 +538,693 @@ class _ProductsPanelState extends State<_ProductsPanel> {
     return FutureBuilder<List<dynamic>>(
       future: future,
       builder: (_, snapshot) {
-        if (!snapshot.hasData)
-          return const Center(child: CircularProgressIndicator(color: gold));
-        return ListView.builder(
-          itemCount: snapshot.data!.length,
-          itemBuilder: (_, index) {
-            final product = Map<String, dynamic>.from(snapshot.data![index]);
-            return Card(
-              color: card,
-              child: ListTile(
-                title: Text(
-                  '${product['name'] ?? ''}',
-                  style: const TextStyle(color: cream),
-                ),
-                subtitle: Text(
-                  // المخزون من الرد الإداري مباشرةً، أو من variantRows،
-                  // أو «—» عند غيابهما — لا يُعرض 0 زائفاً أبداً.
-                  'المخزون: ${_adminStock(product)?.toString() ?? '—'} · ${product['stockStatus'] ?? ''}',
-                  style: const TextStyle(color: muted),
-                ),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (value) =>
-                      value == 'edit' ? _edit(product) : _delete(product),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'edit', child: Text('تعديل')),
-                    PopupMenuItem(value: 'delete', child: Text('إخفاء المنتج')),
-                  ],
-                ),
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'تعذر تحميل المنتجات: ${snapshot.error.toString().replaceFirst('Exception: ', '')}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: muted),
               ),
-            );
-          },
+            ),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator(color: gold));
+        }
+        return RefreshIndicator(
+          onRefresh: () async =>
+              setState(() => future = widget.api.products()),
+          child: ListView.builder(
+            itemCount: snapshot.data!.length,
+            itemBuilder: (_, index) {
+              final product = Map<String, dynamic>.from(snapshot.data![index]);
+              return Card(
+                color: card,
+                child: ListTile(
+                  title: Text(
+                    '${product['name'] ?? ''}',
+                    style: const TextStyle(color: cream),
+                  ),
+                  subtitle: Text(
+                    // المخزون من الرد الإداري مباشرةً، أو من variantRows،
+                    // أو «—» عند غيابهما — لا يُعرض 0 زائفاً أبداً.
+                    'المخزون: ${_adminStock(product)?.toString() ?? '—'} · ${product['stockStatus'] ?? ''}',
+                    style: const TextStyle(color: muted),
+                  ),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (value) =>
+                        value == 'edit' ? _edit(product) : _delete(product),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('تعديل')),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Text('إخفاء المنتج'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         );
       },
     );
   }
 }
 
-class _CustomersPanel extends StatelessWidget {
+class _CustomersPanel extends StatefulWidget {
   const _CustomersPanel({required this.api});
   final AdminApi api;
   @override
+  State<_CustomersPanel> createState() => _CustomersPanelState();
+}
+
+class _CustomersPanelState extends State<_CustomersPanel> {
+  final search = TextEditingController();
+  late Future<List<dynamic>> future;
+
+  @override
+  void initState() {
+    super.initState();
+    future = widget.api.customers();
+  }
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  void _runSearch() =>
+      setState(() => future = widget.api.customers(search.text.trim()));
+
+  @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<dynamic>>(
-      future: api.customers(),
-      builder: (_, snapshot) {
-        if (!snapshot.hasData)
-          return const Center(child: CircularProgressIndicator(color: gold));
-        return ListView.builder(
-          itemCount: snapshot.data!.length,
-          itemBuilder: (_, index) {
-            final customer = Map<String, dynamic>.from(snapshot.data![index]);
-            return Card(
-              color: card,
-              child: ListTile(
-                title: Text(
-                  '${customer['displayName'] ?? ''}',
-                  style: const TextStyle(color: cream),
-                ),
-                subtitle: Text(
-                  '${customer['email'] ?? ''}',
-                  style: const TextStyle(color: muted),
-                ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+          child: TextField(
+            controller: search,
+            decoration: InputDecoration(
+              labelText: 'ابحث بالاسم أو البريد',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: () {
+                  search.clear();
+                  _runSearch();
+                },
               ),
-            );
-          },
-        );
-      },
+            ),
+            onSubmitted: (_) => _runSearch(),
+          ),
+        ),
+        Expanded(
+          child: FutureBuilder<List<dynamic>>(
+            future: future,
+            builder: (_, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      'تعذر تحميل العملاء: ${snapshot.error.toString().replaceFirst('Exception: ', '')}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: muted),
+                    ),
+                  ),
+                );
+              }
+              if (!snapshot.hasData) {
+                return const Center(
+                  child: CircularProgressIndicator(color: gold),
+                );
+              }
+              if (snapshot.data!.isEmpty) {
+                return const Center(
+                  child: Text('لا يوجد عملاء مطابقون.', style: TextStyle(color: muted)),
+                );
+              }
+              return ListView.builder(
+                itemCount: snapshot.data!.length,
+                itemBuilder: (_, index) {
+                  final customer =
+                      Map<String, dynamic>.from(snapshot.data![index]);
+                  return Card(
+                    color: card,
+                    child: ListTile(
+                      title: Text(
+                        '${customer['displayName'] ?? ''}',
+                        style: const TextStyle(color: cream),
+                      ),
+                      subtitle: Text(
+                        '${customer['email'] ?? ''} · طلبات: ${customer['ordersCount'] ?? 0}',
+                        style: const TextStyle(color: muted),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _OrdersPanel extends StatelessWidget {
-  const _OrdersPanel();
+class _OrdersPanel extends StatefulWidget {
+  const _OrdersPanel({required this.api});
+  final AdminApi api;
   @override
-  Widget build(BuildContext context) => const Center(
-    child: Padding(
-      padding: EdgeInsets.all(24),
-      child: Text(
-        'لا يوجد Endpoint إداري للطلبات في api.php الحالي. أضف GET /api/admin/orders وPATCH /api/admin/orders/{orderRef}/status لتمكين هذا القسم.',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: muted),
+  State<_OrdersPanel> createState() => _OrdersPanelState();
+}
+
+class _OrdersPanelState extends State<_OrdersPanel> {
+  String status = '';
+  int page = 1;
+  late Future<Map<String, dynamic>> future;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() =>
+      setState(() => future = widget.api.orders(status: status, page: page));
+
+  void _pickStatus(String next) {
+    status = next;
+    page = 1;
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: future,
+      builder: (_, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'تعذر تحميل الطلبات: ${snapshot.error.toString().replaceFirst('Exception: ', '')}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: muted),
+              ),
+            ),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator(color: gold));
+        }
+        final data = snapshot.data!;
+        final orders = (data['orders'] as List?) ?? [];
+        final buckets =
+            (data['bucketCounts'] as Map?)?.cast<String, dynamic>() ?? {};
+        final totalPages = (data['totalPages'] as num?)?.toInt() ?? 1;
+        return Column(
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(
+                children: [
+                  _chip('الكل', '', buckets['all']),
+                  _chip('بانتظار التحويل', 'pending_transfer', buckets['waiting_payment']),
+                  _chip('مدفوع', 'paid', null),
+                  _chip('قيد التجهيز', 'processing', null),
+                  _chip('تم الشحن', 'shipped', null),
+                  _chip('تم التوصيل', 'delivered', buckets['completed']),
+                  _chip('ملغي', 'cancelled', buckets['archive']),
+                ],
+              ),
+            ),
+            Expanded(
+              child: orders.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'لا توجد طلبات في هذا التصنيف.',
+                        style: TextStyle(color: muted),
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () async => _load(),
+                      child: ListView.builder(
+                        itemCount: orders.length,
+                        itemBuilder: (_, index) {
+                          final order =
+                              Map<String, dynamic>.from(orders[index]);
+                          final ref = '${order['order_ref'] ?? ''}';
+                          return Card(
+                            color: card,
+                            child: ListTile(
+                              title: Text(
+                                ref,
+                                style: const TextStyle(color: cream),
+                              ),
+                              subtitle: Text(
+                                '${order['created_at'] ?? ''} · ${order['governorate'] ?? ''} · ${orderStatusLabel('${order['status'] ?? ''}')} · ${paymentStatusLabel('${order['payment_status'] ?? ''}')}',
+                                style: const TextStyle(color: muted),
+                              ),
+                              trailing: Text(
+                                '${order['total'] ?? ''} ج.م',
+                                style: const TextStyle(
+                                  color: gold,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onTap: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => _OrderDetailPage(
+                                      api: widget.api,
+                                      ref: ref,
+                                    ),
+                                  ),
+                                );
+                                _load();
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+            ),
+            if (totalPages > 1)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onPressed: page > 1
+                          ? () {
+                              page--;
+                              _load();
+                            }
+                          : null,
+                    ),
+                    Text('صفحة $page من $totalPages',
+                        style: const TextStyle(color: muted)),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios, size: 16),
+                      onPressed: page < totalPages
+                          ? () {
+                              page++;
+                              _load();
+                            }
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _chip(String label, String value, dynamic count) {
+    final selected = status == value;
+    return Padding(
+      padding: const EdgeInsets.only(left: 6),
+      child: ChoiceChip(
+        label: Text(
+          count is num ? '$label ($count)' : label,
+          style: TextStyle(color: selected ? Colors.black : cream),
+        ),
+        selected: selected,
+        selectedColor: gold,
+        backgroundColor: card,
+        onSelected: (_) => _pickStatus(value),
       ),
-    ),
-  );
+    );
+  }
+}
+
+class _OrderDetailPage extends StatefulWidget {
+  const _OrderDetailPage({required this.api, required this.ref});
+  final AdminApi api;
+  final String ref;
+  @override
+  State<_OrderDetailPage> createState() => _OrderDetailPageState();
+}
+
+class _OrderDetailPageState extends State<_OrderDetailPage> {
+  late Future<Map<String, dynamic>> future;
+
+  @override
+  void initState() {
+    super.initState();
+    future = widget.api.orderDetail(widget.ref);
+  }
+
+  void _reload() => setState(() => future = widget.api.orderDetail(widget.ref));
+
+  void _snack(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  /// Asks for a reason. Returns null when the admin cancels the dialog.
+  Future<String?> _askReason({
+    required String title,
+    bool required = false,
+  }) async {
+    final controller = TextEditingController();
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          maxLines: 2,
+          decoration: InputDecoration(
+            labelText: required ? 'السبب (إلزامي)' : 'السبب (اختياري)',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('تأكيد'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result == null) return null;
+    if (required && result.length < 5) {
+      _snack('اكتب سبباً واضحاً (5 أحرف على الأقل).');
+      return null;
+    }
+    return result;
+  }
+
+  Future<void> _changeStatus(String current, String next) async {
+    var reason = '';
+    if (next == 'cancelled') {
+      final asked = await _askReason(
+        title: 'سبب إلغاء الطلب',
+        required: true,
+      );
+      if (asked == null) return;
+      reason = asked;
+    }
+    try {
+      await widget.api.updateOrderStatus(widget.ref, next, reason: reason);
+      _snack('تم تحديث حالة الطلب إلى «${orderStatusLabel(next)}».');
+      _reload();
+    } catch (e) {
+      _snack('تعذر التحديث: ${e.toString().replaceFirst('Exception: ', '')}');
+    }
+  }
+
+  Future<void> _verifyPayment(bool receiptAvailable) async {
+    var reason = '';
+    var manual = false;
+    if (!receiptAvailable) {
+      final asked = await _askReason(
+        title: 'تأكيد الدفع يدوياً (لا يوجد إثبات مرفوع)',
+        required: true,
+      );
+      if (asked == null) return;
+      reason = asked;
+      manual = true;
+    }
+    try {
+      await widget.api.updatePaymentStatus(
+        widget.ref,
+        'verified',
+        reason: reason,
+        manualConfirmation: manual,
+      );
+      _snack('تم تأكيد الدفع.');
+      _reload();
+    } catch (e) {
+      _snack('تعذر تأكيد الدفع: ${e.toString().replaceFirst('Exception: ', '')}');
+    }
+  }
+
+  Future<void> _rejectPayment() async {
+    final reason = await _askReason(title: 'سبب رفض الدفع', required: true);
+    if (reason == null) return;
+    try {
+      await widget.api.updatePaymentStatus(
+        widget.ref,
+        'rejected',
+        reason: reason,
+      );
+      _snack('تم رفض الدفع.');
+      _reload();
+    } catch (e) {
+      _snack('تعذر رفض الدفع: ${e.toString().replaceFirst('Exception: ', '')}');
+    }
+  }
+
+  Future<void> _refundPayment() async {
+    final reason = await _askReason(title: 'سبب الاسترداد', required: true);
+    if (reason == null) return;
+    try {
+      await widget.api.updatePaymentStatus(
+        widget.ref,
+        'refunded',
+        reason: reason,
+      );
+      _snack('تم تسجيل الاسترداد.');
+      _reload();
+    } catch (e) {
+      _snack('تعذر الاسترداد: ${e.toString().replaceFirst('Exception: ', '')}');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: Text(widget.ref)),
+        body: FutureBuilder<Map<String, dynamic>>(
+          future: future,
+          builder: (_, snapshot) {
+            if (snapshot.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    'تعذر تحميل الطلب: ${snapshot.error.toString().replaceFirst('Exception: ', '')}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: muted),
+                  ),
+                ),
+              );
+            }
+            if (!snapshot.hasData) {
+              return const Center(
+                child: CircularProgressIndicator(color: gold),
+              );
+            }
+            final order = Map<String, dynamic>.from(
+              (snapshot.data!['order'] as Map?) ?? {},
+            );
+            final items = (order['items'] as List?) ?? [];
+            final history = (snapshot.data!['history'] as List?) ?? [];
+            final status = '${order['status'] ?? ''}';
+            final paymentStatus = '${order['paymentStatus'] ?? ''}';
+            final receiptAvailable = order['receiptAvailable'] == true;
+            final next = _nextStatuses[status] ?? [];
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _section('الطلب', [
+                  _row('الحالة', orderStatusLabel(status)),
+                  _row('الدفع', paymentStatusLabel(paymentStatus)),
+                  _row('التاريخ', '${order['createdAt'] ?? ''}'),
+                  _row('طريقة الدفع', '${order['paymentMethod'] ?? ''}'),
+                  if ((order['receiptReference'] as String?)?.isNotEmpty == true)
+                    _row('مرجع الإيصال', '${order['receiptReference']}'),
+                  if ((order['notes'] as String?)?.isNotEmpty == true)
+                    _row('ملاحظات', '${order['notes']}'),
+                ]),
+                _section('العميل', [
+                  _row('الاسم', '${order['customerName'] ?? ''}'),
+                  _row('الهاتف', '${order['phone'] ?? ''}'),
+                  _row('المحافظة', '${order['governorate'] ?? ''}'),
+                  if ((order['city'] as String?)?.isNotEmpty == true)
+                    _row('المدينة', '${order['city']}'),
+                  _row('العنوان', '${order['address'] ?? ''}'),
+                ]),
+                _section(
+                  'الأصناف',
+                  items.map((raw) {
+                    final item = Map<String, dynamic>.from(raw as Map);
+                    return _row(
+                      '${item['nameAr'] ?? ''} — ${item['sizeMl'] ?? ''} مل (${item['concentration'] ?? ''}) × ${item['quantity'] ?? 1}',
+                      '${item['lineTotal'] ?? ''} ج.م',
+                    );
+                  }).toList(),
+                ),
+                _section('المبالغ', [
+                  _row('المجموع الفرعي', '${order['subtotal'] ?? ''} ج.م'),
+                  _row('الشحن', '${order['shippingFee'] ?? ''} ج.م'),
+                  if ((order['discountAmount'] as num?) != null &&
+                      (order['discountAmount'] as num) > 0)
+                    _row('الخصم', '-${order['discountAmount']} ج.م'),
+                  _row('الإجمالي', '${order['total'] ?? ''} ج.م'),
+                ]),
+                const SizedBox(height: 8),
+                const Text(
+                  'تغيير حالة الطلب',
+                  style: TextStyle(
+                    color: cream,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: next.isEmpty
+                      ? [
+                          const Text(
+                            'لا توجد انتقالات متاحة من هذه الحالة.',
+                            style: TextStyle(color: muted),
+                          ),
+                        ]
+                      : next
+                          .map(
+                            (target) => FilledButton(
+                              onPressed: () => _changeStatus(status, target),
+                              child: Text(
+                                _statusActionLabel[target] ?? target,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'مراجعة الدفع',
+                  style: TextStyle(
+                    color: cream,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (paymentStatus == 'proof_submitted') ...[
+                      FilledButton(
+                        onPressed: () => _verifyPayment(receiptAvailable),
+                        child: const Text('تأكيد الدفع'),
+                      ),
+                      OutlinedButton(
+                        onPressed: _rejectPayment,
+                        child: const Text('رفض الدفع'),
+                      ),
+                    ] else if (paymentStatus == 'unpaid') ...[
+                      FilledButton(
+                        onPressed: () => _verifyPayment(false),
+                        child: const Text('تأكيد دفع يدوي'),
+                      ),
+                    ] else if (paymentStatus == 'verified') ...[
+                      OutlinedButton(
+                        onPressed: _refundPayment,
+                        child: const Text('تسجيل استرداد'),
+                      ),
+                    ] else
+                      const Text(
+                        'لا توجد إجراءات دفع متاحة لهذه الحالة.',
+                        style: TextStyle(color: muted),
+                      ),
+                  ],
+                ),
+                if (history.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'سجل الطلب',
+                    style: TextStyle(
+                      color: cream,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...history.map((raw) {
+                    final event = Map<String, dynamic>.from(raw as Map);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        '${event['createdAt'] ?? ''} · ${event['eventType'] ?? ''}: ${event['oldValue'] ?? ''} ← ${event['newValue'] ?? ''}${(event['reason'] as String?)?.isNotEmpty == true ? ' — ${event['reason']}' : ''}',
+                        style: const TextStyle(color: muted, fontSize: 12),
+                      ),
+                    );
+                  }),
+                ],
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _section(String title, List<Widget> children) => Card(
+        color: card,
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: gold,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...children,
+            ],
+          ),
+        ),
+      );
+
+  Widget _row(String label, String value) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 110,
+              child: Text(label, style: const TextStyle(color: muted)),
+            ),
+            Expanded(
+              child: Text(
+                value,
+                style: const TextStyle(color: cream),
+              ),
+            ),
+          ],
+        ),
+      );
 }

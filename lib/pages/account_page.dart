@@ -3,6 +3,7 @@ import '../theme/app_theme.dart';
 import 'admin_page.dart';
 import 'cart_page.dart';
 import 'contact_page.dart';
+import 'notifications_page.dart';
 
 class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
@@ -23,6 +24,7 @@ class AccountPage extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             _item(context, Icons.shopping_bag_outlined, 'سلة المشتريات', 'راجع اختياراتك وأكمل طلبك', const Scaffold(appBar: AppBar(title: Text('سلة المشتريات')), body: CartPage())),
+            _item(context, Icons.notifications_outlined, 'الإشعارات', 'تحديثات الطلبات والعروض والوصلات الجديدة', const NotificationsPage()),
             _item(context, Icons.support_agent, 'تواصل مع زخم', 'يسعدنا مساعدتك', const ContactPage()),
             _item(context, Icons.admin_panel_settings_outlined, 'دخول الإدارة', 'للموظفين المصرح لهم فقط', const AdminLoginPage()),
             const Padding(padding: EdgeInsets.fromLTRB(22, 24, 22, 20), child: Text('دار زخم للعطور • مصر', textAlign: TextAlign.center, style: TextStyle(color: muted, fontSize: 11))),

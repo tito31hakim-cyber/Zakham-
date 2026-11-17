@@ -17,11 +17,18 @@ https://zakhamhouse.shop
 | فحص الخدمة | GET | `/api/health` |
 | كتالوج المنتجات | GET | `/api/storefront` |
 | إنشاء طلب | POST | `/api/orders` |
-| تسجيل دخول الإدارة | GET | `/api/analytics` مع `X-Admin-Token` |
+| جلسة الإدارة | GET | `/api/admin/session` |
+| تسجيل دخول الإدارة | POST | `/api/admin/login` |
+| تسجيل خروج الإدارة | POST | `/api/admin/logout` |
+| إحصاءات الإدارة | GET | `/api/analytics` |
 | منتجات الإدارة | GET | `/api/admin/products` |
 | تعديل منتج | PATCH | `/api/admin/products/{id}` |
 | إخفاء منتج | DELETE | `/api/admin/products/{id}` |
 | العملاء | GET | `/api/admin/customers?q=...` |
+| بحث الطلبات (الإدارة) | POST | `/api/admin/orders/search` |
+| تفاصيل طلب (الإدارة) | GET | `/api/admin/orders/{orderRef}` |
+| تغيير حالة طلب | PATCH | `/api/orders/{orderRef}/status` |
+| مراجعة دفع طلب | PATCH | `/api/orders/{orderRef}/payment` |
 
 يتم تجميع العناوين في `lib/config/app_config.dart`، ولا ينبغي كتابة مسارات API داخل صفحات الواجهة.
 
@@ -160,33 +167,96 @@ https://zakhamhouse.shop
 > خادمي**: أن يعيد مسار `/api/admin/products` هذه الحقول، وتُحذف من
 > الرد العام فقط — لا من `productRow` المشترك.
 
-تتحقق `api.php` من رمز الإدارة عبر الترويسة:
+تتحقق `api.php` من الإدارة بجلسة PHP وليس برمز ترويسة — تحقّق حياً
+(2026-11-17): `GET /api/admin/session` يعيد `loginCsrfToken` دون
+مصادقة، و`POST /api/admin/login` يقبل البريد وكلمة المرور، و`GET
+/api/analytics` دون جلسة يعيد `401`. ترويسة `X-Admin-Token` **لا
+يقرأها الخادم إطلاقاً** — النسخ القديمة من هذا الملف والتطبيق التي
+ذكرتها كانت خاطئة.
+
+تدفق الدخول (يطبّقه `lib/services/admin_api.dart`):
 
 ```text
-X-Admin-Token: <admin token>
+1. GET  /api/admin/session
+   -> Set-Cookie: PHPSESSID=... + { loginCsrfToken }
+2. POST /api/admin/login  { email, password, totp? }
+   Headers: Cookie: PHPSESSID=... + X-CSRF-Token: <loginCsrfToken>
+   -> { ok, csrfToken, user }
+3. كل طلب لاحق: Cookie: PHPSESSID=...
+   والطلبات المعدِّلة أيضاً: X-CSRF-Token: <csrfToken>
+4. POST /api/admin/logout  (ينهي الجلسة)
 ```
 
-يجب عدم تخزين رمز الإدارة داخل التطبيق أو تضمينه في الكود؛ صفحة الإدارة الحالية تطلبه من المستخدم، ويجب إضافة جلسة قصيرة العمر أو آلية تدوير للرمز قبل النشر الإنتاجي.
+- الحساب المحمي بتحقق ثنائي يعيد `401 admin_totp_required` — عندها
+  يُعاد الدخول مع `totp` (رمز تطبيق المصادقة). التسجيل في التحقق
+  الثنائي يتم من صفحة الويب `/zk-2fa.php`.
+- الجلسة (الكوكي ورموز CSRF) تبقى في الذاكرة فقط ولا تُحفظ في
+  `SharedPreferences` ولا تُطبع في السجلات؛ تنتهي بإغلاق التطبيق أو
+  بتسجيل الخروج.
+
+## طلبات الإدارة
+
+- **بحث الطلبات** `POST /api/admin/orders/search` — الجسم:
+  `{ status?, page?, pageSize? (25/50/100), sort? }`، والرد:
+  `{ orders[], total, page, pageSize, totalPages, bucketCounts }`.
+  كل طلب: `order_ref, created_at, total, status, payment_status,
+  payment_method, governorate`. الحالات:
+  `pending_transfer, paid, processing, shipped, delivered, cancelled`.
+- **تفاصيل الطلب** `GET /api/admin/orders/{orderRef}` — الرد:
+  `{ order, receipts, history }`؛ `order` فيه بيانات العميل والأصناف
+  والمبالغ وحالة الدفع و`receiptAvailable`.
+- **تغيير الحالة** `PATCH /api/orders/{orderRef}/status` — الجسم:
+  `{ status, reason? }`، والسبب إلزامي عند الإلغاء. الانتقالات
+  المسموحة: `pending_transfer → paid/cancelled`، `paid → processing/
+  cancelled`، `processing → shipped/cancelled`، `shipped → delivered`،
+  `cancelled → pending_transfer`. الانتقال إلى `processing` أو `shipped`
+  يتطلب دفعاً موثقاً (`payment_status = verified`)، والانتقال إلى `paid`
+  يوثّق الدفع تلقائياً.
+- **مراجعة الدفع** `PATCH /api/orders/{orderRef}/payment` — الجسم:
+  `{ paymentStatus, reason?, manualConfirmation? }`. الانتقالات:
+  `unpaid → verified`، `proof_submitted → verified/rejected`،
+  `rejected → verified`، `verified → refunded`. توثيق دفع بلا إثبات
+  مرفوع يتطلب `manualConfirmation: true` وسبباً من 5 أحرف على الأقل.
+
+## الإشعارات الفورية (FCM)
+
+يطبّق التطبيق (`lib/services/push_service.dart`) طرف العميل كاملاً:
+تهيئة Firebase، وطلب الإذن، ورمز FCM، وعرض الرسائل الواردة (في
+المقدمة والخلفية) عبر إشعارات محلية، والاشتراك في المواضيع
+`zakham_orders` (تحديثات الطلبات)، و`zakham_offers` (العروض)،
+و`zakham_new` (وصل حديثاً)، مع صفحة إعدادات (`حسابي ← الإشعارات`)
+فيها زر اختبار وعرض رمز الجهاز.
+
+التفعيل يحتاج خطوتين خارج المستودع:
+
+1. **ملفات Firebase** (من مشروع Firebase الخاص بالدار):
+   `android/app/google-services.json` و`ios/Runner/GoogleService-Info.plist`
+   (لحزمة `com.houseofzakham.house_of_zakham`). بدونها يبقى
+   `PushService.available = false` ويعمل التطبيق طبيعياً دون إشعارات.
+2. **مرسِل الخادم**: نقطة إرسال FCM على المتجر تستقبل رموز الأجهزة
+   وترسل تحديثات حالة الطلبات — غير موجودة بعد في `api.php`، وهي
+   خطوة خادم مستقلة (تحتاج مفتاح خدمة Firebase).
 
 ## ترويسات Flutter للمصادقة وCSRF
 
 تستخدم طبقة `lib/services/api_headers.dart` ترويسات موحدة:
 
 ```text
-Authorization: Bearer <access token>
-X-Admin-Token: <admin token>
+Cookie: PHPSESSID=<session id>
 X-CSRF-Token: <server-issued csrf token>
 ```
 
-يتم إرسال `X-CSRF-Token` فقط مع الطلبات المعدِّلة مثل `PATCH` و`DELETE` و`POST`. رمز الإدارة ورمز CSRF يبقيان في الذاكرة فقط ولا يتم حفظهما في `SharedPreferences` أو طباعتهما في السجلات.
+يتم إرسال `Cookie` مع كل طلب إداري، و`X-CSRF-Token` مع الطلبات
+المعدِّلة مثل `PATCH` و`DELETE` و`POST`. الجلسة ورمز CSRF يبقيان في
+الذاكرة فقط ولا يتم حفظهما في `SharedPreferences` أو طباعتهما في
+السجلات.
 
 مثال الاستخدام:
 
 ```dart
-final api = AdminApi(
-  token: adminTokenFromSession,
-  csrfToken: csrfTokenReturnedByPhpSession,
-);
+final api = AdminApi();
+await api.login(email: email, password: password);
+await api.analytics();
+await api.orders(status: 'pending_transfer');
+await api.logout();
 ```
-
-يجب أن يصدر الخادم رمز CSRF بعد إنشاء جلسة الإدارة. لا يجوز استخدام رمز الإدارة نفسه كرمز CSRF. الإضافة في Flutter متوافقة مع PHP الحالي، لكن تفعيل التحقق الفعلي من CSRF يتطلب إضافة `requireCsrf()` في `api.php` على مسارات `PATCH` و`DELETE` و`POST`.

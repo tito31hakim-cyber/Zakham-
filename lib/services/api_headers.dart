@@ -1,11 +1,20 @@
 /// Credentials are intentionally kept in memory by the caller.
 /// Do not persist adminToken or csrfToken in SharedPreferences or logs.
 class ApiCredentials {
-  const ApiCredentials({this.bearerToken, this.adminToken, this.csrfToken});
+  const ApiCredentials({
+    this.bearerToken,
+    this.adminToken,
+    this.csrfToken,
+    this.cookie,
+  });
 
   final String? bearerToken;
   final String? adminToken;
   final String? csrfToken;
+
+  /// Session cookie (e.g. `PHPSESSID=...`) — kept in memory only, never
+  /// persisted. The store backend authenticates admins with PHP sessions.
+  final String? cookie;
 }
 
 class ApiHeaders {
@@ -26,6 +35,7 @@ class ApiHeaders {
     final bearer = credentials?.bearerToken?.trim();
     final admin = credentials?.adminToken?.trim();
     final csrf = credentials?.csrfToken?.trim();
+    final cookie = credentials?.cookie?.trim();
 
     if (bearer != null && bearer.isNotEmpty) {
       headers['Authorization'] = 'Bearer $bearer';
@@ -36,6 +46,9 @@ class ApiHeaders {
     }
     if (mutating && csrf != null && csrf.isNotEmpty) {
       headers['X-CSRF-Token'] = csrf;
+    }
+    if (cookie != null && cookie.isNotEmpty) {
+      headers['Cookie'] = cookie;
     }
 
     return headers;

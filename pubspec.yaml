@@ -40,6 +40,13 @@ dependencies:
   # الخط العربي الرسمي للدار (Tajawal — نفس خط الموقع)، يُحمَّل من Google Fonts
   # ويُخزَّن على الجهاز بعد أول تشغيل.
   google_fonts: ^6.2.1
+  # الإشعارات الفورية: Firebase Cloud Messaging + عرض محلي للرسائل.
+  # تعمل فقط بعد إضافة google-services.json (أندرويد) وGoogleService-Info.plist
+  # (آيفون) من مشروع Firebase الخاص بالدار — انظر README.
+  firebase_core: ^4.0.0
+  firebase_messaging: ^16.0.0
+  flutter_local_notifications: ^19.0.0
+  shared_preferences: ^2.3.0
 
 dev_dependencies:
   flutter_test:

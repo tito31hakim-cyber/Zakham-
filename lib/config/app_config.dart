@@ -9,6 +9,10 @@ class AppConfig {
   static const ordersPath = '/api/orders';
   static const adminProductsPath = '/api/admin/products';
   static const adminCustomersPath = '/api/admin/customers';
+  static const adminOrdersSearchPath = '/api/admin/orders/search';
+  static const adminSessionPath = '/api/admin/session';
+  static const adminLoginPath = '/api/admin/login';
+  static const adminLogoutPath = '/api/admin/logout';
   static const analyticsPath = '/api/analytics';
   static const productImageBaseUrl = '$apiBaseUrl/';
   static const featuredImage =
