@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/admin_api.dart';
 import '../services/discounts.dart';
+import '../services/product_stock.dart';
 import '../services/push_service.dart';
 import '../theme/app_theme.dart';
 import 'business_advisor_page.dart';
@@ -260,6 +261,36 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 );
               },
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Card(
+                color: context.surfaceCard,
+                child: ListTile(
+                  leading: Icon(Icons.psychology_outlined,
+                      color: context.goldText),
+                  title: Text(
+                    'مركز ذكاء دار زخم',
+                    style: TextStyle(
+                      color: context.ink,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'مستشار تجاري — قراءة وتحليل فقط',
+                    style: TextStyle(color: context.subdued, fontSize: 12),
+                  ),
+                  trailing:
+                      Icon(Icons.chevron_left, color: context.subdued),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          BusinessAdvisorPage(api: widget.api),
+                    ),
+                  ),
+                ),
+              ),
+            ),
             Expanded(
               child: IndexedStack(
                 index: tab,
@@ -269,7 +300,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   _OrdersPanel(api: widget.api),
                   _PushPanel(api: widget.api),
                   _DiscountsPanel(api: widget.api),
-                  BusinessAdvisorPage(api: widget.api),
                 ],
               ),
             ),
@@ -298,11 +328,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             NavigationDestination(
               icon: Icon(Icons.local_offer_outlined),
               label: 'الخصومات',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.psychology_outlined),
-              selectedIcon: Icon(Icons.psychology, color: gold),
-              label: 'المستشار',
             ),
           ],
         ),
@@ -373,7 +398,8 @@ class _ProductsPanelState extends State<_ProductsPanel> {
     'bottleLabel': p['bottleLabel'] ?? '',
   };
 
-  /// مخزون المنتج كما يرده الخادم الإداري.
+  /// مخزون المنتج كما يرده الخادم الإداري — المنطق في المساعد المشترك
+  /// [adminStockFor] (يستخدمه المستشار أيضاً) حتى لا يتكرر ويتباين.
   ///
   /// تنبيه أمني (2026-11-17): نقطة `/api/admin/products` تشارك نفس
   /// مسلسل `productRow` مع واجهة المتجر العامة، فبعد إزالة حقول الأصالة
@@ -382,34 +408,7 @@ class _ProductsPanelState extends State<_ProductsPanel> {
   /// مفقودة فسيكتب الخادم (PATCH) مخزون 0 وحالة «غير متوفر» ويمسح كود
   /// الأصالة — لذلك يُمنع الحفظ أدناه عند غياب هذه الحقول، ويُشتق
   /// المخزون للعرض من `variantRows` (ترد من استعلام منفصل لم يُمس).
-  static int? _adminStock(Map<String, dynamic> p) {
-    final direct = p['stockQty'];
-    if (direct is num) return direct.toInt();
-    if (direct is String) return int.tryParse(direct.trim());
-    final rows = p['variantRows'];
-    if (rows is List) {
-      var total = 0;
-      var found = false;
-      for (final row in rows) {
-        if (row is! Map) continue;
-        final active = row['is_active'];
-        if (active == 0 || active == false || active == '0') continue;
-        final qty = row['stock_qty'];
-        if (qty is num) {
-          total += qty.toInt();
-          found = true;
-        } else if (qty is String) {
-          final parsed = int.tryParse(qty.trim());
-          if (parsed != null) {
-            total += parsed;
-            found = true;
-          }
-        }
-      }
-      if (found) return total;
-    }
-    return null;
-  }
+  static int? _adminStock(Map<String, dynamic> p) => adminStockFor(p);
 
   /// هل تحمل بيانات المنتج الحقول الإدارية اللازمة لحفظ آمن؟
   /// غيابها يعني أن PATCH سيمسح المخزون وكود الأصالة — فيُمنع الحفظ.

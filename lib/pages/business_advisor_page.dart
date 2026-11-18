@@ -4,6 +4,9 @@ import '../services/admin_api.dart';
 import '../services/business_advisor.dart';
 import '../theme/app_theme.dart';
 
+/// صفحة «مركز ذكاء دار زخم» — تُفتح مدفوعة من لوحة الإدارة (بطاقة
+/// دخول)، لذلك لها Scaffold وAppBar خاصان. قراءة وتحليل فقط.
+
 class BusinessAdvisorPage extends StatefulWidget {
   const BusinessAdvisorPage({super.key, required this.api});
   final AdminApi api;
@@ -21,58 +24,83 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
     report = BusinessAdvisorService(widget.api).analyze();
   }
 
-  void _refresh() =>
-      setState(() => report = BusinessAdvisorService(widget.api).analyze());
+  /// يعيد Future يُنتظر حتى اكتمال التحليل الجديد — حتى لا يختفي
+  /// مؤشر السحب للتحديث قبل وصول البيانات.
+  Future<void> _refresh() async {
+    final future = BusinessAdvisorService(widget.api).analyze();
+    setState(() => report = future);
+    try {
+      await future;
+    } catch (_) {
+      // يعرض FutureBuilder حالة الخطأ الودودة أدناه.
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Directionality(
     textDirection: TextDirection.rtl,
-    child: RefreshIndicator(
-      onRefresh: () async => _refresh(),
-      child: FutureBuilder<AdvisorReport>(
-        future: report,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return ListView(
-              padding: const EdgeInsets.all(24),
-              children: [
-                const SizedBox(height: 80),
-                Icon(
-                  Icons.psychology_outlined,
-                  color: context.goldText,
-                  size: 64,
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'تعذر بناء التحليل',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: context.ink,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '${snapshot.error}'.replaceFirst('Exception: ', ''),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: context.subdued),
-                ),
-                const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: _refresh,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('إعادة المحاولة'),
-                ),
-              ],
-            );
-          }
-          if (!snapshot.hasData)
-            return const Center(child: CircularProgressIndicator());
-          return _content(context, snapshot.data!);
-        },
+    child: Scaffold(
+      appBar: AppBar(
+        title: const Text('مركز ذكاء دار زخم'),
+        actions: [
+          IconButton(
+            onPressed: _refresh,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'تحديث التحليل',
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: FutureBuilder<AdvisorReport>(
+          future: report,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return _errorState();
+            }
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            return _content(context, snapshot.data!);
+          },
+        ),
       ),
     ),
+  );
+
+  /// حالة الخطأ: رسالة عربية واضحة بلا تفاصيل تقنية، مع إعادة المحاولة.
+  Widget _errorState() => ListView(
+    padding: const EdgeInsets.all(24),
+    children: [
+      const SizedBox(height: 80),
+      Icon(
+        Icons.psychology_outlined,
+        color: context.goldText,
+        size: 64,
+      ),
+      const SizedBox(height: 18),
+      Text(
+        'تعذر بناء التحليل',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: context.ink,
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      const SizedBox(height: 10),
+      Text(
+        'تحقق من الاتصال بالإنترنت ومن جلسة الإدارة، ثم حاول مجدداً.',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: context.subdued),
+      ),
+      const SizedBox(height: 18),
+      FilledButton.icon(
+        onPressed: _refresh,
+        icon: const Icon(Icons.refresh),
+        label: const Text('إعادة المحاولة'),
+      ),
+    ],
   );
 
   Widget _content(BuildContext context, AdvisorReport data) => ListView(
@@ -80,46 +108,21 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
     children: [
       Row(
         children: [
-          IconButton(
-            onPressed: _refresh,
-            icon: Icon(Icons.refresh, color: context.goldText),
-            tooltip: 'تحديث التحليل',
-          ),
-          const Spacer(),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                'مركز ذكاء دار زخم',
-                style: TextStyle(
-                  color: context.ink,
-                  fontSize: 25,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              Text(
-                'قراءة وتحليل فقط — لا ينفذ أي إجراء',
-                style: TextStyle(color: context.subdued, fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: context.goldText.withOpacity(.14),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.psychology_outlined,
-              color: context.goldText,
-              size: 28,
+          Icon(Icons.psychology_outlined, color: context.goldText, size: 28),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'قراءة وتحليل فقط — لا ينفذ أي إجراء',
+              style: TextStyle(color: context.subdued, fontSize: 13),
             ),
           ),
         ],
       ),
-      const SizedBox(height: 18),
+      const SizedBox(height: 14),
+      if (data.unavailable.isNotEmpty) ...[
+        _unavailableBanner(context, data.unavailable),
+        const SizedBox(height: 14),
+      ],
       _summary(context, data),
       const SizedBox(height: 22),
       Row(
@@ -176,6 +179,41 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
     ],
   );
 
+  Widget _unavailableBanner(BuildContext context, List<String> sections) {
+    const labels = {
+      'analytics': 'الملخص',
+      'orders': 'الطلبات',
+      'customers': 'العملاء',
+      'products': 'المنتجات',
+    };
+    final names = sections
+        .map((s) => labels[s] ?? s)
+        .join('، ');
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.surfaceCard,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.orange.withOpacity(.5)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.cloud_off_outlined, color: Colors.orange),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'أقسام غير متاحة الآن: $names — الإشارات المتأثرة معروضة كـ«غير متاح»، وباقي التحليل مبني على ما توفر.',
+              style: TextStyle(color: context.ink, height: 1.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ملخص بما لا يظهر في شريط إحصاءات لوحة الإدارة: نسبة التسليم،
+  /// العملاء المتكررون، منخفضو المخزون — مع نطاق الطلبات المفحوصة.
   Widget _summary(BuildContext context, AdvisorReport data) => Container(
     padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
     decoration: BoxDecoration(
@@ -185,27 +223,39 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
       borderRadius: BorderRadius.circular(18),
       border: Border.all(color: context.goldText.withOpacity(.28)),
     ),
-    child: Row(
+    child: Column(
       children: [
-        _metric(
-          context,
-          'الطلبات',
-          '${data.orders}',
-          Icons.receipt_long_outlined,
+        Row(
+          children: [
+            _metric(
+              context,
+              'نسبة التسليم',
+              '${(data.deliveryRatio * 100).round()}%',
+              Icons.local_shipping_outlined,
+            ),
+            _metric(
+              context,
+              'عملاء متكررون',
+              '${data.repeatCustomers}',
+              Icons.people_outline,
+            ),
+            _metric(
+              context,
+              'منخفضو المخزون',
+              '${data.lowStockCount}'
+              '${data.lowStockUnknown > 0 ? ' (+${data.lowStockUnknown} مجهول)' : ''}',
+              Icons.inventory_2_outlined,
+            ),
+          ],
         ),
-        _metric(context, 'العملاء', '${data.customers}', Icons.people_outline),
-        _metric(
-          context,
-          'الإيرادات',
-          '${data.revenue.toStringAsFixed(0)} ج.م',
-          Icons.payments_outlined,
-        ),
-        _metric(
-          context,
-          'بانتظار الدفع',
-          '${data.pendingPayments}',
-          Icons.pending_actions_outlined,
-        ),
+        if (data.ordersExamined < data.orders) ...[
+          const SizedBox(height: 10),
+          Text(
+            'الإشارات مبنية على أول ${data.ordersExamined} طلب من أصل ${data.orders} — المجاميع من ملخص الخادم.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: context.subdued, fontSize: 11),
+          ),
+        ],
       ],
     ),
   );
@@ -240,7 +290,8 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
   );
 
   Widget _insightCard(BuildContext context, AdvisorInsight insight) {
-    final urgent = insight.priority == 'عاجل' || insight.priority == 'مرتفع';
+    final urgent = insight.priority.isUrgent;
+    final accent = insight.priority.color;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(15),
@@ -260,14 +311,12 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: (urgent ? Colors.orange : context.goldText).withOpacity(
-                .13,
-              ),
+              color: (urgent ? Colors.orange : accent).withOpacity(.13),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               _icon(insight.icon),
-              color: urgent ? Colors.orange : context.goldText,
+              color: urgent ? Colors.orange : accent,
             ),
           ),
           const SizedBox(width: 12),
@@ -283,14 +332,14 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: (urgent ? Colors.orange : context.goldText)
+                        color: (urgent ? Colors.orange : accent)
                             .withOpacity(.13),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        insight.priority,
+                        insight.priority.label,
                         style: TextStyle(
-                          color: urgent ? Colors.orange : context.goldText,
+                          color: urgent ? Colors.orange : accent,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                         ),
@@ -326,13 +375,14 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
     );
   }
 
-  IconData _icon(String key) => switch (key) {
-    'payment' => Icons.account_balance_wallet_outlined,
-    'inventory' => Icons.inventory_2_outlined,
-    'customers' => Icons.people_outline,
-    'flow' => Icons.timeline_outlined,
-    _ => Icons.auto_awesome_outlined,
+  IconData _icon(AdvisorIcon key) => switch (key) {
+    AdvisorIcon.payment => Icons.account_balance_wallet_outlined,
+    AdvisorIcon.inventory => Icons.inventory_2_outlined,
+    AdvisorIcon.customers => Icons.people_outline,
+    AdvisorIcon.flow => Icons.timeline_outlined,
+    AdvisorIcon.pending => Icons.pending_actions_outlined,
   };
+
   String _time(DateTime value) =>
       '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 }
