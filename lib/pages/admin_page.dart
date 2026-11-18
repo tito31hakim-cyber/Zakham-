@@ -4,6 +4,7 @@ import '../services/admin_api.dart';
 import '../services/discounts.dart';
 import '../services/push_service.dart';
 import '../theme/app_theme.dart';
+import 'intelligence_center_page.dart';
 
 /// Arabic labels for server order/payment statuses.
 String orderStatusLabel(String status) => switch (status) {
@@ -258,6 +259,36 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   ),
                 );
               },
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Card(
+                color: context.surfaceCard,
+                child: ListTile(
+                  leading: Icon(Icons.psychology_outlined,
+                      color: context.goldText),
+                  title: Text(
+                    'مركز ذكاء دار زخم',
+                    style: TextStyle(
+                      color: context.ink,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'إحاطة اليوم • فرز الطلبات • مستشار — قراءة وتحليل فقط',
+                    style: TextStyle(color: context.subdued, fontSize: 12),
+                  ),
+                  trailing:
+                      Icon(Icons.chevron_left, color: context.subdued),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          IntelligenceCenterPage(api: widget.api),
+                    ),
+                  ),
+                ),
+              ),
             ),
             Expanded(
               child: IndexedStack(
