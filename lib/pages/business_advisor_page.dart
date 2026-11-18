@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/admin_api.dart';
 import '../services/business_advisor.dart';
+import '../services/research_repository.dart';
 import '../theme/app_theme.dart';
 
 /// مركز ذكاء دار زخم — قراءة وتحليل فقط (ملفات المستخدم v2 بعد ضبط).
@@ -22,18 +23,28 @@ class BusinessAdvisorPage extends StatefulWidget {
 class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
   late Future<AdvisorReport> report;
 
+  /// خلاصة «بحث وابتكار» — من المزود التجريبي المحلي حتى توفر API.
+  // TODO(research-api): استبدل MockResearchRepository بتنفيذ API حقيقي
+  //   عند توفر GET /api/admin/research/runs وGET /api/admin/mixes.
+  late Future<ResearchDigest> researchDigest;
+
   @override
   void initState() {
     super.initState();
     report = BusinessAdvisorService(widget.api).analyze();
+    researchDigest = const MockResearchRepository().latestDigest();
   }
 
   /// يُنتظر حتى اكتمال التحليل الجديد حتى لا يختفي مؤشر السحب مبكراً.
   Future<void> _refresh() async {
     final future = BusinessAdvisorService(widget.api).analyze();
-    setState(() => report = future);
+    final researchFuture = const MockResearchRepository().latestDigest();
+    setState(() {
+      report = future;
+      researchDigest = researchFuture;
+    });
     try {
-      await future;
+      await Future.wait([future, researchFuture]);
     } catch (_) {
       // يلتقطها FutureBuilder ويعرض حالة الخطأ الودودة.
     }
@@ -149,6 +160,10 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
         _methodology(context, data),
         const SizedBox(height: 14),
         _continuousImprovement(context, data),
+        const SizedBox(height: 26),
+        _sectionHeader(context, 'بحث وابتكار', 'وكيل بحث أسبوعي — مسودات للمراجعة فقط', Icons.science_outlined, const Color(0xFF62C69A)),
+        const SizedBox(height: 10),
+        _researchSection(context),
       ],
     );
   }
@@ -338,6 +353,232 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
           ],
         ),
       );
+
+  /// قسم «بحث وابتكار»: ملخص آخر دورة + مسودات الميكسات.
+  ///
+  /// البيانات تجريبية محلية (MockResearchRepository) حتى توفر API
+  /// البحث. كل مسودة تحمل وسم «مسودة تجريبية غير معتمدة»، ولا تظهر
+  /// هنا نسب كاملة ولا موردون ولا تكاليف — تلك للمالك ومسؤول
+  /// التركيبات فقط عبر لوحة الإدارة.
+  Widget _researchSection(BuildContext context) =>
+      FutureBuilder<ResearchDigest>(
+        future: researchDigest,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return _researchNote(
+              context,
+              'تعذّر تحميل خلاصة البحث حالياً — ستظهر مع الدورة التالية.',
+              Icons.cloud_off_outlined,
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 18),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          final digest = snapshot.data!;
+          return Column(
+            children: [
+              _runSummaryCard(context, digest.run),
+              const SizedBox(height: 10),
+              if (digest.drafts.isEmpty)
+                _researchNote(
+                  context,
+                  'لا توجد مسودات ميكسات في آخر دورة.',
+                  Icons.science_outlined,
+                )
+              else
+                ...digest.drafts.map((draft) => _draftCard(context, draft)),
+              const SizedBox(height: 6),
+              Text(
+                'بيانات تجريبية — تُستبدل بنتائج الدورات الحقيقية عند توفر API البحث. لا نسب كاملة ولا موردون ولا تكاليف تظهر هنا.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: context.subdued, fontSize: 11, height: 1.5),
+              ),
+            ],
+          );
+        },
+      );
+
+  Widget _runSummaryCard(BuildContext context, ResearchRunSummary run) =>
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.surfaceCard,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.goldText.withOpacity(.22)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Row(children: [
+              Icon(Icons.calendar_month_outlined,
+                  color: context.goldText, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'آخر دورة بحث — ${_date(run.startedAt)}',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                      color: context.ink,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _badge(context, _runStatusLabel(run.status),
+                  _runStatusColor(run.status)),
+            ]),
+            const SizedBox(height: 12),
+            Row(children: [
+              _metric(context, 'مصادر وُجدت', '${run.sourcesFound}',
+                  Icons.search_outlined),
+              _metric(context, 'مصادر قُبلت', '${run.sourcesAccepted}',
+                  Icons.verified_outlined),
+              _metric(context, 'مواد جديدة', '${run.newMaterials}',
+                  Icons.science_outlined),
+              _metric(context, 'ميكسات جديدة', '${run.newMixes}',
+                  Icons.auto_awesome),
+            ]),
+            const SizedBox(height: 10),
+            Text(
+              'الوكيل ${run.agentVersion} • مكتبة المعرفة ${run.knowledgeVersion}',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: context.subdued, fontSize: 11),
+            ),
+          ],
+        ),
+      );
+
+  String _runStatusLabel(String status) => switch (status) {
+        'completed' => 'مكتملة',
+        'partial' => 'جزئية',
+        'failed' => 'فاشلة',
+        _ => 'جارية',
+      };
+
+  Color _runStatusColor(String status) => switch (status) {
+        'completed' => const Color(0xFF62C69A),
+        'partial' => Colors.orange,
+        'failed' => Colors.redAccent,
+        _ => context.goldText,
+      };
+
+  Widget _draftCard(BuildContext context, ResearchDraftMix draft) =>
+      Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: context.surfaceCard,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: Colors.orange.withOpacity(.45)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Row(children: [
+              _badge(context, ResearchDraftMix.unapprovedTag, Colors.orange),
+              const Spacer(),
+              Text(
+                '${draft.code} • إصدار ${draft.version}',
+                style: TextStyle(color: context.subdued, fontSize: 11),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            Text(
+              draft.nameAr,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                  color: context.ink,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 8),
+            _pyramidRow(context, 'افتتاحية', draft.topNotes),
+            _pyramidRow(context, 'قلب', draft.heartNotes),
+            _pyramidRow(context, 'قاعدة', draft.baseNotes),
+            const SizedBox(height: 10),
+            Text(
+              draft.evidenceSummary,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                  color: context.subdued, fontSize: 12, height: 1.55),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: draft.warnings
+                  .map((w) => _badge(context, w, Colors.orange))
+                  .toList(),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'درجة الثقة: ${draft.confidence}',
+              style: TextStyle(color: context.subdued, fontSize: 11),
+            ),
+          ],
+        ),
+      );
+
+  Widget _pyramidRow(
+          BuildContext context, String label, List<String> notes) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                notes.join('، '),
+                textAlign: TextAlign.right,
+                style: TextStyle(color: context.ink, fontSize: 13),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 64,
+              child: Text(
+                label,
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                    color: context.goldText,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _researchNote(BuildContext context, String text, IconData icon) =>
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: context.surfaceCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.hairline),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: context.goldText, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                    color: context.subdued, fontSize: 12, height: 1.5),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  String _date(DateTime value) =>
+      '${value.day}/${value.month}/${value.year}';
 
   IconData _icon(AdvisorIcon icon) => switch (icon) {
         AdvisorIcon.payment => Icons.account_balance_wallet_outlined,
