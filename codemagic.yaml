@@ -8,11 +8,18 @@ workflows:
       android_signing:
         - zakham_android_keystore
     triggering:
+      # الإصدارات الموسومة هي مصدر البناء الموثوق (الأولوية 1):
+      # بناء الإنتاج يُطلق من Tag مثل v1.1.0-build29، وليس من دفع عشوائي.
       events:
         - push
         - pull_request
+        - tag
       branch_patterns:
         - pattern: main
+          include: true
+          source: true
+      tag_patterns:
+        - pattern: v1.1.0-*
           include: true
           source: true
       cancel_previous_builds: true
@@ -30,12 +37,16 @@ workflows:
       - name: Run widget tests
         script: flutter test
       - name: Build signed Android App Bundle
-        script: flutter build appbundle --release --obfuscate --split-debug-info="$CM_BUILD_DIR/../zakham-debug-info-aab"
+        script: |
+          COMMIT="${CM_COMMIT:-$(git rev-parse --short HEAD)}"
+          flutter build appbundle --release --obfuscate --dart-define=ZAKHAM_COMMIT="$COMMIT" --split-debug-info="$CM_BUILD_DIR/../zakham-debug-info-aab"
       - name: Build signed Android APK
         # ملف APK المنشور على الموقع /downloads/zakhamhouse.apk يأتي من هذا البناء.
         # --obfuscate يخفي أسماء الأصناف والدوال من الثنائي، وملف التعيين
         # يُحفظ خارج المستودع (مخرجات CI) لا في المستودع.
-        script: flutter build apk --release --obfuscate --split-debug-info="$CM_BUILD_DIR/../zakham-debug-info-apk"
+        script: |
+          COMMIT="${CM_COMMIT:-$(git rev-parse --short HEAD)}"
+          flutter build apk --release --obfuscate --dart-define=ZAKHAM_COMMIT="$COMMIT" --split-debug-info="$CM_BUILD_DIR/../zakham-debug-info-apk"
     artifacts:
       - build/**/outputs/**/*.aab
       - build/app/outputs/flutter-apk/app-release.apk

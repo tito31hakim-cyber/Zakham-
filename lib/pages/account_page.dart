@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../config/app_version.dart';
 import '../providers/customer_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/birthday.dart';
@@ -397,10 +398,21 @@ class _AccountPageState extends State<AccountPage> {
             ),
           Padding(
             padding: EdgeInsets.fromLTRB(22, 24, 22, 20),
-            child: Text(
-              'دار زخم للعطور • مصر',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: context.subdued, fontSize: 11),
+            child: Column(
+              children: [
+                Text(
+                  'دار زخم للعطور • مصر',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: context.subdued, fontSize: 11),
+                ),
+                const SizedBox(height: 4),
+                // هوية النسخة المنشورة (الأولوية 1) — تمنع لخبطة النسخ.
+                Text(
+                  AppVersion.display,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: context.subdued, fontSize: 11),
+                ),
+              ],
             ),
           ),
         ],
