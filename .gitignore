@@ -47,5 +47,19 @@ app.*.map.json
 # Signing credentials — never commit the release keystore config.
 /android/key.properties
 
+# Firebase client config — the files carry the project API key. The key
+# ships inside every APK anyway, but these files belong in Codemagic
+# secrets, not in Git. (They were committed in 7aff55d before this rule;
+# removing them from tracking needs the Codemagic secret in place first
+# — see the plan execution log, P7 — or the next build breaks.)
+google-services.json
+GoogleService-Info.plist
+
+# Local env / service-account credentials — never commit.
+.env
+.env.*
+*-service-account*.json
+service-account*.json
+
 # Widget Preview related
 .widget_preview/
