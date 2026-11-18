@@ -60,7 +60,7 @@ dependencies:
   # image ‏4.5.4 تستخدم decodeBytes وتتوافق مع archive ‏4.0.9.
   image: 4.5.4
   # اختيار ملف إثبات الدفع من الجهاز (صور أو PDF) — الأولوية 4.
-  file_picker: ^8.1.0
+  file_picker: ^13.4.0
 
 dev_dependencies:
   flutter_test:
