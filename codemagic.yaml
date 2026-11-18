@@ -24,6 +24,17 @@ workflows:
           source: true
       cancel_previous_builds: true
     scripts:
+      - name: Restore Firebase config from secret (optional)
+        # يقرأ google-services.json من سرّ Codemagic إن وُجد (base64)؛
+        # وإلا يُستخدم الملف المضمّن في المستودع (انظر سجل الخطة، P7).
+        # لا يكسر شيئاً بغياب السرّ — الخطوة اختيارية بالكامل.
+        script: |
+          if [ -n "${CM_GOOGLE_SERVICES_JSON:-}" ]; then
+            echo "$CM_GOOGLE_SERVICES_JSON" | base64 -D > android/app/google-services.json
+            echo "google-services.json restored from Codemagic secret."
+          else
+            echo "No CM_GOOGLE_SERVICES_JSON secret; using the file from the repository."
+          fi
       - name: Configure Flutter Android path
         script: echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
       - name: Get Flutter packages
@@ -51,9 +62,27 @@ workflows:
           VERSION="$(grep '^version:' pubspec.yaml | sed 's/^version: *//;s/[[:space:]]*$//')"
           COMMIT="${CM_COMMIT:-$(git rev-parse --short HEAD)}"
           flutter build apk --release --obfuscate --build-name="${VERSION%%+*}" --build-number="${VERSION##*+}" --dart-define=ZAKHAM_COMMIT="$COMMIT" --split-debug-info="$CM_BUILD_DIR/../zakham-debug-info-apk"
+      - name: Generate release manifest
+        # ملف release-manifest.json (الأولوية 8): الإصدار ورقم البناء
+        # والـ commit ووقت البناء وبصمتا SHA-256 للـ APK والـ AAB — يُحفظ
+        # ضمن مخرجات البناء ليُطابَق مع النسخة المنشورة على المتاجر.
+        script: |
+          VERSION="$(grep '^version:' pubspec.yaml | sed 's/^version: *//;s/[[:space:]]*$//')"
+          BUILD_NAME="${VERSION%%+*}"
+          BUILD_NUMBER="${VERSION##*+}"
+          COMMIT="${CM_COMMIT:-$(git rev-parse --short HEAD)}"
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+          AAB_PATH="$(ls build/app/outputs/bundle/release/*.aab 2>/dev/null | head -n 1)"
+          APK_SHA="$(shasum -a 256 "$APK_PATH" | cut -d' ' -f1)"
+          AAB_SHA=""
+          if [ -n "$AAB_PATH" ]; then AAB_SHA="$(shasum -a 256 "$AAB_PATH" | cut -d' ' -f1)"; fi
+          printf '{\n  "app": "House of ZAKHAM",\n  "package": "com.houseofzakham.house_of_zakham",\n  "version": "%s",\n  "versionCode": %s,\n  "codemagicBuild": "%s",\n  "commit": "%s",\n  "buildTimeUtc": "%s",\n  "apkSha256": "%s",\n  "aabSha256": "%s"\n}\n' "$BUILD_NAME" "$BUILD_NUMBER" "${CM_BUILD_ID:-}" "$COMMIT" "$BUILD_TIME" "$APK_SHA" "$AAB_SHA" > release-manifest.json
+          cat release-manifest.json
     artifacts:
       - build/**/outputs/**/*.aab
       - build/app/outputs/flutter-apk/app-release.apk
+      - release-manifest.json
       - ../zakham-debug-info-aab/**
       - ../zakham-debug-info-apk/**
     publishing:
