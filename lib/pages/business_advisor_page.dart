@@ -24,8 +24,10 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
   late Future<AdvisorReport> report;
 
   /// خلاصة «بحث وابتكار» — من المزود التجريبي المحلي حتى توفر API.
-  // TODO(research-api): استبدل MockResearchRepository بتنفيذ API حقيقي
-  //   عند توفر GET /api/admin/research/runs وGET /api/admin/mixes.
+  // TODO(research-api): استبدل MockResearchRepository بـ ApiResearchRepository
+  //   فوق ResearchSyncApi (lib/services/research_sync_api.dart — عميل المستخدم)
+  //   عند نشر مسارات الإدارة GET /api/admin/research/mixes
+  //   وGET /api/admin/research/knowledge-summary.
   late Future<ResearchDigest> researchDigest;
 
   @override

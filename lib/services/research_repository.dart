@@ -6,8 +6,8 @@
 ///
 /// ```text
 /// GET  /api/admin/research/runs      (ملخص آخر دورة)
-/// GET  /api/admin/mixes              (مسودات الميكسات)
-/// GET  /api/admin/knowledge/summary  (ملخص مكتبة المعرفة)
+/// GET  /api/admin/research/mixes     (مسودات الميكسات)
+/// GET  /api/admin/research/knowledge-summary  (ملخص مكتبة المعرفة)
 /// ```
 ///
 /// وحتى ذلك الحين يعمل التطبيق على [MockResearchRepository] ببيانات
@@ -19,8 +19,13 @@
 /// يكون بغياب الحقل لا بتصفيته في الواجهة.
 //
 // TODO(research-api): استبدل MockResearchRepository بـ ApiResearchRepository
-//   عند توفر مسارات API أعلاه؛ وحافظ على قائمة الحقول الآمنة كما هي
-//   (انظر [ResearchDraftMix.toPublicJson]) ولا تضف إليها حقلاً حساساً.
+//   فوق ResearchSyncApi (lib/services/research_sync_api.dart — عميل المستخدم)
+//   عند نشر مسارات الإدارة GET /api/admin/research/mixes
+//   وGET /api/admin/research/knowledge-summary؛ وحافظ على قائمة الحقول
+//   الآمنة كما هي (انظر [ResearchDraftMix.toPublicJson]) ولا تضف إليها
+//   حقلاً حساساً.
+
+import 'research_sync_api.dart';
 
 /// ملخص آخر دورة بحث أسبوعية — كما يرده `GET /api/admin/research/runs`.
 class ResearchRunSummary {
@@ -197,4 +202,93 @@ class MockResearchRepository implements ResearchRepository {
 
   // تاريخ ثابت للدورة التجريبية حتى تبقى اللقطات والاختبارات حتمية.
   static final _mockRunDate = DateTime.utc(2026, 11, 18, 8, 0);
+}
+
+/// تنفيذ API الحقيقي فوق [ResearchSyncApi] (عميل المستخدم للقراءة فقط).
+///
+/// يقرأ مسارات الإدارة الموجودة في العميل فقط:
+/// `GET /api/admin/research/mixes` و`GET /api/admin/research/knowledge-summary`.
+/// لا يُستخدم حتى تُنشر مسارات الإدارة على الخادم؛ وحتى ذلك الحين
+/// تبقى الصفحة على [MockResearchRepository].
+///
+/// التحويل دفاعي عمداً: رد الخادم قد يحمل الحقول بصيغة camelCase
+/// (مخطط الحمولة) أو snake_case (قاعدة البيانات)؛ وأي حقل غائب
+/// يُستبدل بقيمة آمنة محايدة، لا ببيانات مخترعة. والحقول الحساسة
+/// (النسب، الموردون، الدفعات، COA/SDS، التكاليف) لا تُقرأ أصلاً —
+/// نماذج العرض لا تحملها، فالإخفاء بغياب الحقل لا بتصفيته.
+class ApiResearchRepository implements ResearchRepository {
+  ApiResearchRepository(this._api);
+
+  final ResearchSyncApi _api;
+
+  @override
+  Future<ResearchDigest> latestDigest() async {
+    final results = await Future.wait([
+      _api.listMixes(),
+      _api.knowledgeSummary(),
+    ]);
+    final mixes = results[0] as List<Map<String, dynamic>>;
+    final summary = results[1] as Map<String, dynamic>;
+    return ResearchDigest(
+      run: _parseRun(summary),
+      drafts: mixes.map(_parseDraft).toList(),
+      generatedAt: DateTime.now(),
+    );
+  }
+
+  static ResearchRunSummary _parseRun(Map<String, dynamic> summary) {
+    final rawRun = summary['latestRun'];
+    final run =
+        rawRun is Map<String, dynamic> ? rawRun : <String, dynamic>{};
+    return ResearchRunSummary(
+      runId: (run['runId'] ?? summary['runId'] ?? 'unknown').toString(),
+      startedAt: DateTime.tryParse(
+            (run['startedAt'] ?? summary['startedAt'] ?? '').toString(),
+          ) ??
+          DateTime.now(),
+      status: (run['status'] ?? summary['status'] ?? 'unknown').toString(),
+      sourcesFound: _asInt(run['sourcesFound'] ?? summary['sourcesFound']),
+      sourcesAccepted:
+          _asInt(run['sourcesAccepted'] ?? summary['sourcesAccepted']),
+      newMaterials: _asInt(run['newMaterials'] ?? summary['newMaterials']),
+      newMixes: _asInt(run['newMixes'] ?? summary['newMixes']),
+      agentVersion:
+          (run['agentVersion'] ?? summary['agentVersion'] ?? '').toString(),
+      knowledgeVersion:
+          (run['knowledgeVersion'] ?? summary['knowledgeVersion'] ?? '')
+              .toString(),
+    );
+  }
+
+  static ResearchDraftMix _parseDraft(Map<String, dynamic> raw) {
+    final warnings = _asStringList(raw['warnings']);
+    return ResearchDraftMix(
+      code: (raw['code'] ?? '').toString(),
+      nameAr: (raw['nameAr'] ?? raw['name_ar'] ?? '').toString(),
+      status: (raw['status'] ?? 'research_draft').toString(),
+      version: (raw['version'] ?? '1').toString(),
+      topNotes: _asStringList(raw['topNotes'] ?? raw['top_notes']),
+      heartNotes: _asStringList(raw['heartNotes'] ?? raw['heart_notes']),
+      baseNotes: _asStringList(raw['baseNotes'] ?? raw['base_notes']),
+      evidenceSummary: (raw['evidenceSummary'] ??
+              raw['evidence_summary'] ??
+              'ملخص الأدلة غير متوفر بعد من الخادم.')
+          .toString(),
+      warnings:
+          warnings.isEmpty ? ResearchDraftMix.requiredWarnings : warnings,
+      confidence: _confidenceLabel(raw['confidence']),
+    );
+  }
+
+  static String _confidenceLabel(dynamic value) {
+    if (value is num) return '${value.toString()}/100';
+    if (value is String && value.trim().isNotEmpty) return value;
+    return 'غير محددة';
+  }
+
+  static int _asInt(dynamic value) => value is num ? value.toInt() : 0;
+
+  static List<String> _asStringList(dynamic value) => value is List
+      ? value.map((e) => e.toString()).toList()
+      : const <String>[];
 }
