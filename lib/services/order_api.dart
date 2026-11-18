@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:http/http.dart' as http;
+
 import '../config/app_config.dart';
 import '../models/cart_item.dart';
 import 'api_headers.dart';
@@ -28,10 +30,15 @@ class OrderApi {
   OrderApi({
     this.baseUrl = AppConfig.apiBaseUrl,
     this.credentials,
-  });
+    http.Client? client,
+  }) : _client = client;
 
   final String baseUrl;
   final ApiCredentials? credentials;
+
+  /// HTTP client override — للاختبارات فقط. في الإنتاج يبقى null فيُستخدم
+  /// عميل SecureHttp المثبّت الشهادة. لا يُمرَّر عميل حقيقي غير مثبّت أبداً.
+  final http.Client? _client;
 
   /// The PHP endpoint validates this header as an RFC 4122 UUID.
   /// A fresh key is generated for every checkout attempt so retries are
@@ -99,7 +106,7 @@ class OrderApi {
     )
       ..['Idempotency-Key'] = idempotencyKey;
 
-    final response = await SecureHttp.client
+    final response = await (_client ?? SecureHttp.client)
         .post(
           uri,
           headers: headers,
