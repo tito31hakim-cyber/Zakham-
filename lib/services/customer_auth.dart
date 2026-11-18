@@ -17,6 +17,19 @@ class AuthRequiredException implements Exception {
   String toString() => message;
 }
 
+/// Thrown when the logout-all endpoint is not on the server yet (404).
+/// The server change is a separate, small step; the app shows a clear
+/// "coming after the next store update" message instead of a generic
+/// error when this happens.
+class LogoutAllUnavailableException implements Exception {
+  const LogoutAllUnavailableException([
+    this.message = 'الخروج من كل الأجهزة سيتوفر بعد تحديث المتجر القادم.',
+  ]);
+  final String message;
+  @override
+  String toString() => message;
+}
+
 /// Thrown when the server refuses a birthday save because the birthday
 /// is already set (409 birthday_already_set). The birthday is fixed —
 /// it can only be changed through the store.
@@ -189,9 +202,16 @@ class CustomerOrder {
 /// Only the cookie string is persisted (by the provider, in encrypted
 /// secure storage). Passwords are never stored or logged.
 class CustomerAuth {
-  CustomerAuth({this.baseUrl = AppConfig.apiBaseUrl});
+  CustomerAuth({this.baseUrl = AppConfig.apiBaseUrl, http.Client? client})
+      : _client = client;
 
   final String baseUrl;
+
+  /// HTTP client override — للاختبارات فقط. في الإنتاج يبقى null فيُستخدم
+  /// عميل SecureHttp المثبّت الشهادة. لا يُمرَّر عميل حقيقي غير مثبّت أبداً.
+  final http.Client? _client;
+
+  http.Client get _http => _client ?? SecureHttp.client;
 
   /// name -> value jar, kept so PHPSESSID and zk_remember survive together.
   final Map<String, String> _cookies = {};
@@ -454,8 +474,65 @@ class CustomerAuth {
     }
   }
 
+  /// تسجيل الخروج من كل الأجهزة (POST /api/auth/logout-all).
+  /// نقطة خادم جديدة: 404 تعني أن الخادم لم يُنشر بعد فيُرمى
+  /// [LogoutAllUnavailableException] حتى تُظهر الواجهة رسالة واضحة.
+  /// عند النجاح تُنسى الجلسة محلياً أيضاً؛ وعند أي فشل آخر تبقى
+  /// جلسة هذا الجهاز كما هي.
+  Future<void> logoutFromAllDevices() async {
+    final response = await _http
+        .post(
+          _url(AppConfig.customerLogoutAllPath),
+          headers: _headers(mutating: true),
+          body: jsonEncode(<String, dynamic>{}),
+        )
+        .timeout(const Duration(seconds: 20));
+    _captureCookies(response);
+    if (response.statusCode == 404) {
+      throw const LogoutAllUnavailableException();
+    }
+    _validate(response);
+    clearCookie();
+  }
+
+  /// إعادة رفع إثبات الدفع لطلب رُفض إثباته
+  /// (POST /api/orders/{ref}/receipt — multipart).
+  /// الخادم يقبل فقط عندما تكون حالة الدفع 'rejected' (409 خلاف
+  /// ذلك)، ويقبل PDF/JPEG/PNG/WebP حتى 5MB، ويعيد حالة الدفع
+  /// الجديدة ('proof_submitted'). يعيد تلك الحالة.
+  Future<String> resubmitReceipt({
+    required String orderRef,
+    required List<int> bytes,
+    required String filename,
+    String receiptReference = '',
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      AppConfig.orderReceiptUri(orderRef),
+    );
+    // بلا Content-Type من ApiHeaders: MultipartRequest يضع ترويسته
+    // الخاصة مع الحد الفاصل؛ ترويسة JSON هنا تُفسد الرفع.
+    request.headers.addAll(
+      ApiHeaders.build(
+        credentials: ApiCredentials(cookie: _cookie),
+        mutating: true,
+      ),
+    );
+    request.fields['receiptReference'] = receiptReference;
+    request.files.add(
+      http.MultipartFile.fromBytes('receipt', bytes, filename: filename),
+    );
+    final streamed = await _http
+        .send(request)
+        .timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamed);
+    _captureCookies(response);
+    final data = _validate(response);
+    return '${data['paymentStatus'] ?? 'proof_submitted'}';
+  }
+
   Future<Map<String, dynamic>> _get(Uri uri) async {
-    final response = await SecureHttp.client
+    final response = await _http
         .get(uri, headers: _headers())
         .timeout(const Duration(seconds: 20));
     _captureCookies(response);
@@ -466,7 +543,7 @@ class CustomerAuth {
     Uri uri,
     Map<String, dynamic> body,
   ) async {
-    final response = await SecureHttp.client
+    final response = await _http
         .post(
           uri,
           headers: _headers(mutating: true),

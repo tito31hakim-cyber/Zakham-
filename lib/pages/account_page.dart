@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -61,12 +62,19 @@ class AccountPage extends StatefulWidget {
 class _AccountPageState extends State<AccountPage> {
   bool _loadingOrders = false;
   String? _ordersError;
+
+  /// انتهت الجلسة أثناء تحميل الطلبات (401) — تُعرض رسالة واضحة مع
+  /// زر دخول بدل نص الخطأ الخام.
+  bool _sessionExpired = false;
   String? _ordersLoadedFor;
   String? _birthdayLoadedFor;
   bool _savingBirthday = false;
 
   /// أرقام الطلبات الجاري توليد فاتورتها الآن (لمنع الضغط المزدوج).
   final Set<String> _generatingInvoices = <String>{};
+
+  /// أرقام الطلبات الجاري إعادة رفع إثبات دفعها الآن.
+  final Set<String> _resubmittingReceipts = <String>{};
   bool? _remindersEnabled;
   bool? _favOffersEnabled;
   bool? _dailyPerfumeEnabled;
@@ -158,9 +166,14 @@ class _AccountPageState extends State<AccountPage> {
     setState(() {
       _loadingOrders = true;
       _ordersError = null;
+      _sessionExpired = false;
     });
     try {
       await provider.refreshOrders();
+    } on AuthRequiredException {
+      // الجلسة انتهت: المزوّد أسقطها محلياً أصلاً، فتُعرض رسالة
+      // واضحة مع زر دخول بدل نص خطأ خام.
+      if (mounted) setState(() => _sessionExpired = true);
     } catch (error) {
       if (mounted) {
         setState(
@@ -212,6 +225,61 @@ class _AccountPageState extends State<AccountPage> {
     }
   }
 
+  /// إعادة رفع إثبات دفع لطلب رُفض إثباته — يختار العميل ملفاً
+  /// (صورة أو PDF حتى 5MB كما يقبل الخادم) فيُرفع إلى نقطة إعادة
+  /// الإرسال، وتتحدث حالة الدفع في القائمة إلى «أُرسل الإثبات».
+  Future<void> _resubmitReceipt(CustomerOrder order) async {
+    if (_resubmittingReceipts.contains(order.orderRef)) return;
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+      withData: true,
+    );
+    if (picked == null || picked.files.isEmpty) return;
+    final file = picked.files.first;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذّر قراءة الملف المختار.')),
+        );
+      }
+      return;
+    }
+    if (bytes.length > 5 * 1024 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('حجم الملف يتجاوز 5MB — اختر ملفاً أصغر.'),
+          ),
+        );
+      }
+      return;
+    }
+    setState(() => _resubmittingReceipts.add(order.orderRef));
+    try {
+      final provider = context.read<CustomerProvider>();
+      await provider.resubmitReceipt(order.orderRef, bytes, file.name);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم إرسال إثبات الدفع الجديد — سيُراجعه فريق زخم.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _resubmittingReceipts.remove(order.orderRef));
+      }
+    }
+  }
+
   Future<void> _openLogin() async {
     await Navigator.push<bool>(
       context,
@@ -252,6 +320,51 @@ class _AccountPageState extends State<AccountPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم تسجيل الخروج.')),
+      );
+    }
+  }
+
+  /// الخروج من كل الأجهزة — بتأكيد أولاً لأنه يشمل هذا الجهاز.
+  /// نقطة الخادم جديدة؛ إن لم تُنشر بعد تُظهر الواجهة رسالة واضحة
+  /// ويبقى العميل مسجَّلاً هنا.
+  Future<void> _logoutFromAllDevices() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تسجيل الخروج من كل الأجهزة؟'),
+        content: const Text(
+          'سيتم تسجيل خروج حسابك من جميع أجهزتك، بما فيها هذا الجهاز، وستحتاج إلى تسجيل الدخول مجدداً.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('تأكيد الخروج'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await context.read<CustomerProvider>().logoutFromAllDevices();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تسجيل الخروج من كل الأجهزة.')),
+      );
+    } on LogoutAllUnavailableException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
       );
     }
   }
@@ -396,6 +509,14 @@ class _AccountPageState extends State<AccountPage> {
               'اخرج من حسابك على هذا الجهاز',
               _logout,
             ),
+          if (customer != null)
+            _item(
+              context,
+              Icons.devices_outlined,
+              'تسجيل الخروج من كل الأجهزة',
+              'اخرج من حسابك على جميع أجهزتك',
+              _logoutFromAllDevices,
+            ),
           Padding(
             padding: EdgeInsets.fromLTRB(22, 24, 22, 20),
             child: Column(
@@ -409,6 +530,12 @@ class _AccountPageState extends State<AccountPage> {
                 // هوية النسخة المنشورة (الأولوية 1) — تمنع لخبطة النسخ.
                 Text(
                   AppVersion.display,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: context.subdued, fontSize: 11),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '© 2026 دار زخم للعطور — جميع الحقوق محفوظة',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: context.subdued, fontSize: 11),
                 ),
@@ -954,6 +1081,27 @@ class _AccountPageState extends State<AccountPage> {
             padding: EdgeInsets.symmetric(vertical: 18),
             child: Center(child: CircularProgressIndicator(color: context.goldText)),
           )
+        else if (_sessionExpired)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'انتهت جلستك — سجّل الدخول مجدداً لمتابعة طلباتك.',
+                  style: TextStyle(color: context.subdued, height: 1.6),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton(
+                    onPressed: _openLogin,
+                    child: const Text('تسجيل الدخول'),
+                  ),
+                ),
+              ],
+            ),
+          )
         else if (_ordersError != null)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
@@ -1022,6 +1170,29 @@ class _AccountPageState extends State<AccountPage> {
                           _generatingInvoices.contains(order.orderRef)
                               ? 'جارٍ التجهيز…'
                               : 'تنزيل الفاتورة PDF',
+                          style: TextStyle(
+                            color: context.goldText,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    // إعادة رفع إثبات الدفع — فقط للطلبات التي رفض
+                    // فريق زخم إثباتها (الخادم نفسه يرفض غيرها 409).
+                    if (order.paymentStatus == 'rejected' &&
+                        order.status != 'cancelled')
+                      TextButton(
+                        onPressed: _resubmittingReceipts.contains(order.orderRef)
+                            ? null
+                            : () => _resubmitReceipt(order),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          _resubmittingReceipts.contains(order.orderRef)
+                              ? 'جارٍ الرفع…'
+                              : 'إعادة رفع إثبات الدفع',
                           style: TextStyle(
                             color: context.goldText,
                             fontSize: 11,

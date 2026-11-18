@@ -336,6 +336,44 @@ class CustomerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// تسجيل الخروج من كل الأجهزة (نقطة خادم جديدة — انظر
+  /// [CustomerAuth.logoutFromAllDevices]). عند النجاح تُنسى الجلسة
+  /// محلياً كما في الخروج العادي؛ وعند عدم توفر النقطة بعد (404)
+  /// يبقى العميل مسجَّلاً على هذا الجهاز وتُظهر الواجهة رسالة واضحة.
+  Future<void> logoutFromAllDevices() async {
+    await _auth.logoutFromAllDevices();
+    await _persistCookie();
+    _customer = null;
+    _orders = const [];
+    _verificationPending = false;
+    _pendingPhoneMask = '';
+    _pendingPhone = '';
+    notifyListeners();
+  }
+
+  /// إعادة رفع إثبات دفع لطلب رُفض إثباته — يحدّث حالة الدفع في
+  /// القائمة المحلية إلى ما أعاده الخادم ('proof_submitted') ويعيدها.
+  Future<String> resubmitReceipt(
+    String orderRef,
+    List<int> bytes,
+    String filename,
+  ) async {
+    final status = await _auth.resubmitReceipt(
+      orderRef: orderRef,
+      bytes: bytes,
+      filename: filename,
+    );
+    _orders = _orders
+        .map(
+          (order) => order.orderRef == orderRef
+              ? order.copyWith(paymentStatus: status)
+              : order,
+        )
+        .toList(growable: false);
+    notifyListeners();
+    return status;
+  }
+
   /// Called when an API call reports a dead session (e.g. checkout 401):
   /// forget the local session so the UI asks for sign-in again.
   Future<void> dropSession() => _dropLocalSession();

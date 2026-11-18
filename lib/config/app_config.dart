@@ -22,6 +22,10 @@ class AppConfig {
   static const customerResendPhonePath = '/api/auth/resend-phone';
   static const customerMePath = '/api/auth/me';
   static const customerLogoutPath = '/api/auth/logout';
+
+  /// تسجيل الخروج من كل الأجهزة — نقطة خادم جديدة
+  /// (POST /api/auth/logout-all)؛ 404 تعني أن الخادم لم يُنشر بعد.
+  static const customerLogoutAllPath = '/api/auth/logout-all';
   static const customerOrdersPath = '/api/account/orders';
   static const customerPointsPath = '/api/account/points';
   static const customerAddressesPath = '/api/account/addresses';
@@ -61,6 +65,11 @@ class AppConfig {
       );
   static Uri orderInvoiceUri(String ref) => Uri.parse(
         '$apiBaseUrl/api/orders/${Uri.encodeComponent(ref)}/invoice',
+      );
+
+  /// إعادة رفع إثبات الدفع لطلب (POST /api/orders/{ref}/receipt).
+  static Uri orderReceiptUri(String ref) => Uri.parse(
+        '$apiBaseUrl/api/orders/${Uri.encodeComponent(ref)}/receipt',
       );
 
   static String resolveImageUrl(String image) {
