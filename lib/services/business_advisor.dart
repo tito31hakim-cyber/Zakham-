@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'admin_api.dart';
 import 'product_stock.dart';
 
-/// مستشار دار زخم التجاري — قراءة وتحليل فقط (ملفات المستخدم بعد ضبط).
+/// مستشار دار زخم التجاري — قراءة وتحليل فقط (ملفات المستخدم v2 بعد ضبط).
 ///
 /// يقرأ بيانات المتجر من نقاط الإدارة الموجودة أصلاً (analytics +
 /// orders + customers + products) ويحسب 5 إشارات — بلا أي كتابة على
@@ -73,6 +73,8 @@ class AdvisorReport {
     required this.ordersExamined,
     required this.unavailable,
     required this.insights,
+    required this.businessContext,
+    required this.nextFocus,
   });
 
   final DateTime generatedAt;
@@ -106,6 +108,12 @@ class AdvisorReport {
   final List<String> unavailable;
 
   final List<AdvisorInsight> insights;
+
+  /// السياق التجاري الثابت للدار — ذاكرة عمل المستشار (من v2).
+  final String businessContext;
+
+  /// قائمة التركيز التالية المحسوبة من البيانات (من v2).
+  final List<String> nextFocus;
 }
 
 class BusinessAdvisorService {
@@ -231,7 +239,39 @@ class BusinessAdvisorService {
       ordersExamined: orders.length,
       unavailable: unavailable,
       insights: insights,
+      businessContext:
+          'دار زخم بيت عطور فاخر: القرار التجاري يتأثر بالعطر والتركيز والحجم، وبالدفع المسبق والشحن للمحافظات، ثم بإعادة شراء العميل وثقته.',
+      nextFocus: _nextFocus(
+        products: products,
+        customers: customers,
+        orders: orders,
+      ),
     );
+  }
+
+  /// قائمة التركيز التالية (من v2 حرفياً): ما الذي يحتاجه التحليل
+  /// ليصبح أدق في الدورة التالية — بلا أي تغيير تلقائي في المتجر.
+  List<String> _nextFocus({
+    required List<dynamic> products,
+    required List<dynamic> customers,
+    required List<dynamic> orders,
+  }) {
+    final focus = <String>[];
+    if (orders.isEmpty) {
+      focus.add('ابدأ بتجميع تاريخ طلبات كافٍ قبل اتخاذ قرارات نمو قوية.');
+    } else {
+      focus.add('اربط كل طلب بالعطر والتركيز والحجم حتى يصبح التحليل تجاريًا لا عدديًا فقط.');
+    }
+    if (customers.isEmpty) {
+      focus.add('فعّل تسجيل العملاء واستخدمه لبناء ذاكرة إعادة الشراء.');
+    } else {
+      focus.add('سجّل سبب الإلغاء أو عدم إعادة الشراء؛ هذه البيانات أهم من عدد الزيارات.');
+    }
+    if (products.isNotEmpty) {
+      focus.add('أضف تكلفة المنتج والتغليف والشحن لحساب الربحية الحقيقية، لا الإيرادات فقط.');
+    }
+    focus.add('كل دورة تحديث تضيف قاعدة تحليل جديدة بعد مراجعة نتائجها، ولا تغيّر سلوك المتجر تلقائيًا.');
+    return focus;
   }
 
   /// استدعاء واحد بمهلة ومعالجة مستقلة: عند الفشل يُسجَّل القسم

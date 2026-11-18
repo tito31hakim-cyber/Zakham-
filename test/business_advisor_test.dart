@@ -412,4 +412,45 @@ void main() {
       expect(insight.body, contains('900'));
     });
   });
+
+  group('السياق التجاري والتركيز التالي (v2)', () {
+    test('businessContext: نص ثابت عن هوية الدار في كل تقرير', () async {
+      final report = await _analyze();
+      expect(report.businessContext, contains('دار زخم'));
+      expect(report.businessContext, contains('الدفع المسبق'));
+      expect(report.businessContext, contains('إعادة شراء العميل'));
+    });
+
+    test('nextFocus مع بيانات: 4 عناصر — ربط الطلب وسبب الإلغاء والتكلفة والدورات', () async {
+      final report = await _analyze();
+      expect(report.nextFocus.length, 4);
+      expect(report.nextFocus[0], contains('اربط كل طلب بالعطر والتركيز والحجم'));
+      expect(report.nextFocus[1], contains('سجّل سبب الإلغاء'));
+      expect(report.nextFocus[2], contains('أضف تكلفة المنتج'));
+      expect(report.nextFocus[3], contains('كل دورة تحديث'));
+      expect(report.nextFocus[3], contains('لا تغيّر سلوك المتجر تلقائيًا'));
+    });
+
+    test('nextFocus بلا بيانات: تجميع التاريخ وتفعيل تسجيل العملاء ثم الدورات', () async {
+      final report = await _analyze(
+        analytics: const {},
+        orders: const [],
+        customers: const [],
+        products: const [],
+      );
+      expect(report.nextFocus.length, 3);
+      expect(report.nextFocus[0], contains('ابدأ بتجميع تاريخ طلبات كافٍ'));
+      expect(report.nextFocus[1], contains('فعّل تسجيل العملاء'));
+      expect(report.nextFocus[2], contains('كل دورة تحديث'));
+    });
+
+    test('nextFocus بلا منتجات: لا عنصر تكلفة', () async {
+      final report = await _analyze(products: const []);
+      expect(report.nextFocus.length, 3);
+      expect(
+        report.nextFocus.any((item) => item.contains('تكلفة المنتج')),
+        isFalse,
+      );
+    });
+  });
 }
