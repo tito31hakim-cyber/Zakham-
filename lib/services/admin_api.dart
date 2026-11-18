@@ -30,9 +30,16 @@ class TotpRequiredException implements Exception {
 /// The cookie and tokens live in memory only and are dropped on logout.
 /// Never persist them in SharedPreferences or logs.
 class AdminApi {
-  AdminApi({this.baseUrl = AppConfig.apiBaseUrl});
+  AdminApi({this.baseUrl = AppConfig.apiBaseUrl, http.Client? client})
+      : _client = client;
 
   final String baseUrl;
+
+  /// HTTP client override — للاختبارات فقط. في الإنتاج يبقى null فيُستخدم
+  /// عميل SecureHttp المثبّت الشهادة. لا يُمرَّر عميل حقيقي غير مثبّت أبداً.
+  final http.Client? _client;
+
+  http.Client get _http => _client ?? _http;
 
   String? _cookie;
   String? _csrfToken;
@@ -77,7 +84,7 @@ class AdminApi {
   }
 
   Future<Map<String, dynamic>> _get(Uri uri) async {
-    final response = await SecureHttp.client
+    final response = await _http
         .get(uri, headers: _headers())
         .timeout(const Duration(seconds: 20));
     _captureCookie(response);
@@ -89,7 +96,7 @@ class AdminApi {
     Map<String, dynamic> body, {
     String? csrf,
   }) async {
-    final response = await SecureHttp.client
+    final response = await _http
         .post(
           uri,
           headers: _headers(mutating: true, csrf: csrf),
@@ -104,7 +111,7 @@ class AdminApi {
     Uri uri,
     Map<String, dynamic> body,
   ) async {
-    final response = await SecureHttp.client
+    final response = await _http
         .patch(uri, headers: _headers(mutating: true), body: jsonEncode(body))
         .timeout(const Duration(seconds: 20));
     _captureCookie(response);
@@ -112,7 +119,7 @@ class AdminApi {
   }
 
   Future<void> _delete(Uri uri) async {
-    final response = await SecureHttp.client
+    final response = await _http
         .delete(uri, headers: _headers(mutating: true))
         .timeout(const Duration(seconds: 20));
     _captureCookie(response);
@@ -142,7 +149,7 @@ class AdminApi {
     };
     final code = totp?.trim() ?? '';
     if (code.isNotEmpty) body['totp'] = code;
-    final response = await SecureHttp.client
+    final response = await _http
         .post(
           uri,
           headers: _headers(mutating: true, csrf: loginCsrf),
@@ -201,10 +208,19 @@ class AdminApi {
 
   /// Searches admin orders. [status] is a server status value
   /// (pending_transfer, paid, processing, shipped, delivered, cancelled)
-  /// or '' for every status. Returns the raw page: orders, total, page,
+  /// or '' for every status. The extra filters map 1:1 to what the
+  /// server's adminOrdersList accepts (governorate LIKE, exact payment
+  /// method / payment status, dateFrom/dateTo as YYYY-MM-DD); empty
+  /// values are omitted so the call behaves exactly like before.
+  /// Returns the raw page: orders, total, page,
   /// totalPages and bucketCounts.
   Future<Map<String, dynamic>> orders({
     String status = '',
+    String governorate = '',
+    String paymentMethod = '',
+    String paymentStatus = '',
+    String dateFrom = '',
+    String dateTo = '',
     int page = 1,
   }) async {
     final body = <String, dynamic>{
@@ -213,6 +229,17 @@ class AdminApi {
       'sort': 'created_desc',
     };
     if (status.trim().isNotEmpty) body['status'] = status.trim();
+    if (governorate.trim().isNotEmpty) {
+      body['governorate'] = governorate.trim();
+    }
+    if (paymentMethod.trim().isNotEmpty) {
+      body['paymentMethod'] = paymentMethod.trim();
+    }
+    if (paymentStatus.trim().isNotEmpty) {
+      body['paymentStatus'] = paymentStatus.trim();
+    }
+    if (dateFrom.trim().isNotEmpty) body['dateFrom'] = dateFrom.trim();
+    if (dateTo.trim().isNotEmpty) body['dateTo'] = dateTo.trim();
     return _post(_url(AppConfig.adminOrdersSearchPath), body);
   }
 
@@ -273,7 +300,7 @@ class AdminApi {
     required String topic,
   }) async {
     final uri = _url(AppConfig.adminPushSendPath);
-    final response = await SecureHttp.client
+    final response = await _http
         .post(
           uri,
           headers: _headers(mutating: true),

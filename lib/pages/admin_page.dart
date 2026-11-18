@@ -717,8 +717,43 @@ class _OrdersPanel extends StatefulWidget {
 
 class _OrdersPanelState extends State<_OrdersPanel> {
   String status = '';
+  String governorate = '';
+  String paymentMethod = '';
+  String paymentStatus = '';
+  String dateFrom = '';
+  String dateTo = '';
+  bool _filtersOpen = false;
   int page = 1;
   late Future<Map<String, dynamic>> future;
+
+  /// المحافظات المعتمدة — نفس قائمة المتجر الحي (تُطابق الخادم).
+  static const _governorates = <String>[
+    'القاهرة', 'الجيزة', 'الإسكندرية', 'القليوبية', 'الدقهلية', 'البحر الأحمر',
+    'البحيرة', 'الفيوم', 'الغربية', 'الإسماعيلية', 'المنوفية', 'المنيا',
+    'أسيوط', 'الوادي الجديد', 'بني سويف', 'بورسعيد', 'دمياط',
+    'جنوب سيناء', 'كفر الشيخ', 'مطروح', 'الأقصر', 'قنا', 'شمال سيناء',
+    'سوهاج', 'السويس', 'أسوان', 'الشرقية',
+  ];
+
+  static const _paymentMethods = <String>[
+    'InstaPay | إنستاباي',
+    'Vodafone Cash | فودافون كاش',
+  ];
+
+  static const _paymentStatuses = <String>[
+    'unpaid',
+    'proof_submitted',
+    'verified',
+    'rejected',
+    'refunded',
+  ];
+
+  bool get _hasActiveFilters =>
+      governorate.isNotEmpty ||
+      paymentMethod.isNotEmpty ||
+      paymentStatus.isNotEmpty ||
+      dateFrom.isNotEmpty ||
+      dateTo.isNotEmpty;
 
   @override
   void initState() {
@@ -726,12 +761,57 @@ class _OrdersPanelState extends State<_OrdersPanel> {
     _load();
   }
 
-  void _load() =>
-      setState(() => future = widget.api.orders(status: status, page: page));
+  void _load() => setState(
+        () => future = widget.api.orders(
+          status: status,
+          governorate: governorate,
+          paymentMethod: paymentMethod,
+          paymentStatus: paymentStatus,
+          dateFrom: dateFrom,
+          dateTo: dateTo,
+          page: page,
+        ),
+      );
 
   void _pickStatus(String next) {
     status = next;
     page = 1;
+    _load();
+  }
+
+  void _clearFilters() {
+    setState(() {
+      governorate = '';
+      paymentMethod = '';
+      paymentStatus = '';
+      dateFrom = '';
+      dateTo = '';
+      page = 1;
+    });
+    _load();
+  }
+
+  String _fmtDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> _pickDate(bool isFrom) async {
+    final now = DateTime.now();
+    final current = DateTime.tryParse(isFrom ? dateFrom : dateTo) ?? now;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current.isAfter(now) ? now : current,
+      firstDate: DateTime(2025, 1, 1),
+      lastDate: now,
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isFrom) {
+        dateFrom = _fmtDate(picked);
+      } else {
+        dateTo = _fmtDate(picked);
+      }
+      page = 1;
+    });
     _load();
   }
 
@@ -774,6 +854,160 @@ class _OrdersPanelState extends State<_OrdersPanel> {
                   _chip('تم الشحن', 'shipped', null),
                   _chip('تم التوصيل', 'delivered', buckets['completed']),
                   _chip('ملغي', 'cancelled', buckets['archive']),
+                ],
+              ),
+            ),
+            // فلترة إضافية (محافظة/طريقة دفع/حالة دفع/تاريخ) — الخادم
+            // يدعمها كلها في نقطة البحث؛ الفلاتر الفارغة لا تُرسل.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => setState(
+                          () => _filtersOpen = !_filtersOpen,
+                        ),
+                        icon: Icon(
+                          _filtersOpen
+                              ? Icons.expand_less
+                              : Icons.tune_outlined,
+                          size: 18,
+                          color: context.goldText,
+                        ),
+                        label: Text(
+                          _filtersOpen ? 'إخفاء الفلاتر' : 'فلترة إضافية',
+                          style: TextStyle(color: context.goldText),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (_hasActiveFilters)
+                        TextButton(
+                          onPressed: _clearFilters,
+                          child: const Text('مسح الفلاتر'),
+                        ),
+                    ],
+                  ),
+                  if (_filtersOpen) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: governorate,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'المحافظة',
+                            ),
+                            items: [
+                              const DropdownMenuItem(
+                                value: '',
+                                child: Text('كل المحافظات'),
+                              ),
+                              ..._governorates.map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(value),
+                                ),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() => governorate = value ?? '');
+                              page = 1;
+                              _load();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: paymentMethod,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'طريقة الدفع',
+                            ),
+                            items: [
+                              const DropdownMenuItem(
+                                value: '',
+                                child: Text('كل الطرق'),
+                              ),
+                              ..._paymentMethods.map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(
+                                    value.split('|').first.trim(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() => paymentMethod = value ?? '');
+                              page = 1;
+                              _load();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: paymentStatus,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'حالة الدفع',
+                            ),
+                            items: [
+                              const DropdownMenuItem(
+                                value: '',
+                                child: Text('كل الحالات'),
+                              ),
+                              ..._paymentStatuses.map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(paymentStatusLabel(value)),
+                                ),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() => paymentStatus = value ?? '');
+                              page = 1;
+                              _load();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _pickDate(true),
+                            icon: const Icon(
+                              Icons.calendar_today_outlined,
+                              size: 16,
+                            ),
+                            label: Text(
+                              dateFrom.isEmpty ? 'من تاريخ' : dateFrom,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _pickDate(false),
+                            icon: const Icon(
+                              Icons.calendar_today_outlined,
+                              size: 16,
+                            ),
+                            label: Text(
+                              dateTo.isEmpty ? 'إلى تاريخ' : dateTo,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                  ],
                 ],
               ),
             ),
