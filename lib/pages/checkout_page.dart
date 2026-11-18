@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/cart_item.dart';
 import '../models/saved_address.dart';
@@ -212,6 +214,32 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
+  /// يحفظ آخر طلب ناجح (رقمه ورمز تتبعه) في SharedPreferences حتى
+  /// يستطيع العميل متابعة الطلب لاحقاً. best-effort: أي فشل هنا لا
+  /// يعطّل إتمام الطلب — الطلب نفسه محفوظ على الخادم وفي «طلباتي».
+  Future<void> _persistLastOrder(String orderRef, String trackingToken) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('zakham_last_order_ref', orderRef);
+      await prefs.setString('zakham_last_order_token', trackingToken);
+    } catch (_) {
+      // يُتجاهل بهدوء — لا يعطّل إتمام الطلب.
+    }
+  }
+
+  /// يفتح واتساب المتجر (201042881176 — نفس رقم المتجر الحي) برسالة
+  /// الطلب الجاهزة. يعيد false عند تعذّر الفتح.
+  Future<bool> _openOrderWhatsApp(String message) async {
+    final uri = Uri.parse(
+      'https://wa.me/201042881176?text=${Uri.encodeComponent(message)}',
+    );
+    try {
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> submit() async {
     if (submitting) return;
     if (!formKey.currentState!.validate()) return;
@@ -269,6 +297,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
       );
 
       if (!mounted) return;
+      // حفظ رقم الطلب ورمز تتبعه محلياً (best-effort) حتى يستطيع
+      // العميل متابعة الطلب — لا يعطّل إتمام الطلب عند فشله.
+      await _persistLastOrder(result.orderRef, result.trackingToken);
+      if (!mounted) return;
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
@@ -285,6 +317,30 @@ class _CheckoutPageState extends State<CheckoutPage> {
             textAlign: TextAlign.right,
           ),
           actions: [
+            TextButton.icon(
+              onPressed: () async {
+                final message =
+                    'مرحباً دار زخم، أكدت طلباً جديداً من التطبيق.\n'
+                    'رقم الطلب: ${result.orderRef}\n'
+                    'الإجمالي شامل الشحن: ${result.total.toStringAsFixed(2)} EGP\n'
+                    'الدفع: ${payment.split('|').first.trim()}\n'
+                    'رمز التتبع: ${result.trackingToken}';
+                final launched = await _openOrderWhatsApp(message);
+                if (!launched && dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'تعذّر فتح واتساب. انسخ رقم الطلب وأرسله يدوياً.',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              },
+              icon: const Icon(Icons.chat_outlined),
+              label: const Text('إرسال عبر واتساب'),
+            ),
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('حسنًا'),
@@ -581,7 +637,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         icon: submitting
                             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
                             : const Icon(Icons.lock_outline),
-                        label: Text(submitting ? 'جارٍ إرسال الطلب...' : 'إرسال الطلب للمراجعة'),
+                        label: Text(submitting ? 'جارٍ إرسال الطلب...' : 'تأكيد وإرسال الطلب'),
                       ),
                     ),
                   ]),

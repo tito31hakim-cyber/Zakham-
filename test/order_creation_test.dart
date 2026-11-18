@@ -115,7 +115,7 @@ void main() {
         return _ok();
       });
 
-      await _create(_api(client));
+      final result = await _create(_api(client));
 
       final request = captured!;
       expect(request.method, 'POST');
@@ -128,6 +128,8 @@ void main() {
       final body = jsonDecode(request.body) as Map<String, dynamic>;
       expect(body['idempotencyKey'], headerKey);
       expect('${body['trackingToken']}', matches(_hex64));
+      // النتيجة تعيد رمز التتبع نفسه الذي أُرسل — حتى يُحفظ مع الطلب.
+      expect(result.trackingToken, body['trackingToken']);
     });
 
     test('كل محاولة إرسال تحمل مفتاحاً ورمز تتبع جديدين (لا يُعاد استخدام مفتاح محاولة سابقة)', () async {

@@ -13,12 +13,18 @@ class OrderResult {
     required this.orderRef,
     required this.total,
     required this.status,
+    required this.trackingToken,
     this.bundleDiscount = 0,
   });
 
   final String orderRef;
   final double total;
   final String status;
+
+  /// رمز تتبع الطلب (64 رقماً ست عشرياً) كما أُرسل للخادم — يُحفظ
+  /// مع رقم الطلب حتى يستطيع العميل متابعة طلبه، ويُرسل مع رسالة
+  /// واتساب للمتجر. ليس سراً: العميل يشاركه مع المتجر أصلاً.
+  final String trackingToken;
 
   /// خصم عروض الحزم كما أكّده الخادم في رد إنشاء الطلب (0 قبل نشر
   /// نقطة الخصم أو عند عدم انطباق أي قاعدة) — الرقم الوحيد الموثوق،
@@ -99,6 +105,9 @@ class OrderApi {
       throw Exception('وسيلة الدفع غير مدعومة. الدفع المسبق متاح عبر إنستاباي أو فودافون كاش فقط.');
     }
     final idempotencyKey = _idempotencyKey();
+    // رمز التتبع يُولَّد مرة واحدة هنا: يُرسل في الجسم ويُعاد في
+    // النتيجة حتى يُحفظ مع رقم الطلب (الأولوية 3).
+    final trackingToken = _trackingToken();
     final headers = ApiHeaders.build(
       credentials: credentials,
       json: true,
@@ -116,7 +125,7 @@ class OrderApi {
             // مكوّن من 64 رقماً ست عشرياً — إرسالهما في الترويسة
             // وحدها لا يكفي ويرفض الطلب 422.
             'idempotencyKey': idempotencyKey,
-            'trackingToken': _trackingToken(),
+            'trackingToken': trackingToken,
             'customerName': customerName.trim(),
             'phone': phone.trim(),
             'governorate': governorate,
@@ -175,6 +184,7 @@ class OrderApi {
       orderRef: orderRef,
       total: (order['total'] as num?)?.toDouble() ?? subtotal + shippingFee,
       status: '${order['status'] ?? 'pending_transfer'}',
+      trackingToken: trackingToken,
       bundleDiscount:
           (order['bundleDiscount'] as num?)?.toDouble() ?? 0,
     );
