@@ -16,6 +16,8 @@ class NotificationsPage extends StatefulWidget {
 class _NotificationsPageState extends State<NotificationsPage> {
   final push = PushService.instance;
   Map<String, bool> topics = {};
+  List<PushHistoryEntry> history = [];
+  String? pendingOrderRef;
   bool loading = true;
 
   @override
@@ -29,9 +31,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
     for (final topic in PushService.topicTitles.keys) {
       values[topic] = await push.isTopicEnabled(topic);
     }
+    final loadedHistory = await push.fetchHistory();
+    final pending = await push.takePendingOrderRef();
     if (mounted) {
       setState(() {
         topics = values;
+        history = loadedHistory;
+        pendingOrderRef = pending;
         loading = false;
       });
     }
@@ -41,6 +47,20 @@ class _NotificationsPageState extends State<NotificationsPage> {
     setState(() => topics[topic] = value);
     await push.setTopicEnabled(topic, value);
   }
+
+  Future<void> _clearHistory() async {
+    await push.clearHistory();
+    if (mounted) {
+      setState(() => history = []);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم مسح سجل الإشعارات.')),
+      );
+    }
+  }
+
+  String _fmtTime(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')} '
+      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +175,93 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       style: TextStyle(color: context.subdued, fontSize: 12),
                     ),
                   ],
+                  // فتح التطبيق من إشعار طلب: زر يعيد إلى «طلباتي».
+                  if (pendingOrderRef != null) ...[
+                    const SizedBox(height: 20),
+                    Card(
+                      color: context.surfaceCard,
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.local_shipping_outlined,
+                          color: context.goldText,
+                        ),
+                        title: Text(
+                          'تحديث للطلب $pendingOrderRef',
+                          style: TextStyle(color: context.ink),
+                        ),
+                        subtitle: Text(
+                          'اضغط لعرض طلباتك.',
+                          style: TextStyle(color: context.subdued),
+                        ),
+                        trailing: const Icon(Icons.arrow_back_ios, size: 16),
+                        onTap: () => Navigator.pop(context),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'سجل الإشعارات',
+                          style: TextStyle(
+                            color: context.ink,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (history.isNotEmpty)
+                        TextButton(
+                          onPressed: _clearHistory,
+                          child: const Text('مسح السجل'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (history.isEmpty)
+                    Text(
+                      'لا توجد إشعارات بعد — تصل هنا تحديثات طلباتك وأخبار الدار.',
+                      style: TextStyle(color: context.subdued, fontSize: 12),
+                    )
+                  else
+                    ...history.map(
+                      (entry) => Card(
+                        color: context.surfaceCard,
+                        margin: const EdgeInsets.only(bottom: 6),
+                        child: ListTile(
+                          title: Text(
+                            entry.title,
+                            style: TextStyle(color: context.ink),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (entry.body.isNotEmpty)
+                                Text(
+                                  entry.body,
+                                  style: TextStyle(color: context.subdued),
+                                ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${_fmtTime(entry.receivedAt)}${entry.orderRef.isNotEmpty ? ' · الطلب ${entry.orderRef}' : ''}',
+                                style: TextStyle(
+                                  color: context.subdued,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                          trailing: entry.orderRef.isNotEmpty
+                              ? const Icon(Icons.arrow_back_ios, size: 14)
+                              : null,
+                          // إشعار طلب يفتح «طلباتي» (صفحة الحساب).
+                          onTap: entry.orderRef.isNotEmpty
+                              ? () => Navigator.pop(context)
+                              : null,
+                        ),
+                      ),
+                    ),
                 ],
               ),
       ),

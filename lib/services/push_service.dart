@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -7,6 +9,47 @@ import 'package:shared_preferences/shared_preferences.dart';
 @pragma('vm:entry-point')
 Future<void> zakhamPushBackgroundHandler(RemoteMessage message) async {
   await PushService.showFromMessage(message);
+}
+
+/// One received notification, as kept in the in-app history.
+class PushHistoryEntry {
+  const PushHistoryEntry({
+    required this.title,
+    required this.body,
+    this.orderRef = '',
+    this.event = '',
+    required this.receivedAt,
+  });
+
+  final String title;
+  final String body;
+
+  /// رقم الطلب المرتبط بالإشعار ('' إن لم يكن إشعار طلب).
+  final String orderRef;
+
+  /// نوع الحدث كما أرسله الخادم (مثل order_created / payment_verified /
+  /// shipped / delivered)، أو '' للإشعارات العامة.
+  final String event;
+  final DateTime receivedAt;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'title': title,
+        'body': body,
+        'orderRef': orderRef,
+        'event': event,
+        'receivedAt': receivedAt.millisecondsSinceEpoch,
+      };
+
+  factory PushHistoryEntry.fromJson(Map<String, dynamic> json) =>
+      PushHistoryEntry(
+        title: '${json['title'] ?? 'دار زخم'}',
+        body: '${json['body'] ?? ''}',
+        orderRef: '${json['orderRef'] ?? ''}',
+        event: '${json['event'] ?? ''}',
+        receivedAt: DateTime.fromMillisecondsSinceEpoch(
+          (json['receivedAt'] as num?)?.toInt() ?? 0,
+        ),
+      );
 }
 
 /// Push notifications for House of Zakham (Firebase Cloud Messaging).
@@ -35,6 +78,112 @@ class PushService {
 
   static const String _channelId = 'zakham_default';
   static const String _channelName = 'تنبيهات دار زخم';
+
+  /// سجل الإشعارات داخل التطبيق (آخر 50 إشعاراً، الأحدث أولاً).
+  static const String _historyKey = 'zakham_notification_history';
+  static const int _maxHistory = 50;
+
+  /// رقم طلب بانتظار فتحه: يُحفظ عند نقر إشعار أو فتح التطبيق من
+  /// إشعار، وتقرؤه صفحة الإشعارات لتعرض زر «عرض طلباتي».
+  static const String _pendingOrderKey = 'zakham_pending_order_ref';
+
+  /// يبني سجلاً من رسالة FCM — الربط برقم الطلب يأتي من حقل
+  /// data.orderRef الذي يرسله الخادم مع إشعارات أحداث الطلب.
+  static PushHistoryEntry entryFromMessage(RemoteMessage message) =>
+      PushHistoryEntry(
+        title: message.notification?.title ?? 'دار زخم',
+        body: message.notification?.body ?? '',
+        orderRef: '${message.data['orderRef'] ?? ''}'.trim(),
+        event: '${message.data['event'] ?? ''}'.trim(),
+        receivedAt: DateTime.now(),
+      );
+
+  /// يحفظ رسالة في سجل الإشعارات (الأحدث أولاً، بحد أقصى 50).
+  /// لا يرمي أبداً — فشل الحفظ لا يمنع عرض الإشعار نفسه.
+  static Future<void> recordMessage(RemoteMessage message) async {
+    try {
+      final entry = entryFromMessage(message);
+      if (entry.body.isEmpty && entry.orderRef.isEmpty) return;
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList(_historyKey) ?? <String>[];
+      final entries = <PushHistoryEntry>[];
+      for (final item in raw) {
+        try {
+          entries.add(
+            PushHistoryEntry.fromJson(
+              jsonDecode(item) as Map<String, dynamic>,
+            ),
+          );
+        } catch (_) {
+          // سجل تالف يُتجاهل.
+        }
+        if (entries.length >= _maxHistory) break;
+      }
+      // نفس الإشعار قد يُسجَّل مرتين (معالج الخلفية ثم فتح التطبيق
+      // منه): يُتجاهل إن كان أحدث سجل مطابقاً خلال دقيقتين.
+      if (entries.isNotEmpty) {
+        final latest = entries.first;
+        if (latest.title == entry.title &&
+            latest.body == entry.body &&
+            latest.orderRef == entry.orderRef &&
+            entry.receivedAt.difference(latest.receivedAt).inSeconds.abs() <
+                120) {
+          return;
+        }
+      }
+      entries.insert(0, entry);
+      await prefs.setStringList(
+        _historyKey,
+        entries
+            .take(_maxHistory)
+            .map((e) => jsonEncode(e.toJson()))
+            .toList(),
+      );
+    } catch (_) {
+      // السجل ميزة ثانوية — لا يوقف الإشعار.
+    }
+  }
+
+  /// سجل الإشعارات المحفوظ (الأحدث أولاً).
+  Future<List<PushHistoryEntry>> fetchHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getStringList(_historyKey) ?? <String>[];
+    final entries = <PushHistoryEntry>[];
+    for (final item in raw) {
+      try {
+        entries.add(
+          PushHistoryEntry.fromJson(jsonDecode(item) as Map<String, dynamic>),
+        );
+      } catch (_) {
+        // يتجاهل سجلاً تالفاً.
+      }
+    }
+    return entries;
+  }
+
+  Future<void> clearHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_historyKey);
+  }
+
+  /// يحفظ رقم طلب فُتح التطبيق من إشعاره.
+  static Future<void> setPendingOrderRef(String ref) async {
+    if (ref.trim().isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_pendingOrderKey, ref.trim());
+    } catch (_) {
+      // لا يوقف شيئاً.
+    }
+  }
+
+  /// يقرأ رقم الطلب المعلق ويمسحه (يُستهلك مرة واحدة).
+  Future<String?> takePendingOrderRef() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ref = prefs.getString(_pendingOrderKey);
+    if (ref != null) await prefs.remove(_pendingOrderKey);
+    return ref;
+  }
 
   static const Map<String, String> topicTitles = {
     topicOrders: 'تحديثات الطلبات',
@@ -88,6 +237,11 @@ class PushService {
       }
       FirebaseMessaging.onMessage.listen(_onForegroundMessage);
       FirebaseMessaging.onBackgroundMessage(zakhamPushBackgroundHandler);
+      // فتح التطبيق من إشعار (خلفية أو مغلق): يسجَّل الإشعار ويُحفظ
+      // رقم طلبه المرتبط ليُعرض زر «عرض طلباتي» في صفحة الإشعارات.
+      FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpened);
+      final initial = await FirebaseMessaging.instance.getInitialMessage();
+      if (initial != null) await _onMessageOpened(initial);
       FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
         token = newToken;
       });
@@ -107,6 +261,11 @@ class PushService {
     const ios = DarwinInitializationSettings();
     await _local.initialize(
       const InitializationSettings(android: android, iOS: ios),
+      // نقر إشعار معروض محلياً: حمولته رقم الطلب المرتبط (إن وجد).
+      onDidReceiveNotificationResponse: (response) async {
+        final ref = (response.payload ?? '').trim();
+        if (ref.isNotEmpty) await setPendingOrderRef(ref);
+      },
     );
     _localReady = true;
   }
@@ -115,13 +274,24 @@ class PushService {
     await showFromMessage(message);
   }
 
-  /// Displays a received FCM message as a local notification.
+  Future<void> _onMessageOpened(RemoteMessage message) async {
+    await recordMessage(message);
+    final ref = entryFromMessage(message).orderRef;
+    if (ref.isNotEmpty) await setPendingOrderRef(ref);
+  }
+
+  /// Displays a received FCM message as a local notification and records
+  /// it in the in-app history (linked to its orderRef when present).
   /// Safe to call from the background isolate.
   static Future<void> showFromMessage(RemoteMessage message) async {
-    final title = message.notification?.title ?? 'دار زخم';
-    final body = message.notification?.body ?? '';
-    if (body.isEmpty && message.data.isEmpty) return;
-    await instance._showLocal(title: title, body: body);
+    final entry = entryFromMessage(message);
+    await recordMessage(message);
+    if (entry.body.isEmpty && entry.orderRef.isEmpty) return;
+    await instance._showLocal(
+      title: entry.title,
+      body: entry.body,
+      payload: entry.orderRef,
+    );
   }
 
   /// Shows a local notification (used for incoming pushes and for the
@@ -129,7 +299,11 @@ class PushService {
   Future<void> showLocal({required String title, required String body}) =>
       _showLocal(title: title, body: body);
 
-  Future<void> _showLocal({required String title, required String body}) async {
+  Future<void> _showLocal({
+    required String title,
+    required String body,
+    String payload = '',
+  }) async {
     await _initLocal();
     const android = AndroidNotificationDetails(
       _channelId,
@@ -144,6 +318,7 @@ class PushService {
       title,
       body,
       const NotificationDetails(android: android, iOS: ios),
+      payload: payload.isEmpty ? null : payload,
     );
   }
 
