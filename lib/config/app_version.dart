@@ -11,8 +11,8 @@ class AppVersion {
   /// Version name from pubspec.yaml (1.1.0).
   static const versionName = '1.1.0';
 
-  /// Flutter build number from pubspec.yaml (the +2 in 1.1.0+2).
-  static const versionCode = 2;
+  /// Flutter build number from pubspec.yaml (the +3 in 1.1.0+3).
+  static const versionCode = 3;
 
   /// Codemagic build number of the published release (label only,
   /// from the release tag v1.1.0-build29).

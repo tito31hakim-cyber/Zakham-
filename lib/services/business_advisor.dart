@@ -184,7 +184,7 @@ class BusinessAdvisorService {
       ),
     );
     final deliveryRatio =
-        totalOrders == 0 ? 0 : deliveredCount / totalOrders;
+        totalOrders == 0 ? 0.0 : deliveredCount / totalOrders;
     final repeatCustomers = customers.where((item) {
       if (item is! Map) return false;
       final value = item['ordersCount'] ?? item['orders_count'] ?? 0;

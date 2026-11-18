@@ -230,14 +230,17 @@ class _AccountPageState extends State<AccountPage> {
   /// الإرسال، وتتحدث حالة الدفع في القائمة إلى «أُرسل الإثبات».
   Future<void> _resubmitReceipt(CustomerOrder order) async {
     if (_resubmittingReceipts.contains(order.orderRef)) return;
-    final picked = await FilePicker.platform.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
-      withData: true,
     );
-    if (picked == null || picked.files.isEmpty) return;
-    final file = picked.files.first;
-    final bytes = file.bytes;
+    if (file == null) return;
+    List<int>? bytes;
+    try {
+      bytes = await file.readAsBytes();
+    } catch (_) {
+      bytes = null;
+    }
     if (bytes == null || bytes.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

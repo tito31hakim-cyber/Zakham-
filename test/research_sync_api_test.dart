@@ -20,24 +20,38 @@ const _credentials = ApiCredentials();
 ResearchSyncApi _apiWith(MockClient client) =>
     ResearchSyncApi(credentials: _credentials, client: client);
 
+/// رد JSON بترميز UTF-8 صريح — `http.Response` النصي يرمّز الجسم
+/// Latin-1 فيرمي على الأحرف العربية، بينما الخادم الحقيقي يرد
+/// `application/json; charset=utf-8`.
+http.Response _jsonResponse(Object body, int status) =>
+    http.Response.bytes(
+      utf8.encode(jsonEncode(body)),
+      status,
+      headers: {'content-type': 'application/json; charset=utf-8'},
+    );
+
+http.Response _textResponse(String body, int status) =>
+    http.Response.bytes(
+      utf8.encode(body),
+      status,
+      headers: {'content-type': 'text/plain; charset=utf-8'},
+    );
+
 void main() {
   group('ResearchSyncApi — عميل القراءة (ملف المستخدم)', () {
     test('listMixes يقرأ كتالوج الميكسات من المسار الإداري', () async {
       http.Request? captured;
       final api = _apiWith(MockClient((request) async {
         captured = request;
-        return http.Response(
-          jsonEncode({
-            'mixes': [
-              {
-                'code': 'ZK-DRAFT-003',
-                'nameAr': 'اختبار',
-                'status': 'research_draft',
-              },
-            ],
-          }),
-          200,
-        );
+        return _jsonResponse({
+          'mixes': [
+            {
+              'code': 'ZK-DRAFT-003',
+              'nameAr': 'اختبار',
+              'status': 'research_draft',
+            },
+          ],
+        }, 200);
       }));
       final mixes = await api.listMixes();
       expect(mixes, hasLength(1));
@@ -63,7 +77,7 @@ void main() {
 
     test('listMixes يرمي استثناء عند خطأ HTTP', () async {
       final api = _apiWith(MockClient(
-        (_) async => http.Response('خطأ داخلي', 500),
+        (_) async => _textResponse('خطأ داخلي', 500),
       ));
       await expectLater(
         api.listMixes(),
@@ -102,7 +116,7 @@ void main() {
 
     test('knowledgeSummary يرمي استثناء عند خطأ HTTP', () async {
       final api = _apiWith(MockClient(
-        (_) async => http.Response('ممنوع', 403),
+        (_) async => _textResponse('ممنوع', 403),
       ));
       await expectLater(
         api.knowledgeSummary(),
@@ -115,25 +129,22 @@ void main() {
     test('الخلاصة تُبنى من الميكسات وملخص آخر دورة', () async {
       final api = _apiWith(MockClient((request) async {
         if (request.url.path.endsWith('/mixes')) {
-          return http.Response(
-            jsonEncode({
-              'mixes': [
-                {
-                  'code': 'ZK-DRAFT-003',
-                  'nameAr': 'مجلس اختبار',
-                  'status': 'research_draft',
-                  'version': 1,
-                  'topNotes': ['برغموت'],
-                  'heartNotes': ['ورد'],
-                  'baseNotes': ['عود'],
-                  'evidenceSummary': 'مستند إلى مصدرين عامين.',
-                  'warnings': ResearchDraftMix.requiredWarnings,
-                  'confidence': 72,
-                },
-              ],
-            }),
-            200,
-          );
+          return _jsonResponse({
+            'mixes': [
+              {
+                'code': 'ZK-DRAFT-003',
+                'nameAr': 'مجلس اختبار',
+                'status': 'research_draft',
+                'version': 1,
+                'topNotes': ['برغموت'],
+                'heartNotes': ['ورد'],
+                'baseNotes': ['عود'],
+                'evidenceSummary': 'مستند إلى مصدرين عامين.',
+                'warnings': ResearchDraftMix.requiredWarnings,
+                'confidence': 72,
+              },
+            ],
+          }, 200);
         }
         return http.Response(
           jsonEncode({
@@ -192,14 +203,11 @@ void main() {
     test('الحقول الغائبة تُستبدل بقيم محايدة لا بيانات مخترعة', () async {
       final api = _apiWith(MockClient((request) async {
         if (request.url.path.endsWith('/mixes')) {
-          return http.Response(
-            jsonEncode({
-              'mixes': [
-                {'code': 'ZK-DRAFT-004', 'nameAr': 'بلا حقول'},
-              ],
-            }),
-            200,
-          );
+          return _jsonResponse({
+            'mixes': [
+              {'code': 'ZK-DRAFT-004', 'nameAr': 'بلا حقول'},
+            ],
+          }, 200);
         }
         return http.Response(jsonEncode({}), 200);
       }));
