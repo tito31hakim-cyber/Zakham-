@@ -13,6 +13,7 @@ import '../services/invoice_pdf.dart';
 import '../services/occasions.dart';
 import '../services/reminder_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/common_widgets.dart';
 import 'addresses_page.dart';
 import 'admin_page.dart';
 import 'auth_page.dart';
@@ -20,6 +21,9 @@ import 'cart_page.dart';
 import 'consultation_page.dart';
 import 'contact_page.dart';
 import 'notifications_page.dart';
+
+/// الهامش الموحّد لبطاقات الحساب (العناصر والمبدّلات والأقسام).
+const _cardMargin = EdgeInsets.fromLTRB(20, 6, 20, 6);
 
 String _statusLabel(String status) {
   switch (status) {
@@ -278,33 +282,9 @@ class _AccountPageState extends State<AccountPage> {
               style: TextStyle(color: context.subdued, height: 1.6),
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 8),
+          // عنوان الصفحة «حسابي» هو نفسه عنوان المجموعة الأولى.
           if (customer == null) _guestCard() else _memberCard(customer),
-          if (customer != null) ...[
-            const SizedBox(height: 12),
-            _birthdaySection(provider),
-          ],
-          const SizedBox(height: 20),
-          _themeRow(context),
-          const SizedBox(height: 8),
-          _remindersRow(context),
-          const SizedBox(height: 8),
-          _favOffersRow(context),
-          const SizedBox(height: 8),
-          _dailyPerfumeRow(context),
-          const SizedBox(height: 8),
-          _ConsultationsSection(
-            consultations: provider.consultations,
-            ownerKey: provider.addressOwnerKey,
-          ),
-          const SizedBox(height: 8),
-          _item(
-            context,
-            Icons.grid_view_rounded,
-            'أقسام زخم',
-            'التشكيلة، طقس زخم، الإهداء، التغليف، باقات التوفير',
-            widget.onOpenSections,
-          ),
           if (customer == null) ...[
             _item(
               context,
@@ -338,6 +318,28 @@ class _AccountPageState extends State<AccountPage> {
               ),
             ),
           ],
+          _ConsultationsSection(
+            consultations: provider.consultations,
+            ownerKey: provider.addressOwnerKey,
+          ),
+          if (customer != null) ...[
+            const AccountGroupHeader(title: 'الولاء والمكافآت'),
+            _loyaltyCard(customer),
+            const SizedBox(height: 12),
+            _birthdaySection(provider),
+          ],
+          const AccountGroupHeader(title: 'التذكيرات'),
+          _remindersRow(context),
+          _favOffersRow(context),
+          _dailyPerfumeRow(context),
+          const AccountGroupHeader(title: 'روابط سريعة'),
+          _item(
+            context,
+            Icons.grid_view_rounded,
+            'أقسام زخم',
+            'التشكيلة، طقس زخم، الإهداء، التغليف، باقات التوفير',
+            widget.onOpenSections,
+          ),
           _item(
             context,
             Icons.shopping_bag_outlined,
@@ -373,6 +375,8 @@ class _AccountPageState extends State<AccountPage> {
               MaterialPageRoute(builder: (_) => const ContactPage()),
             ),
           ),
+          const AccountGroupHeader(title: 'الإعدادات'),
+          _themeRow(context),
           _item(
             context,
             Icons.admin_panel_settings_outlined,
@@ -409,7 +413,7 @@ class _AccountPageState extends State<AccountPage> {
     final theme = context.watch<ThemeProvider>();
     return Card(
       color: context.surfaceCard,
-      margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+      margin: _cardMargin,
       child: SwitchListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
         secondary: Icon(
@@ -435,7 +439,7 @@ class _AccountPageState extends State<AccountPage> {
   Widget _remindersRow(BuildContext context) {
     return Card(
       color: context.surfaceCard,
-      margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+      margin: _cardMargin,
       child: SwitchListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
         secondary: Icon(
@@ -463,7 +467,7 @@ class _AccountPageState extends State<AccountPage> {
   Widget _favOffersRow(BuildContext context) {
     return Card(
       color: context.surfaceCard,
-      margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+      margin: _cardMargin,
       child: SwitchListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
         secondary: Icon(
@@ -484,6 +488,73 @@ class _AccountPageState extends State<AccountPage> {
       ),
     );
   }
+
+  /// بطاقة رصيد نقاط الولاء — في مجموعة «الولاء والمكافآت» لا داخل
+  /// بطاقة العضو، لتبقى المكافآت في مكان واحد مع هدية عيد الميلاد.
+  /// غياب الرصيد (null) يعني أن نقطة الولاء لم تُنشر بعد فيُعرض
+  /// «قريباً» لا صفراً.
+  Widget _loyaltyCard(Customer customer) => Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.surfaceCard,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: context.hairline),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.stars_outlined, color: context.goldText, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'نقاط الولاء',
+                    style: TextStyle(
+                      color: context.ink,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: gold.withOpacity(.16),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    customer.pointsBalance == null
+                        ? 'قريباً'
+                        : '${customer.pointsBalance} نقطة',
+                    style: TextStyle(
+                      color: context.goldText,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              customer.pointsBalance == null
+                  ? 'نقاط الولاء — قريباً'
+                  : 'نقاط الولاء: ${customer.pointsBalance} نقطة — تساوي ${customer.pointsBalance} جنيه خصم',
+              style: TextStyle(color: context.subdued, fontSize: 12, height: 1.7),
+            ),
+            if (customer.pointsBalance != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'تُضاف النقاط بعد توصيل طلبك (5 نقاط لكل 100 جنيه من سعر العطور).',
+                style: TextStyle(color: context.subdued, fontSize: 11, height: 1.5),
+              ),
+            ],
+          ],
+        ),
+      );
 
   /// قسم تاريخ الميلاد — يُسجَّل مرة واحدة فقط: الحقل يصبح للقراءة
   /// فقط بعد أول حفظ (التغيير فقط عن طريق الدار)، وفي أسبوع عيد
@@ -678,7 +749,7 @@ class _AccountPageState extends State<AccountPage> {
   Widget _dailyPerfumeRow(BuildContext context) {
     return Card(
       color: context.surfaceCard,
-      margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+      margin: _cardMargin,
       child: SwitchListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
         secondary: Icon(
@@ -794,33 +865,6 @@ class _AccountPageState extends State<AccountPage> {
                 ],
               ),
             ],
-            // رصيد نقاط الولاء من الخادم؛ غيابه (null) يعني أن نقطة
-            // الولاء لم تُنشر بعد فيُعرض «قريباً» لا صفراً.
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(Icons.stars_outlined, color: context.goldText, size: 16),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    customer.pointsBalance == null
-                        ? 'نقاط الولاء — قريباً'
-                        : 'نقاط الولاء: ${customer.pointsBalance} نقطة — تساوي ${customer.pointsBalance} جنيه خصم',
-                    style: TextStyle(color: context.ink, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-            if (customer.pointsBalance != null) ...[
-              const SizedBox(height: 3),
-              Padding(
-                padding: const EdgeInsets.only(right: 22),
-                child: Text(
-                  'تُضاف النقاط بعد توصيل طلبك (5 نقاط لكل 100 جنيه من سعر العطور).',
-                  style: TextStyle(color: context.subdued, fontSize: 11, height: 1.5),
-                ),
-              ),
-            ],
             if (!customer.phoneVerified) ...[
               const SizedBox(height: 12),
               SizedBox(
@@ -918,7 +962,7 @@ class _AccountPageState extends State<AccountPage> {
           ...orders.map(
             (order) => Card(
               color: context.surfaceCard,
-              margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+              margin: _cardMargin,
               child: ListTile(
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
@@ -991,7 +1035,7 @@ class _AccountPageState extends State<AccountPage> {
   ) =>
       Card(
         color: context.surfaceCard,
-        margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+        margin: _cardMargin,
         child: ListTile(
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
@@ -1068,7 +1112,7 @@ class _ConsultationsSectionState extends State<_ConsultationsSection> {
   Widget build(BuildContext context) {
     return Card(
       color: context.surfaceCard,
-      margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+      margin: _cardMargin,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

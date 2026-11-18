@@ -4,6 +4,7 @@ import '../models/product.dart';
 import '../services/occasions.dart';
 import '../services/product_catalog.dart';
 import '../theme/app_theme.dart';
+import 'common_widgets.dart';
 
 /// قسم «مناسبات قادمة» — يعرض أقرب 3 مناسبات (الأقرب أولاً) مع
 /// تاريخ كل مناسبة وعطورها المقترحة كهدايا (من الكتالوج الحي، أو
@@ -48,18 +49,7 @@ class _OccasionsSectionState extends State<OccasionsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(0, 28, 0, 12),
-          child: Text(
-            'مناسبات قادمة',
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              color: context.ink,
-              fontSize: 21,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
+        const SectionHeader(title: 'مناسبات قادمة', horizontal: 0),
         ..._upcoming.map(
           (occasion) => Padding(
             padding: const EdgeInsets.only(bottom: 12),

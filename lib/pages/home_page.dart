@@ -63,11 +63,12 @@ class HomePage extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: [
           const Header(),
+          // هوية المتجر فور فتح التطبيق: هذا هو متجر دار زخم
+          // الإلكتروني الرسمي — لا مجرد أداة.
+          const StoreIdentityCard(),
           Padding(
-            padding: const EdgeInsets.fromLTRB(22, 8, 22, 18),
+            padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
             child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('دار زخم للعطور', style: TextStyle(color: context.goldText, fontSize: 13, letterSpacing: 1.5)),
-              const SizedBox(height: 8),
               Text('هيبة حضور.\nأثر يبقى.', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 38, height: 1.2, fontWeight: FontWeight.w300)),
               const SizedBox(height: 10),
               Text('عطور صُنعت لتكون جزءاً من حكايتك،\nوتترك أثراً لا يشبه سواك.', textAlign: TextAlign.right, style: TextStyle(color: context.subdued, fontSize: 14, height: 1.8)),
@@ -82,14 +83,18 @@ class HomePage extends StatelessWidget {
               TextButton(onPressed: () => onProduct(product), child: Text('اكتشف زخم رويال', style: TextStyle(color: context.goldText))),
             ]),
           ),
-          if (dailyProduct != null)
+          SectionHeader(title: 'اعثر على عطرك', actionLabel: 'ابدأ الاختبار', onAction: onQuiz),
+          QuizBanner(onTap: onQuiz),
+          if (dailyProduct != null) ...[
+            const SectionHeader(title: 'عطر اليوم'),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _DailyPerfumeCard(
                 product: dailyProduct!,
                 onTap: () => onProduct(dailyProduct!),
               ),
             ),
+          ],
           if (showEmptyCartNudge)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -98,25 +103,7 @@ class HomePage extends StatelessWidget {
                 onDismiss: onDismissEmptyCartNudge ?? () {},
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-            child: Row(children: [
-              TextButton(onPressed: onQuiz, child: Text('ابدأ الاختبار', style: TextStyle(color: context.goldText))),
-              const Spacer(),
-              Text('اعثر على عطرك', style: TextStyle(color: context.ink, fontSize: 21, fontWeight: FontWeight.w600)),
-            ]),
-          ),
-          QuizBanner(onTap: onQuiz),
-          Padding(padding: const EdgeInsets.fromLTRB(20, 28, 20, 12), child: Text('اختيار زخم', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 21, fontWeight: FontWeight.w600))),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: ProductTile(product: product, onTap: () => onProduct(product), favorite: favorite, onFavorite: onFavorite)),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
-            child: Row(children: [
-              TextButton(onPressed: onOpenSections, child: Text('عرض الكل', style: TextStyle(color: context.goldText))),
-              const Spacer(),
-              Text('أقسام زخم', style: TextStyle(color: context.ink, fontSize: 21, fontWeight: FontWeight.w600)),
-            ]),
-          ),
+          SectionHeader(title: 'أقسام زخم', actionLabel: 'عرض الكل', onAction: onOpenSections),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: GridView.builder(
@@ -150,10 +137,7 @@ class HomePage extends StatelessWidget {
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
-            child: Text('خدمات الدار', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 21, fontWeight: FontWeight.w600)),
-          ),
+          const SectionHeader(title: 'خدمات الدار'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: GridView(
@@ -191,7 +175,9 @@ class HomePage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: OccasionsSection(onProduct: onProduct),
           ),
-          Padding(padding: const EdgeInsets.fromLTRB(20, 28, 20, 12), child: Text('تجربة تليق بك', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 21, fontWeight: FontWeight.w600))),
+          const SectionHeader(title: 'اختيار زخم'),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: ProductTile(product: product, onTap: () => onProduct(product), favorite: favorite, onFavorite: onFavorite)),
+          const SectionHeader(title: 'تجربة تليق بك'),
           const Padding(
             padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
             child: Row(children: [
@@ -215,12 +201,12 @@ class _DailyPerfumeCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         decoration: BoxDecoration(
           color: gold.withOpacity(.10),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: gold.withOpacity(.35)),
         ),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(children: [
@@ -244,8 +230,6 @@ class _DailyPerfumeCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('عطر اليوم', style: TextStyle(color: context.goldText, fontSize: 12, letterSpacing: 1)),
-                    const SizedBox(height: 3),
                     Text(product.name, style: TextStyle(color: context.ink, fontSize: 16, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
                     Text('يبدأ من ${product.price.toStringAsFixed(0)} ${product.currency}', style: TextStyle(color: context.subdued, fontSize: 12)),
@@ -271,12 +255,12 @@ class _EmptyCartNudge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         decoration: BoxDecoration(
           color: gold.withOpacity(.10),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: gold.withOpacity(.35)),
         ),
         child: InkWell(
           onTap: onBrowse,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
             child: Row(children: [
@@ -318,12 +302,12 @@ class _SectionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: context.surfaceCard,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: context.hairline),
           ),
           child: Column(
@@ -350,7 +334,7 @@ class _Promise extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         constraints: const BoxConstraints(minHeight: 112),
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: context.surfaceCard, borderRadius: BorderRadius.circular(16), border: Border.all(color: context.hairline)),
+        decoration: BoxDecoration(color: context.surfaceCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: context.hairline)),
         child: Column(children: [Icon(icon, color: context.goldText), const SizedBox(height: 8), Text(title, textAlign: TextAlign.center, style: TextStyle(color: context.ink, fontSize: 12, fontWeight: FontWeight.w600)), const SizedBox(height: 4), Text(detail, textAlign: TextAlign.center, style: TextStyle(color: context.subdued, fontSize: 10))]),
       );
 }

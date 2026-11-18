@@ -41,6 +41,182 @@ class Header extends StatelessWidget {
   }
 }
 
+/// بطاقة هوية المتجر — تظهر فور فتح التطبيق لتقول للعميل إن هذا
+/// هو متجر دار زخم الإلكتروني الرسمي: علامة الدار + الاسم + شارة
+/// «المتجر الإلكتروني الرسمي» + سطر تعريفي قصير. بلا أي بنرات عروض.
+class StoreIdentityCard extends StatelessWidget {
+  const StoreIdentityCard({super.key});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.surfaceCard,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: gold.withOpacity(.35)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    'assets/brand/zakham-brand-mark.png',
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 52,
+                      height: 52,
+                      color: const Color(0xFF17130B),
+                      child: const Icon(
+                        Icons.spa_outlined,
+                        color: gold,
+                        size: 26,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'متجر دار زخم',
+                        style: TextStyle(
+                          color: context.ink,
+                          fontSize: 21,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: gold.withOpacity(.16),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: gold.withOpacity(.4)),
+                        ),
+                        child: Text(
+                          'المتجر الإلكتروني الرسمي',
+                          style: TextStyle(
+                            color: context.goldText,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'متجر زخم الإلكتروني — التشكيلة الكاملة، حسابك، طلباتك، وتتبع الشحنات.',
+              style: TextStyle(
+                color: context.subdued,
+                fontSize: 13,
+                height: 1.8,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+/// عنوان قسم موحّد في الرئيسية: العنوان يميناً (عربي) وزر نصي
+/// اختياري يساراً، ونفس الهوامش في كل الأقسام (20 أفقي، 28 أعلى،
+/// 12 أسفل). يوحّد عناوين «أقسام زخم» و«خدمات الدار» و«عطر اليوم»
+/// و«اختيار زخم» و«تجربة تليق بك» و«مناسبات قادمة».
+class SectionHeader extends StatelessWidget {
+  const SectionHeader({
+    super.key,
+    required this.title,
+    this.actionLabel,
+    this.onAction,
+    this.horizontal = 20,
+  });
+
+  final String title;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  /// الهامش الأفقي (20 في الرئيسية؛ 0 داخل قسم المناسبات لأنه
+  /// يضيف الهامش بنفسه).
+  final double horizontal;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.fromLTRB(horizontal, 28, horizontal, 12),
+        child: Row(
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: context.ink,
+                fontSize: 21,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            if (actionLabel != null)
+              TextButton(
+                onPressed: onAction,
+                child: Text(
+                  actionLabel!,
+                  style: TextStyle(color: context.goldText),
+                ),
+              ),
+          ],
+        ),
+      );
+}
+
+/// عنوان مجموعة في صفحة الحساب: شريط ذهبي + عنوان + فاصل خفيف.
+/// يوحّد عناوين المجموعات (حسابي، الولاء والمكافآت، التذكيرات،
+/// روابط سريعة، الإعدادات).
+class AccountGroupHeader extends StatelessWidget {
+  const AccountGroupHeader({super.key, required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(22, 28, 22, 10),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 20,
+              decoration: BoxDecoration(
+                color: gold,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: TextStyle(
+                color: context.ink,
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Divider(color: context.hairline, height: 1)),
+          ],
+        ),
+      );
+}
+
 class HeroBanner extends StatelessWidget {
   const HeroBanner({super.key, required this.product, required this.onTap});
   final Product product;
@@ -53,7 +229,7 @@ class HeroBanner extends StatelessWidget {
           height: 280,
           margin: const EdgeInsets.symmetric(horizontal: 20),
           clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
           child: Stack(
             fit: StackFit.expand,
             children: [

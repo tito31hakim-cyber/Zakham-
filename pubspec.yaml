@@ -85,6 +85,8 @@ flutter:
   assets:
     - assets/brand/zakham-house-logo.png
     - assets/brand/zakham-app-icon.png
+    # علامة الدار (تُستخدم في ترويسة هوية المتجر داخل التطبيق).
+    - assets/brand/zakham-brand-mark.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
