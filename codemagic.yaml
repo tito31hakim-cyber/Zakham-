@@ -39,7 +39,7 @@ workflows:
       - name: Build signed Android App Bundle
         script: |
           # أرقام الإصدار تأتي من pubspec صراحةً (مثل iOS) حتى لا تعتمد
-          # على عدّاد تشغيل Codemagic — رقم البناء الوحيد هو versionCode.
+          # على عدّاد تشغيل Codemagic. الإصدار V1.1 ثابت وversionCode يزيد 1 مع كل إصدار.
           VERSION="$(grep '^version:' pubspec.yaml | sed 's/^version: *//;s/[[:space:]]*$//')"
           COMMIT="${CM_COMMIT:-$(git rev-parse --short HEAD)}"
           flutter build appbundle --release --obfuscate --build-name="${VERSION%%+*}" --build-number="${VERSION##*+}" --dart-define=ZAKHAM_COMMIT="$COMMIT" --split-debug-info="$CM_BUILD_DIR/../zakham-debug-info-aab"
