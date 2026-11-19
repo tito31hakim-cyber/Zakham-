@@ -26,7 +26,8 @@ class ContactPage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'للاستفسار عن العطور أو الطلبات أو الهدايا، تواصل معنا عبر القنوات الرسمية.',
+              'اختر القناة الأنسب لك: واتساب للمحادثة السريعة، أو البريد '
+              'للطلبات والاستفسارات المكتوبة.',
               textAlign: TextAlign.right,
               style: TextStyle(color: context.subdued, height: 1.7),
             ),
@@ -37,6 +38,13 @@ class ContactPage extends StatelessWidget {
               'واتساب زخم',
               'راسل فريق خدمة العملاء',
               'https://wa.me/201042881176?text=%D9%85%D8%B1%D8%AD%D8%A8%D9%8B%D8%A7%D8%8C%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%B9%D9%86%20%D8%B9%D8%B7%D9%88%D8%B1%20%D8%B2%D8%AE%D9%85',
+            ),
+            _contact(
+              context,
+              Icons.mail_outlined,
+              'البريد الإلكتروني',
+              'zakhamperfum@gmail.com',
+              'mailto:zakhamperfum@gmail.com',
             ),
             _contact(
               context,
@@ -58,6 +66,13 @@ class ContactPage extends StatelessWidget {
               'Facebook',
               'House of Zakham',
               'https://www.facebook.com/share/1E6gv4f2bK/',
+            ),
+            _contact(
+              context,
+              Icons.location_on_outlined,
+              'العنوان',
+              'كفر الشيخ، جمهورية مصر العربية',
+              'https://www.google.com/maps/search/?api=1&query=%D9%83%D9%81%D8%B1%20%D8%A7%D9%84%D8%B4%D9%8A%D8%AE%D8%8C%20%D9%85%D8%B5%D8%B1',
             ),
           ],
         ),

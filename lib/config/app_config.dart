@@ -14,6 +14,10 @@ class AppConfig {
   static const adminLoginPath = '/api/admin/login';
   static const adminLogoutPath = '/api/admin/logout';
   static const adminPushSendPath = '/api/admin/push/send';
+
+  /// محادثة المستشار الحرة (POST /api/admin/advisor/chat) — جلسة إدارة
+  /// + CSRF؛ وسيط خادم فقط بلا مفتاح (المزوّد المجاني افتراضياً).
+  static const adminAdvisorChatPath = '/api/admin/advisor/chat';
   static const analyticsPath = '/api/analytics';
   // حسابات الأعضاء (العملاء) — نفس مسارات المتجر الحي.
   static const customerRegisterPath = '/api/auth/register';

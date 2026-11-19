@@ -16,6 +16,7 @@ import '../services/occasions.dart';
 import '../services/reminder_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
+import 'about_page.dart';
 import 'addresses_page.dart';
 import 'admin_page.dart';
 import 'auth_page.dart';
@@ -480,6 +481,16 @@ class _AccountPageState extends State<AccountPage> {
             () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const NotificationsPage()),
+            ),
+          ),
+          _item(
+            context,
+            Icons.diamond_outlined,
+            'هوية زخم',
+            'قصة الدار ومعنى زخم',
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AboutPage()),
             ),
           ),
           _item(

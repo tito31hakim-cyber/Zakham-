@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
+import 'advisor_chat_api.dart';
 import 'api_headers.dart';
 import 'research_sync_api.dart';
 import 'secure_http.dart';
@@ -46,6 +47,17 @@ class AdminApi {
   /// ورمز CSRF من الذاكرة فقط، وعلى عميل SecureHttp المثبّت نفسه.
   /// قراءة فقط، وبلا أي مفتاح خدمة — مفتاح الخدمة لا يصل إلى التطبيق أبداً.
   ResearchSyncApi get researchSyncApi => ResearchSyncApi(
+        credentials: ApiCredentials(
+          cookie: _cookie,
+          csrfToken: _csrfToken,
+        ),
+        client: _http,
+      );
+
+  /// عميل محادثة المستشار فوق جلسة الإدارة الحالية: كوكي الجلسة
+  /// ورمز CSRF من الذاكرة فقط، وعلى عميل SecureHttp المثبّت نفسه.
+  /// وسيط خادم فقط بلا مفتاح إطلاقاً — المفتاح لا يصل إلى التطبيق أبداً.
+  AdvisorChatApi get advisorChatApi => AdvisorChatApi(
         credentials: ApiCredentials(
           cookie: _cookie,
           csrfToken: _csrfToken,

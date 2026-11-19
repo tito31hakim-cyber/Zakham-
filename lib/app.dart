@@ -101,11 +101,23 @@ class _StoreShellState extends State<StoreShell> {
     super.dispose();
   }
 
-  /// يستعيد المفضلة المحفوظة محلياً (مفتاح `zakham_favorites`).
+  /// يستعيد المفضلة المحفوظة محلياً (مفتاح `zakham_favorites`)، ويسجّل
+  /// معها التشكيلة المحفوظة محلياً في المنتجات المعروفة — فبدونها
+  /// تبقى صفحة المفضلة فارغة بعد إعادة التشغيل: المعرّفات تُستعاد
+  /// لكن كائنات العطور لا توجد في ذاكرة الجلسة بعد.
   Future<void> _loadFavorites() async {
     final saved = await _favoritesService.load();
+    // الكتالوج المحفوظ محلياً فقط (بلا شبكة): يكفي لحلّ المعرّفات.
+    final cached = await ProductCatalog().loadCached();
     if (!mounted) return;
-    if (saved.isNotEmpty) setState(() => favoriteIds.addAll(saved));
+    setState(() {
+      if (cached != null) {
+        for (final item in cached.products) {
+          knownProducts.putIfAbsent(item.id, () => item);
+        }
+      }
+      favoriteIds.addAll(saved);
+    });
     // تسجيل الجهاز مع المفضلة best-effort (يتخطى إن لم يتوفر الرمز بعد).
     unawaited(_favOffers.syncFavorites());
   }
@@ -169,8 +181,17 @@ class _StoreShellState extends State<StoreShell> {
     try {
       final catalog = await ProductCatalog().fetchCatalog();
       final today = perfumeOfTheDay(catalog.products, DateTime.now());
-      if (!mounted || today == null) return;
-      setState(() => _dailyProduct = today);
+      if (!mounted) return;
+      setState(() {
+        // تسجيل التشكيلة الكاملة (شبكة أو كاش) في المنتجات المعروفة
+        // حتى تُحلّ معرّفات المفضلة المستعادة — يغطي أول إقلاع
+        // بلا كاش محفوظ، ويحدّث بيانات العطور المعروفة.
+        for (final item in catalog.products) {
+          knownProducts.putIfAbsent(item.id, () => item);
+        }
+        if (today != null) _dailyProduct = today;
+      });
+      if (today == null) return;
       await _reminders.ensureDailyPerfumeScheduled(
         productId: today.id,
         productName: today.name,

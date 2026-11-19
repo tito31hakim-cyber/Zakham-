@@ -5,6 +5,7 @@ import '../services/business_advisor.dart';
 import '../services/research_repository.dart';
 import '../services/zakat_service.dart';
 import '../theme/app_theme.dart';
+import 'advisor_chat_page.dart';
 
 /// مركز ذكاء دار زخم — قراءة وتحليل فقط (ملفات المستخدم v2 بعد ضبط).
 ///
@@ -163,6 +164,8 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
         _methodology(context, data),
         const SizedBox(height: 14),
         _continuousImprovement(context, data),
+        const SizedBox(height: 14),
+        _chatEntryCard(context),
         const SizedBox(height: 26),
         _sectionHeader(context, 'بحث وابتكار', 'وكيل بحث أسبوعي — مسودات للمراجعة فقط', Icons.science_outlined, const Color(0xFF62C69A)),
         const SizedBox(height: 10),
@@ -357,6 +360,77 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
             Text('المستشار لا يكتفي بإصدار حكم؛ يسجل ما ينقصه ليصبح تحليله أدق في الدورة التالية.', textAlign: TextAlign.right, style: TextStyle(color: context.subdued, fontSize: 12, height: 1.5)),
             const SizedBox(height: 12),
             ...data.nextFocus.map((item) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(Icons.arrow_back_rounded, color: const Color(0xFF62C69A), size: 16), const SizedBox(width: 8), Expanded(child: Text(item, textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 12, height: 1.45)))]))),
+          ],
+        ),
+      );
+
+  /// بطاقة دخول المحادثة الحرة مع المستشار — حوار عن العطور
+  /// والتركيبات والميكسات وأسماء العطور، من بيانات الدار فقط.
+  /// تعمل فوراً بلا مفتاح؛ والردود مسودات للمراجعة فقط.
+  Widget _chatEntryCard(BuildContext context) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              context.goldText.withOpacity(.16),
+              context.surfaceCard
+            ],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: context.goldText.withOpacity(.35)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: context.goldText.withOpacity(.14),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(Icons.forum_outlined,
+                  color: context.goldText, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'ناقش المستشار',
+                    style: TextStyle(
+                        color: context.ink,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'حوار حر عن العطور والتركيبات والميكسات وأسماء العطور — من بيانات دار زخم فقط، والردود مسودات للمراجعة.',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        color: context.subdued, fontSize: 12, height: 1.55),
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AdvisorChatPage(api: widget.api),
+                        ),
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                      label: const Text('ابدأ المحادثة'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       );
