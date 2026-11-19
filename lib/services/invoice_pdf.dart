@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../models/product.dart';
 import '../widgets/invoice_document.dart';
+import 'json_numbers.dart';
 
 /// صنف في فاتورة طلب (من `orderDto` على الخادم).
 class InvoiceItem {
@@ -35,14 +36,16 @@ class InvoiceItem {
   String get concentrationLabel =>
       Product.concentrationNamesAr[concentration] ?? concentration;
 
+  // الخادم يعيد الأرقام كنصوص أحياناً ("30") — التحويل متسامح
+  // (انظر json_numbers.dart) بدل الصبّ `as num?` الذي ينفجر.
   factory InvoiceItem.fromJson(Map<String, dynamic> json) => InvoiceItem(
         productId: '${json['productId'] ?? ''}',
         nameAr: '${json['nameAr'] ?? ''}',
-        sizeMl: (json['sizeMl'] as num?)?.toInt() ?? 0,
+        sizeMl: asInt(json['sizeMl']),
         concentration: '${json['concentration'] ?? ''}',
-        quantity: (json['quantity'] as num?)?.toInt() ?? 1,
-        unitPrice: (json['unitPrice'] as num?)?.toDouble() ?? 0,
-        lineTotal: (json['lineTotal'] as num?)?.toDouble() ?? 0,
+        quantity: asInt(json['quantity'], 1),
+        unitPrice: asDouble(json['unitPrice']),
+        lineTotal: asDouble(json['lineTotal']),
       );
 }
 
@@ -122,12 +125,12 @@ class OrderInvoice {
       city: '${json['city'] ?? ''}',
       address: '${json['address'] ?? ''}',
       paymentMethod: '${json['paymentMethod'] ?? ''}',
-      subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0,
-      shippingFee: (json['shippingFee'] as num?)?.toDouble() ?? 0,
-      discountAmount: (json['discountAmount'] as num?)?.toDouble() ?? 0,
+      subtotal: asDouble(json['subtotal']),
+      shippingFee: asDouble(json['shippingFee']),
+      discountAmount: asDouble(json['discountAmount']),
       discountCode: '${json['discountCode'] ?? ''}',
-      bundleDiscount: (json['bundleDiscount'] as num?)?.toDouble() ?? 0,
-      total: (json['total'] as num?)?.toDouble() ?? 0,
+      bundleDiscount: asDouble(json['bundleDiscount']),
+      total: asDouble(json['total']),
       status: '${json['status'] ?? ''}',
       paymentStatus: '${json['paymentStatus'] ?? ''}',
       items: items,

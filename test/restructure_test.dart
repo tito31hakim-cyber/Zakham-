@@ -179,7 +179,7 @@ void main() {
         find.text('نقاط الولاء: 120 نقطة — تساوي 120 جنيه خصم'),
         findsOneWidget,
       );
-      expect(find.text('تاريخ ميلادي'), findsOneWidget);
+      expect(find.text('هدية عيد ميلادك'), findsOneWidget);
       expect(find.text('عميل اختبار'), findsOneWidget);
       expect(find.text('طلباتي'), findsOneWidget);
       expect(find.text('عناويني المحفوظة'), findsOneWidget);

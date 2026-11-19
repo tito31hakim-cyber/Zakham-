@@ -394,7 +394,7 @@ class ReminderService {
       await _scheduleAt(
         birthdayNotificationId,
         'دار زخم',
-        'عيد ميلادك بعد 3 أيام — هديتك بانتظارك: خصم 20% على طلب واحد خلال أسبوع عيد ميلادك.',
+        'عيد ميلادك بعد 3 أيام — هديتك بانتظارك خلال أسبوع عيد ميلادك.',
         fireAt,
         ReminderTap.birthdayPayload,
       );

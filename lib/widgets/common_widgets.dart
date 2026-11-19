@@ -414,10 +414,26 @@ class ApiProductCard extends StatelessWidget {
             errorBuilder: (_, __, ___) => Icon(Icons.image_outlined, color: context.goldText),
           ),
           title: Text(product.name, textAlign: TextAlign.right, style: TextStyle(color: context.ink)),
-          subtitle: Text(
-            '${product.size} • ${product.price.toStringAsFixed(2)} ${product.currency}',
-            textAlign: TextAlign.right,
-            style: TextStyle(color: context.goldText),
+          subtitle: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'يبدأ من ${product.lowestPrice.toStringAsFixed(0)} ج.م',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  color: context.goldText,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                product.availableConcentrations
+                    .map(product.concentrationLabel)
+                    .join(' • '),
+                textAlign: TextAlign.right,
+                style: TextStyle(color: context.subdued, fontSize: 11),
+              ),
+            ],
           ),
           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
             if (onFavorite != null)

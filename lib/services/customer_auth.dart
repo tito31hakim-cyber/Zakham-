@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import 'api_headers.dart';
 import 'birthday.dart';
+import 'json_numbers.dart';
 import 'secure_http.dart';
 
 /// Thrown when the server says the customer session is missing or expired
@@ -165,9 +166,11 @@ class CustomerOrder {
         governorate: '${json['governorate'] ?? ''}',
         address: '${json['address'] ?? ''}',
         paymentMethod: '${json['paymentMethod'] ?? ''}',
-        subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0,
-        shippingFee: (json['shippingFee'] as num?)?.toDouble() ?? 0,
-        total: (json['total'] as num?)?.toDouble() ?? 0,
+        // الخادم يعيد المبالغ كنصوص أحياناً ("370") — الصبّ `as num?`
+        // ينفجر حينها؛ فالتحويل متسامح (انظر json_numbers.dart).
+        subtotal: asDouble(json['subtotal']),
+        shippingFee: asDouble(json['shippingFee']),
+        total: asDouble(json['total']),
         status: '${json['status'] ?? ''}',
         paymentStatus: '${json['paymentStatus'] ?? ''}',
       );

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/cart_item.dart';
 import 'api_headers.dart';
+import 'json_numbers.dart';
 import 'secure_http.dart';
 
 class OrderResult {
@@ -182,11 +183,12 @@ class OrderApi {
     }
     return OrderResult(
       orderRef: orderRef,
-      total: (order['total'] as num?)?.toDouble() ?? subtotal + shippingFee,
+      // الخادم يعيد المبالغ كنصوص أحياناً ("370") — التحويل متسامح
+      // (انظر json_numbers.dart) بدل الصبّ `as num?` الذي ينفجر.
+      total: asDouble(order['total'], subtotal + shippingFee),
       status: '${order['status'] ?? 'pending_transfer'}',
       trackingToken: trackingToken,
-      bundleDiscount:
-          (order['bundleDiscount'] as num?)?.toDouble() ?? 0,
+      bundleDiscount: asDouble(order['bundleDiscount']),
     );
   }
 

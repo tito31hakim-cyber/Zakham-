@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/admin_api.dart';
 import '../services/business_advisor.dart';
 import '../services/research_repository.dart';
+import '../services/zakat_service.dart';
 import '../theme/app_theme.dart';
 
 /// مركز ذكاء دار زخم — قراءة وتحليل فقط (ملفات المستخدم v2 بعد ضبط).
@@ -23,24 +24,24 @@ class BusinessAdvisorPage extends StatefulWidget {
 class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
   late Future<AdvisorReport> report;
 
-  /// خلاصة «بحث وابتكار» — من المزود التجريبي المحلي حتى توفر API.
-  // TODO(research-api): استبدل MockResearchRepository بـ ApiResearchRepository
-  //   فوق ResearchSyncApi (lib/services/research_sync_api.dart — عميل المستخدم)
-  //   عند نشر مسارات الإدارة GET /api/admin/research/mixes
-  //   وGET /api/admin/research/knowledge-summary.
+  /// خلاصة «بحث وابتكار» — من API البحث الحي فوق جلسة الإدارة
+  /// (ApiResearchRepository فوق ResearchSyncApi)؛ قراءة فقط، والمسودات
+  /// موسومة «مسودة تجريبية غير معتمدة» حتى مراجعتها بشرياً.
   late Future<ResearchDigest> researchDigest;
 
   @override
   void initState() {
     super.initState();
     report = BusinessAdvisorService(widget.api).analyze();
-    researchDigest = const MockResearchRepository().latestDigest();
+    researchDigest =
+        ApiResearchRepository(widget.api.researchSyncApi).latestDigest();
   }
 
   /// يُنتظر حتى اكتمال التحليل الجديد حتى لا يختفي مؤشر السحب مبكراً.
   Future<void> _refresh() async {
     final future = BusinessAdvisorService(widget.api).analyze();
-    final researchFuture = const MockResearchRepository().latestDigest();
+    final researchFuture =
+        ApiResearchRepository(widget.api.researchSyncApi).latestDigest();
     setState(() {
       report = future;
       researchDigest = researchFuture;
@@ -166,6 +167,10 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
         _sectionHeader(context, 'بحث وابتكار', 'وكيل بحث أسبوعي — مسودات للمراجعة فقط', Icons.science_outlined, const Color(0xFF62C69A)),
         const SizedBox(height: 10),
         _researchSection(context),
+        const SizedBox(height: 26),
+        _sectionHeader(context, 'زكاة التجارة', 'حساب تقديري — يراجعه المالك بنفسه', Icons.handshake_outlined, context.goldText),
+        const SizedBox(height: 10),
+        const _ZakatCard(),
       ],
     );
   }
@@ -358,10 +363,9 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
 
   /// قسم «بحث وابتكار»: ملخص آخر دورة + مسودات الميكسات.
   ///
-  /// البيانات تجريبية محلية (MockResearchRepository) حتى توفر API
-  /// البحث. كل مسودة تحمل وسم «مسودة تجريبية غير معتمدة»، ولا تظهر
-  /// هنا نسب كاملة ولا موردون ولا تكاليف — تلك للمالك ومسؤول
-  /// التركيبات فقط عبر لوحة الإدارة.
+  /// البيانات حية من API البحث فوق جلسة الإدارة. كل مسودة تحمل وسم
+  /// «مسودة تجريبية غير معتمدة»، ولا تظهر هنا نسب كاملة ولا موردون
+  /// ولا تكاليف — تلك للمالك ومسؤول التركيبات فقط عبر لوحة الإدارة.
   Widget _researchSection(BuildContext context) =>
       FutureBuilder<ResearchDigest>(
         future: researchDigest,
@@ -394,7 +398,7 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
                 ...digest.drafts.map((draft) => _draftCard(context, draft)),
               const SizedBox(height: 6),
               Text(
-                'بيانات تجريبية — تُستبدل بنتائج الدورات الحقيقية عند توفر API البحث. لا نسب كاملة ولا موردون ولا تكاليف تظهر هنا.',
+                'بيانات حية من دورات البحث — المسودات غير معتمدة حتى مراجعتها بشرياً. لا نسب كاملة ولا موردون ولا تكاليف تظهر هنا.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: context.subdued, fontSize: 11, height: 1.5),
@@ -446,7 +450,9 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
             ]),
             const SizedBox(height: 10),
             Text(
-              'الوكيل ${run.agentVersion} • مكتبة المعرفة ${run.knowledgeVersion}',
+              // الخادم الحي لا يرد إصدار مكتبة المعرفة في ملخص آخر دورة،
+              // فيُخفى الجزء كاملاً بدل عرض تسمية بلا قيمة.
+              'الوكيل ${run.agentVersion}${run.knowledgeVersion.isEmpty ? '' : ' • مكتبة المعرفة ${run.knowledgeVersion}'}',
               textAlign: TextAlign.center,
               style: TextStyle(color: context.subdued, fontSize: 11),
             ),
@@ -456,6 +462,8 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
 
   String _runStatusLabel(String status) => switch (status) {
         'completed' => 'مكتملة',
+        'review' => 'بانتظار المراجعة',
+        'running' => 'جارية',
         'partial' => 'جزئية',
         'failed' => 'فاشلة',
         _ => 'جارية',
@@ -463,6 +471,8 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
 
   Color _runStatusColor(String status) => switch (status) {
         'completed' => const Color(0xFF62C69A),
+        'review' => Colors.orange,
+        'running' => context.goldText,
         'partial' => Colors.orange,
         'failed' => Colors.redAccent,
         _ => context.goldText,
@@ -592,3 +602,351 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
 }
 
 enum _InsightKind { risk, opportunity, observation }
+
+/// بطاقة زكاة التجارة — حساب تقديري محلي فقط.
+///
+/// يدخل المالك: نقدية + قيمة مخزون بسعر السوق + مستحقات للدار
+/// − ديون عليها + تاريخ بداية الحول + قيمة نصاب يحددها هو.
+/// الزكاة 2.5% من الصافي عند بلوغ النصاب وتمام الحول (سنة هجرية).
+/// تُحفظ المدخلات على الجهاز فقط (SharedPreferences)؛ والزكاة
+/// ليست على الإيرادات فلا تُحسب من المبيعات.
+class _ZakatCard extends StatefulWidget {
+  const _ZakatCard();
+
+  @override
+  State<_ZakatCard> createState() => _ZakatCardState();
+}
+
+class _ZakatCardState extends State<_ZakatCard> {
+  final _service = ZakatService();
+  final _cash = TextEditingController();
+  final _inventory = TextEditingController();
+  final _receivables = TextEditingController();
+  final _debts = TextEditingController();
+  final _nisab = TextEditingController();
+  DateTime _hawlStart = DateTime.now();
+  bool _loaded = false;
+  ZakatResult? _result;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSaved();
+  }
+
+  Future<void> _loadSaved() async {
+    final saved = await _service.load();
+    if (!mounted) return;
+    if (saved != null) {
+      _cash.text = _plain(saved.cash);
+      _inventory.text = _plain(saved.inventoryValue);
+      _receivables.text = _plain(saved.receivables);
+      _debts.text = _plain(saved.debts);
+      _nisab.text = _plain(saved.nisab);
+      _hawlStart = saved.hawlStart;
+    }
+    setState(() => _loaded = true);
+  }
+
+  @override
+  void dispose() {
+    _cash.dispose();
+    _inventory.dispose();
+    _receivables.dispose();
+    _debts.dispose();
+    _nisab.dispose();
+    super.dispose();
+  }
+
+  /// رقم بلا فواصل لإعادة ملء الحقول المحفوظة.
+  static String _plain(double value) =>
+      value == value.truncateToDouble() ? '${value.toInt()}' : '$value';
+
+  /// رقم بفواصل آلاف للعرض (160000 ← 160,000).
+  static String _money(double value) {
+    final negative = value < 0;
+    final digits = value.abs().toStringAsFixed(0);
+    final buf = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buf.write(',');
+      buf.write(digits[i]);
+    }
+    return '${negative ? '-' : ''}$buf';
+  }
+
+  static String _date(DateTime value) =>
+      '${value.day}/${value.month}/${value.year}';
+
+  double? _parse(TextEditingController controller, {required bool required}) {
+    final text = controller.text.trim().replaceAll(',', '.');
+    if (text.isEmpty) return required ? null : 0;
+    return double.tryParse(text);
+  }
+
+  Future<void> _calculateAndSave() async {
+    final cash = _parse(_cash, required: false);
+    final inventory = _parse(_inventory, required: false);
+    final receivables = _parse(_receivables, required: false);
+    final debts = _parse(_debts, required: false);
+    final nisab = _parse(_nisab, required: true);
+    if (cash == null ||
+        inventory == null ||
+        receivables == null ||
+        debts == null ||
+        nisab == null) {
+      setState(() => _error =
+          'أدخل الأرقام بالأرقام الإنجليزية، وقيمة النصاب إلزامية.');
+      return;
+    }
+    try {
+      final inputs = ZakatInputs(
+        cash: cash,
+        inventoryValue: inventory,
+        receivables: receivables,
+        debts: debts,
+        hawlStart: _hawlStart,
+        nisab: nisab,
+      );
+      final result = ZakatCalculator.calculate(inputs);
+      await _service.save(inputs);
+      setState(() {
+        _result = result;
+        _error = null;
+      });
+    } on ArgumentError catch (e) {
+      setState(() => _error = e.message.toString());
+    }
+  }
+
+  Future<void> _pickHawlStart() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _hawlStart,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) setState(() => _hawlStart = picked);
+  }
+
+  Future<void> _clear() async {
+    await _service.clear();
+    setState(() {
+      _cash.clear();
+      _inventory.clear();
+      _receivables.clear();
+      _debts.clear();
+      _nisab.clear();
+      _hawlStart = DateTime.now();
+      _result = null;
+      _error = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 18),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceCard,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.goldText.withOpacity(.22)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.withOpacity(.35)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'حساب تقديري يراجعه المالك بنفسه. الزكاة ليست على الإيرادات ولا تُحسب من المبيعات — بل على صافي أموال التجارة (نقدية + مخزون بسعر السوق + مستحقات − ديون) عند بلوغ النصاب وتمام الحول. تُحفظ المدخلات على هذا الجهاز فقط.',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        color: context.ink, fontSize: 12, height: 1.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          _moneyField(context,
+              controller: _cash,
+              label: 'النقدية',
+              hint: 'نقدية التجارة المتوفرة'),
+          _moneyField(context,
+              controller: _inventory,
+              label: 'قيمة المخزون بسعر السوق',
+              hint: 'قيمة بضاعة المتجر اليوم'),
+          _moneyField(context,
+              controller: _receivables,
+              label: 'مستحقات للدار',
+              hint: 'ديون الغير للدار'),
+          _moneyField(context,
+              controller: _debts,
+              label: 'ديون على الدار',
+              hint: 'ما على الدار للغير'),
+          _moneyField(context,
+              controller: _nisab,
+              label: 'قيمة النصاب (جنيه)',
+              hint: 'يحددها المالك'),
+          InkWell(
+            onTap: _pickHawlStart,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: context.hairline),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_month_outlined,
+                      color: context.goldText, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'تاريخ بداية الحول',
+                      style: TextStyle(
+                          color: context.ink,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Text(
+                    _date(_hawlStart),
+                    style:
+                        TextStyle(color: context.subdued, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _calculateAndSave,
+              icon: const Icon(Icons.calculate_outlined),
+              label: const Text('احسب الزكاة واحفظ'),
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              _error!,
+              textAlign: TextAlign.right,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+            ),
+          ],
+          if (_result != null) _resultBlock(context, _result!),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.center,
+            child: TextButton(
+              onPressed: _clear,
+              child: const Text('مسح البيانات المحفوظة'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _moneyField(BuildContext context,
+          {required TextEditingController controller,
+          required String label,
+          required String hint}) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: TextField(
+          controller: controller,
+          keyboardType:
+              const TextInputType.numberWithOptions(decimal: true),
+          textAlign: TextAlign.right,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            suffixText: 'جنيه',
+            border:
+                OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+        ),
+      );
+
+  Widget _resultBlock(BuildContext context, ZakatResult result) => Container(
+        margin: const EdgeInsets.only(top: 14),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: context.goldText.withOpacity(.07),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.goldText.withOpacity(.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            _resultRow(context, 'صافي الأموال الخاضعة',
+                '${_money(result.base)} جنيه'),
+            _resultRow(
+                context,
+                'النصاب',
+                result.nisabReached
+                    ? 'بلغه الصافي'
+                    : 'لم يبلغه الصافي بعد'),
+            _resultRow(context, 'الحول',
+                result.hawlComplete ? 'تم' : 'ينتهي ${_date(result.hawlEnd)}'),
+            const SizedBox(height: 10),
+            Text(
+              result.isDue
+                  ? 'الزكاة المستحقة: ${_money(result.due)} جنيه'
+                  : 'لا زكاة مستحقة بعد',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                  color: context.ink,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900),
+            ),
+          ],
+        ),
+      );
+
+  Widget _resultRow(BuildContext context, String label, String value) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                value,
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                    color: context.ink,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(color: context.subdued, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+}

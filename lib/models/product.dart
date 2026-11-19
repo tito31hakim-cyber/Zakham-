@@ -229,6 +229,24 @@ class Product {
     return null;
   }
 
+  /// أقل سعر متاح عبر كل التركيزات والأحجام (المتغيرات ثم المسطّحة)،
+  /// أو `price` عند غيابها — أساس «يبدأ من» في البطاقات.
+  /// للعطر القياسي (100مل 500/700/950، 50مل 350/500/650،
+  /// 30مل 250/350) الأدنى 250.
+  double get lowestPrice {
+    double? lowest;
+    void consider(Map<int, double> values) {
+      for (final value in values.values) {
+        if (lowest == null || value < lowest!) lowest = value;
+      }
+    }
+    for (final key in concentrationOrder) {
+      consider(_variantPrices(key));
+    }
+    consider(_flatPrices);
+    return lowest ?? price;
+  }
+
   /// اسم التركيز للعرض (من `variants[].label` أولاً ثم الاسم المعتمد).
   String concentrationLabel(String key) {
     final variant = variants[key];

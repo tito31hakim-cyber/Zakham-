@@ -19,8 +19,11 @@ class ResearchSyncApi {
   final http.Client _client;
   final ApiCredentials credentials;
 
+  /// ترويسات القراءة الإدارية. مسارا البحث الإداريان على الخادم يتحققان
+  /// من رمز CSRF حتى على طلبات GET (قراءة فقط)، فتُرسل الترويسة هنا:
+  /// ‏`mutating: true` لا يضيف إلا ترويسة X-CSRF-Token (لا Content-Type).
   Map<String, String> get _headers =>
-      ApiHeaders.build(credentials: credentials);
+      ApiHeaders.build(credentials: credentials, mutating: true);
 
   Future<List<Map<String, dynamic>>> listMixes({
     String? status,

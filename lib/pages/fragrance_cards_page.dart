@@ -573,7 +573,7 @@ class _FragranceCardTile extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '${product.price.toStringAsFixed(0)} ${product.currency}',
+                        '${product.lowestPrice.toStringAsFixed(0)} ${product.currency}',
                         style: TextStyle(
                           color: context.goldText,
                           fontSize: 17,

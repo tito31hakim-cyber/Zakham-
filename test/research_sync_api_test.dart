@@ -123,6 +123,24 @@ void main() {
         throwsA(isA<Exception>()),
       );
     });
+
+    test('طلبات القراءة الإدارية ترسل رمز CSRF لأن الخادم يتحقق منه '
+        'حتى على GET', () async {
+      http.Request? captured;
+      final api = ResearchSyncApi(
+        credentials: const ApiCredentials(
+          cookie: 'PHPSESSID=abc',
+          csrfToken: 'csrf-123',
+        ),
+        client: MockClient((request) async {
+          captured = request;
+          return _jsonResponse({'mixes': []}, 200);
+        }),
+      );
+      await api.listMixes();
+      expect(captured!.headers['X-CSRF-Token'], 'csrf-123');
+      expect(captured!.headers['Cookie'], 'PHPSESSID=abc');
+    });
   });
 
   group('ApiResearchRepository — تحويل الرد إلى نماذج آمنة', () {
@@ -221,6 +239,64 @@ void main() {
       expect(draft.warnings, ResearchDraftMix.requiredWarnings);
       expect(draft.confidence, 'غير محددة');
       expect(draft.evidenceSummary, isNotEmpty);
+    });
+
+    test('شكل الخادم الحي: lastRun بصيغة snake_case يُقرأ كما هو', () async {
+      // شكل الرد الفعلي من GET /api/admin/research/knowledge-summary
+      // وGET /api/admin/research/mixes بعد الدورة التجريبية trial-run-001.
+      final api = _apiWith(MockClient((request) async {
+        if (request.url.path.endsWith('/mixes')) {
+          return _jsonResponse({
+            'mixes': [
+              {
+                'code': 'ZK-TRIAL-001',
+                'name_ar': 'ميكس تجريبي — شيبر',
+                'status': 'research_draft',
+                'version': 1,
+                'top_notes': ['زيت البرغموت'],
+                'heart_notes': ['زيت العود'],
+                'base_notes': [],
+                'warnings': ['مسودة تجريبية غير معتمدة'],
+                'confidence': 40,
+              },
+            ],
+          }, 200);
+        }
+        return http.Response(
+          jsonEncode({
+            'lastRun': {
+              'run_key': 'trial-run-001',
+              'started_at': '2026-11-19T11:46:00Z',
+              'status': 'review',
+              'sources_found': 1,
+              'sources_accepted': 1,
+              'new_materials': 2,
+              'new_mixes': 1,
+              'agent_version': '0.1.0',
+            },
+          }),
+          200,
+        );
+      }));
+      final digest = await ApiResearchRepository(api).latestDigest();
+
+      expect(digest.run.runId, 'trial-run-001');
+      expect(digest.run.status, 'review');
+      expect(digest.run.sourcesFound, 1);
+      expect(digest.run.sourcesAccepted, 1);
+      expect(digest.run.newMaterials, 2);
+      expect(digest.run.newMixes, 1);
+      expect(digest.run.agentVersion, '0.1.0');
+      expect(digest.run.knowledgeVersion, isEmpty);
+
+      expect(digest.drafts, hasLength(1));
+      final draft = digest.drafts.first;
+      expect(draft.code, 'ZK-TRIAL-001');
+      expect(draft.nameAr, 'ميكس تجريبي — شيبر');
+      expect(draft.isUnapprovedDraft, isTrue);
+      expect(draft.topNotes, ['زيت البرغموت']);
+      expect(draft.heartNotes, ['زيت العود']);
+      expect(draft.confidence, '40/100');
     });
   });
 }

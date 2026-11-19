@@ -29,8 +29,13 @@ class AppVersion {
     defaultValue: '3ce6ac8b',
   );
 
-  /// One-line display string for the account page footer, e.g.
-  /// «الإصدار 1.1.0 (3) — بناء Codemagic 31 — Commit 3ce6ac8b».
+  /// نص التذييل للعميل — الإصدار فقط، بلا رقم بناء وبلا Commit:
+  /// «الإصدار 1.1.0». التفاصيل للتشخيص فقط (انظر [display]).
+  static String get customerDisplay => 'الإصدار $versionName';
+
+  /// نص التشخيص الكامل (رقم البناء والـ Commit) — لا يظهر في واجهة
+  /// العميل أبداً؛ يظهر فقط بضغطة مطولة على تذييل صفحة الحساب،
+  /// مثال: «الإصدار 1.1.0 (3) — بناء Codemagic 31 — Commit 3ce6ac8b».
   static String get display =>
       'الإصدار $versionName ($versionCode) — بناء Codemagic $codemagicBuild — Commit $commit';
 }

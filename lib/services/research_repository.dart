@@ -1,8 +1,7 @@
 /// مستودع بيانات «بحث وابتكار» — قراءة فقط.
 ///
-/// البيانات الحقيقية تأتي لاحقاً من API دار زخم بعد إنشاء قاعدة البيانات
-/// السحابية ونقطة المزامنة الداخلية (انظر عقد المزامنة
-/// research-sync-contract-v1.md):
+/// البيانات الحقيقية تأتي من API دار زخم الحي عبر نقطة المزامنة
+/// (انظر عقد المزامنة research-sync-contract-v1.md):
 ///
 /// ```text
 /// GET  /api/admin/research/runs      (ملخص آخر دورة)
@@ -10,20 +9,21 @@
 /// GET  /api/admin/research/knowledge-summary  (ملخص مكتبة المعرفة)
 /// ```
 ///
-/// وحتى ذلك الحين يعمل التطبيق على [MockResearchRepository] ببيانات
-/// تجريبية محلية بنفس شكل حمولة العقد، وبلا أي استدعاء شبكة حقيقي.
+/// والتطبيق يعمل على [ApiResearchRepository] فوق [ResearchSyncApi]؛
+/// و[MockResearchRepository] باقٍ للاختبارات واللقطات فقط، بلا أي
+/// استدعاء شبكة حقيقي.
 ///
 /// قاعدة أمنية: نماذج العرض هنا لا تحمل الحقول الحساسة أصلاً — لا نسب
 /// كاملة، ولا موردين، ولا أرقام دفعات، ولا ملفات COA/SDS، ولا تكاليف.
 /// تلك البيانات للمالك أو مسؤول التركيبات فقط عبر لوحة الإدارة، فالإخفاء
 /// يكون بغياب الحقل لا بتصفيته في الواجهة.
 //
-// TODO(research-api): استبدل MockResearchRepository بـ ApiResearchRepository
-//   فوق ResearchSyncApi (lib/services/research_sync_api.dart — عميل المستخدم)
-//   عند نشر مسارات الإدارة GET /api/admin/research/mixes
-//   وGET /api/admin/research/knowledge-summary؛ وحافظ على قائمة الحقول
-//   الآمنة كما هي (انظر [ResearchDraftMix.toPublicJson]) ولا تضف إليها
-//   حقلاً حساساً.
+// مسارات الإدارة GET /api/admin/research/mixes
+// وGET /api/admin/research/knowledge-summary منشورة حية على الخادم
+// (نقطة المزامنة REST + الدورة التجريبية trial-run-001، 2026-11-19)،
+// والصفحة تستخدم [ApiResearchRepository] فوق [ResearchSyncApi].
+// وحافظ على قائمة الحقول الآمنة كما هي (انظر [ResearchDraftMix.toPublicJson])
+// ولا تضف إليها حقلاً حساساً.
 
 import 'research_sync_api.dart';
 
@@ -206,10 +206,10 @@ class MockResearchRepository implements ResearchRepository {
 
 /// تنفيذ API الحقيقي فوق [ResearchSyncApi] (عميل المستخدم للقراءة فقط).
 ///
-/// يقرأ مسارات الإدارة الموجودة في العميل فقط:
+/// يقرأ مسارات الإدارة المنشورة حية على الخادم:
 /// `GET /api/admin/research/mixes` و`GET /api/admin/research/knowledge-summary`.
-/// لا يُستخدم حتى تُنشر مسارات الإدارة على الخادم؛ وحتى ذلك الحين
-/// تبقى الصفحة على [MockResearchRepository].
+/// والصفحة تستخدم هذا التنفيذ؛ و[MockResearchRepository] باقٍ للاختبارات
+/// واللقطات فقط.
 ///
 /// التحويل دفاعي عمداً: رد الخادم قد يحمل الحقول بصيغة camelCase
 /// (مخطط الحمولة) أو snake_case (قاعدة البيانات)؛ وأي حقل غائب
@@ -236,27 +236,59 @@ class ApiResearchRepository implements ResearchRepository {
     );
   }
 
+  /// يقبل شكلين لآخر دورة: `latestRun` بصيغة camelCase (عقد العميل)
+  /// أو `lastRun` بصيغة snake_case كما يردها الخادم الحي فعلياً
+  /// (run_key, started_at, sources_found, ...). أي حقل غائب يُستبدل
+  /// بقيمة محايدة، لا ببيانات مخترعة.
   static ResearchRunSummary _parseRun(Map<String, dynamic> summary) {
-    final rawRun = summary['latestRun'];
+    final rawRun = summary['latestRun'] ?? summary['lastRun'];
     final run =
         rawRun is Map<String, dynamic> ? rawRun : <String, dynamic>{};
     return ResearchRunSummary(
-      runId: (run['runId'] ?? summary['runId'] ?? 'unknown').toString(),
+      runId: (run['runId'] ??
+              run['run_key'] ??
+              summary['runId'] ??
+              summary['run_key'] ??
+              'unknown')
+          .toString(),
       startedAt: DateTime.tryParse(
-            (run['startedAt'] ?? summary['startedAt'] ?? '').toString(),
+            (run['startedAt'] ??
+                    run['started_at'] ??
+                    summary['startedAt'] ??
+                    summary['started_at'] ??
+                    '')
+                .toString(),
           ) ??
           DateTime.now(),
       status: (run['status'] ?? summary['status'] ?? 'unknown').toString(),
-      sourcesFound: _asInt(run['sourcesFound'] ?? summary['sourcesFound']),
-      sourcesAccepted:
-          _asInt(run['sourcesAccepted'] ?? summary['sourcesAccepted']),
-      newMaterials: _asInt(run['newMaterials'] ?? summary['newMaterials']),
-      newMixes: _asInt(run['newMixes'] ?? summary['newMixes']),
-      agentVersion:
-          (run['agentVersion'] ?? summary['agentVersion'] ?? '').toString(),
-      knowledgeVersion:
-          (run['knowledgeVersion'] ?? summary['knowledgeVersion'] ?? '')
-              .toString(),
+      sourcesFound: _asInt(run['sourcesFound'] ??
+          run['sources_found'] ??
+          summary['sourcesFound'] ??
+          summary['sources_found']),
+      sourcesAccepted: _asInt(run['sourcesAccepted'] ??
+          run['sources_accepted'] ??
+          summary['sourcesAccepted'] ??
+          summary['sources_accepted']),
+      newMaterials: _asInt(run['newMaterials'] ??
+          run['new_materials'] ??
+          summary['newMaterials'] ??
+          summary['new_materials']),
+      newMixes: _asInt(run['newMixes'] ??
+          run['new_mixes'] ??
+          summary['newMixes'] ??
+          summary['new_mixes']),
+      agentVersion: (run['agentVersion'] ??
+              run['agent_version'] ??
+              summary['agentVersion'] ??
+              summary['agent_version'] ??
+              '')
+          .toString(),
+      knowledgeVersion: (run['knowledgeVersion'] ??
+              run['knowledge_version'] ??
+              summary['knowledgeVersion'] ??
+              summary['knowledge_version'] ??
+              '')
+          .toString(),
     );
   }
 

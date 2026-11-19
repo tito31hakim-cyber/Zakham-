@@ -530,11 +530,27 @@ class _AccountPageState extends State<AccountPage> {
                   style: TextStyle(color: context.subdued, fontSize: 11),
                 ),
                 const SizedBox(height: 4),
-                // هوية النسخة المنشورة (الأولوية 1) — تمنع لخبطة النسخ.
-                Text(
-                  AppVersion.display,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: context.subdued, fontSize: 11),
+                // هوية النسخة للعميل — الإصدار فقط؛ التفاصيل (رقم البناء
+                // والـ Commit) للتشخيص وتظهر بضغطة مطولة.
+                GestureDetector(
+                  onLongPress: () => showDialog<void>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('تفاصيل النسخة'),
+                      content: Text(AppVersion.display),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('إغلاق'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  child: Text(
+                    AppVersion.customerDisplay,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: context.subdued, fontSize: 11),
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -700,7 +716,7 @@ class _AccountPageState extends State<AccountPage> {
 
   /// قسم تاريخ الميلاد — يُسجَّل مرة واحدة فقط: الحقل يصبح للقراءة
   /// فقط بعد أول حفظ (التغيير فقط عن طريق الدار)، وفي أسبوع عيد
-  /// الميلاد يظهر بانر الهدية الذهبي (خصم 20% يُطبَّق من الخادم).
+  /// الميلاد يظهر بانر الهدية الذهبي (الخصم يُطبَّق من الخادم).
   Widget _birthdaySection(CustomerProvider provider) {
     final birthday = provider.birthday;
     final now = DateTime.now();
@@ -724,7 +740,7 @@ class _AccountPageState extends State<AccountPage> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'تاريخ ميلادي',
+                  'هدية عيد ميلادك',
                   style: TextStyle(
                     color: context.ink,
                     fontSize: 16,
@@ -754,18 +770,8 @@ class _AccountPageState extends State<AccountPage> {
           const SizedBox(height: 8),
           if (birthday == null) ...[
             Text(
-              'سجّل تاريخ ميلادك مرة واحدة لتحصل على خصم 20% على طلب واحد كل سنة في أسبوع عيد ميلادك.',
+              'في أسبوع عيد ميلادك من كل عام، تهديك الدار خصماً على طلب واحد — يُطبَّق تلقائياً عند إتمام الطلب. سجّل تاريخ ميلادك مرة واحدة، فهو ثابت ولا يُغيَّر بعد التسجيل.',
               style: TextStyle(color: context.subdued, fontSize: 12, height: 1.7),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'يُسجَّل مرة واحدة ولا يمكن تغييره بعدها — احرص على صحته.',
-              style: TextStyle(
-                color: context.goldText,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                height: 1.6,
-              ),
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -774,7 +780,7 @@ class _AccountPageState extends State<AccountPage> {
                 onPressed: _savingBirthday ? null : _pickAndSaveBirthday,
                 icon: const Icon(Icons.calendar_today_outlined, size: 17),
                 label: Text(
-                  _savingBirthday ? 'جارٍ الحفظ…' : 'تسجيل تاريخ ميلادي',
+                  _savingBirthday ? 'جارٍ الحفظ…' : 'سجّل تاريخ ميلادك',
                 ),
               ),
             ),
@@ -803,7 +809,7 @@ class _AccountPageState extends State<AccountPage> {
                   border: Border.all(color: gold.withOpacity(.4)),
                 ),
                 child: Text(
-                  'عيد ميلاد سعيد! خصم 20% على طلب واحد خلال أسبوع عيد ميلادك — يُطبَّق تلقائياً عند إتمام الطلب.',
+                  'عيد ميلاد سعيد — هديتك من الدار: خصم على طلب واحد خلال هذا الأسبوع، يُطبَّق تلقائياً عند إتمام الطلب.',
                   style: TextStyle(
                     color: context.goldText,
                     fontSize: 13,
@@ -868,7 +874,7 @@ class _AccountPageState extends State<AccountPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('تم تسجيل تاريخ ميلادك — هديتك بانتظارك كل سنة.'),
+            content: Text('تم تسجيل تاريخ ميلادك — هديتك السنوية بانتظارك.'),
           ),
         );
       }
