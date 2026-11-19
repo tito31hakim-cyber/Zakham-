@@ -62,7 +62,7 @@ class AppConfig {
   static const adminDiscountsPath = '/api/admin/discounts';
   static const productImageBaseUrl = '$apiBaseUrl/';
   static const featuredImage =
-      '$apiBaseUrl/assets/products/catalog-royal-2026.jpg';
+      '$apiBaseUrl/assets/products/royal-official.webp';
 
   static Uri get productsUri => Uri.parse('$apiBaseUrl$productsPath');
   static Uri get ordersUri => Uri.parse('$apiBaseUrl$ordersPath');
