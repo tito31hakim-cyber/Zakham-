@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
 import 'api_headers.dart';
-import 'secure_http.dart';
 
 /// Thrown when the server requires a two-factor (TOTP) code for this admin
 /// account. The code comes from the admin's authenticator app; the web
