@@ -6,6 +6,7 @@ import '../services/research_repository.dart';
 import '../services/zakat_service.dart';
 import '../theme/app_theme.dart';
 import 'advisor_chat_page.dart';
+import 'research_pdfs_page.dart';
 
 /// مركز ذكاء دار زخم — قراءة وتحليل فقط (ملفات المستخدم v2 بعد ضبط).
 ///
@@ -166,6 +167,8 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
         _continuousImprovement(context, data),
         const SizedBox(height: 14),
         _chatEntryCard(context),
+        const SizedBox(height: 14),
+        _pdfUploadEntryCard(context),
         const SizedBox(height: 26),
         _sectionHeader(context, 'بحث وابتكار', 'وكيل بحث أسبوعي — مسودات للمراجعة فقط', Icons.science_outlined, const Color(0xFF62C69A)),
         const SizedBox(height: 10),
@@ -435,6 +438,71 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
         ),
       );
 
+  /// بطاقة دخول رفع ملفات PDF لذاكرة البحث — من مركز الذكاء.
+  ///
+  /// الملفات تُحفظ خارج public_html، ولا تدخل ذاكرة المستشار إلا
+  /// بعد مراجعة بشرية — الرفع وحده لا يعلّم المستشار شيئاً.
+  Widget _pdfUploadEntryCard(BuildContext context) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.surfaceCard,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: context.goldText.withOpacity(.22)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withOpacity(.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.picture_as_pdf_outlined,
+                  color: Colors.redAccent, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'ملفات PDF للبحث',
+                    style: TextStyle(
+                        color: context.ink,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'ارفع ملفات PDF لتوسيع ذاكرة المستشار — تُراجع حقائقها قبل دخولها المعرفة، وتظهر حالتها هنا.',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        color: context.subdued, fontSize: 12, height: 1.55),
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ResearchPdfsPage(api: widget.api),
+                        ),
+                      ),
+                      icon: const Icon(Icons.upload_file_outlined, size: 18),
+                      label: const Text('رفع ملف PDF'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
   /// قسم «بحث وابتكار»: ملخص آخر دورة + مسودات الميكسات.
   ///
   /// البيانات حية من API البحث فوق جلسة الإدارة. كل مسودة تحمل وسم
@@ -458,17 +526,37 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
             );
           }
           final digest = snapshot.data!;
+          // لم تبدأ أي دورة بعد: رسالة هادئة تشرح أن البدء معلّق،
+          // لا رسالة تعذر جافة.
+          if (!digest.hasSavedRun) {
+            return _researchNote(
+              context,
+              'لم تبدأ الدورة الأسبوعية بعد — البدء معلّق على مراجعة المالك للدورة التجريبية والتحقق النهائي من بوابات البحث برمز المصادقة.',
+              Icons.schedule_outlined,
+            );
+          }
           return Column(
             children: [
+              // إن تعذّر تحميل المسودات تُعرض آخر خلاصة محفوظة بتاريخها
+              // بدل رسالة تعذر جافة — رسالة التعذر لا تظهر إلا عند غياب
+              // أي خلاصة محفوظة أصلاً (فشل ملخص المعرفة نفسه).
+              if (digest.draftsUnavailable) ...[
+                _researchNote(
+                  context,
+                  'تُعرض آخر خلاصة محفوظة بتاريخ ${_date(digest.run.startedAt)} — تعذّر تحميل مسودات الميكسات حالياً.',
+                  Icons.history_outlined,
+                ),
+                const SizedBox(height: 10),
+              ],
               _runSummaryCard(context, digest.run),
               const SizedBox(height: 10),
-              if (digest.drafts.isEmpty)
+              if (!digest.draftsUnavailable && digest.drafts.isEmpty)
                 _researchNote(
                   context,
                   'لا توجد مسودات ميكسات في آخر دورة.',
                   Icons.science_outlined,
                 )
-              else
+              else if (!digest.draftsUnavailable)
                 ...digest.drafts.map((draft) => _draftCard(context, draft)),
               const SizedBox(height: 6),
               Text(

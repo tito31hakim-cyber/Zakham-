@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/admin_api.dart';
 import '../services/advisor_chat_api.dart';
 import '../theme/app_theme.dart';
+import '../utils/chat_text_sanitize.dart';
 
 /// صفحة محادثة المستشار — حوار حر عن العطور والتركيبات والميكسات
 /// وأسماء العطور، داخل مركز الذكاء.
@@ -224,7 +225,10 @@ class _AdvisorChatPageState extends State<AdvisorChatPage> {
                 ),
               ),
               child: Text(
-                message.content,
+                // ردود المستشار تمر بدالة التنظيف قبل عرضها، فلا تصل
+                // رموز Markdown الخام إلى المستخدم أبداً حتى لو ورد
+                // نص خام من أي مصدر؛ رسائل المستخدم تُعرض كما كتبها.
+                isUser ? message.content : sanitizeChatText(message.content),
                 textAlign: TextAlign.right,
                 style: TextStyle(
                     color: context.ink, fontSize: 14, height: 1.6),

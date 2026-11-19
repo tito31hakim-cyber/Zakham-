@@ -232,6 +232,7 @@ void main() {
       final digest = await ApiResearchRepository(api).latestDigest();
       expect(digest.run.runId, 'unknown');
       expect(digest.run.sourcesFound, 0);
+      expect(digest.hasSavedRun, isFalse);
       final draft = digest.drafts.first;
       expect(draft.status, 'research_draft');
       expect(draft.isUnapprovedDraft, isTrue);
@@ -288,6 +289,7 @@ void main() {
       expect(digest.run.newMixes, 1);
       expect(digest.run.agentVersion, '0.1.0');
       expect(digest.run.knowledgeVersion, isEmpty);
+      expect(digest.hasSavedRun, isTrue);
 
       expect(digest.drafts, hasLength(1));
       final draft = digest.drafts.first;
@@ -297,6 +299,47 @@ void main() {
       expect(draft.topNotes, ['زيت البرغموت']);
       expect(draft.heartNotes, ['زيت العود']);
       expect(draft.confidence, '40/100');
+    });
+
+    test('تعذّر الميكسات لا يُسقط الخلاصة المحفوظة — تُعرض مع وسم', () async {
+      // ملخص المعرفة يرد آخر دورة محفوظة (الدورة التجريبية)، لكن مسار
+      // الميكسات يفشل: الخلاصة تُبنى من lastRun مع وسم يعلن أن المسودات
+      // غير متوفرة، بدل رمي الخطأ وإظهار رسالة تعذر جافة.
+      final api = _apiWith(MockClient((request) async {
+        if (request.url.path.endsWith('/mixes')) {
+          return http.Response('', 500);
+        }
+        return _jsonResponse({
+          'lastRun': {
+            'run_key': 'trial-run-001',
+            'started_at': '2026-11-19T11:46:00Z',
+            'status': 'review',
+            'sources_found': 1,
+            'sources_accepted': 1,
+            'new_materials': 2,
+            'new_mixes': 1,
+            'agent_version': '0.1.0',
+          },
+        }, 200);
+      }));
+      final digest = await ApiResearchRepository(api).latestDigest();
+
+      expect(digest.run.runId, 'trial-run-001');
+      expect(digest.run.status, 'review');
+      expect(digest.drafts, isEmpty);
+      expect(digest.draftsUnavailable, isTrue);
+      expect(digest.hasSavedRun, isTrue);
+    });
+
+    test('فشل ملخص المعرفة نفسه يُسقط الخلاصة — لا خلاصة محفوظة أصلاً',
+        () async {
+      final api = _apiWith(MockClient((request) async {
+        return http.Response('', 500);
+      }));
+      await expectLater(
+        ApiResearchRepository(api).latestDigest(),
+        throwsException,
+      );
     });
   });
 }

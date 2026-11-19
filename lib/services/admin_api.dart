@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import 'advisor_chat_api.dart';
 import 'api_headers.dart';
+import 'research_pdfs_api.dart';
 import 'research_sync_api.dart';
 import 'secure_http.dart';
 
@@ -58,6 +59,17 @@ class AdminApi {
   /// ورمز CSRF من الذاكرة فقط، وعلى عميل SecureHttp المثبّت نفسه.
   /// وسيط خادم فقط بلا مفتاح إطلاقاً — المفتاح لا يصل إلى التطبيق أبداً.
   AdvisorChatApi get advisorChatApi => AdvisorChatApi(
+        credentials: ApiCredentials(
+          cookie: _cookie,
+          csrfToken: _csrfToken,
+        ),
+        client: _http,
+      );
+
+  /// عميل رفع ملفات PDF لذاكرة البحث فوق جلسة الإدارة الحالية:
+  /// كوكي الجلسة ورمز CSRF من الذاكرة فقط، وعلى عميل SecureHttp
+  /// المثبّت نفسه. الملفات لا تدخل المعرفة إلا بعد مراجعة بشرية.
+  ResearchPdfsApi get researchPdfsApi => ResearchPdfsApi(
         credentials: ApiCredentials(
           cookie: _cookie,
           csrfToken: _csrfToken,

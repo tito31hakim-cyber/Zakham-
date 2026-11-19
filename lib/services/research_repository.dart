@@ -139,11 +139,23 @@ class ResearchDigest {
     required this.run,
     required this.drafts,
     required this.generatedAt,
+    this.draftsUnavailable = false,
+    this.hasSavedRun = true,
   });
 
   final ResearchRunSummary run;
   final List<ResearchDraftMix> drafts;
   final DateTime generatedAt;
+
+  /// صحيح حين تعذّر تحميل مسودات الميكسات بينما وُجدت خلاصة محفوظة؛
+  /// حينها تُعرض الخلاصة المحفوظة بتاريخها مع تنبيه، ولا تظهر رسالة
+  /// التعذر الجافة إلا عند غياب أي خلاصة محفوظة أصلاً.
+  final bool draftsUnavailable;
+
+  /// صحيح حين تحمل الخلاصة دورة محفوظة فعلاً (lastRun من ملخص
+  /// المعرفة)؛ وخطأ حين لم تبدأ أي دورة بعد — فيعرض القسم رسالة
+  /// هادئة تشرح أن البدء معلّق، بدل رسالة تعذر جافة.
+  final bool hasSavedRun;
 }
 
 /// واجهة قراءة بيانات البحث — تُستبدل بتنفيذ API حقيقي لاحقاً.
@@ -223,16 +235,34 @@ class ApiResearchRepository implements ResearchRepository {
 
   @override
   Future<ResearchDigest> latestDigest() async {
-    final results = await Future.wait([
-      _api.listMixes(),
-      _api.knowledgeSummary(),
-    ]);
-    final mixes = results[0] as List<Map<String, dynamic>>;
-    final summary = results[1] as Map<String, dynamic>;
+    // تُجلب المسودات وملخص المعرفة مستقلّين: إن تعذّر تحميل المسودات
+    // تُعرض آخر خلاصة محفوظة (lastRun من ملخص المعرفة) مع تنبيه واضح
+    // بتاريخها، ولا تظهر رسالة التعذر الجافة إلا عند غياب أي خلاصة
+    // محفوظة أصلاً (أي فشل ملخص المعرفة نفسه فيُرمى الخطأ كما كان).
+    final mixesFuture = _api.listMixes();
+    final summaryFuture = _api.knowledgeSummary();
+    List<Map<String, dynamic>> mixes;
+    var draftsUnavailable = false;
+    try {
+      mixes = await mixesFuture;
+    } catch (_) {
+      mixes = const <Map<String, dynamic>>[];
+      draftsUnavailable = true;
+    }
+    final summary = await summaryFuture;
+    // خلاصة محفوظة فعلاً تعني وجود دورة في ملخص المعرفة (lastRun
+    // أو حقول دورة في المستوى الأعلى)؛ وغيابها يعني أن الدورة
+    // الأسبوعية لم تبدأ بعد — فيعرض القسم رسالة هادئة بدل التعذر.
+    final rawRun = summary['latestRun'] ?? summary['lastRun'];
+    final hasSavedRun = rawRun is Map ||
+        summary.containsKey('runId') ||
+        summary.containsKey('run_key');
     return ResearchDigest(
       run: _parseRun(summary),
       drafts: mixes.map(_parseDraft).toList(),
       generatedAt: DateTime.now(),
+      draftsUnavailable: draftsUnavailable,
+      hasSavedRun: hasSavedRun,
     );
   }
 

@@ -18,6 +18,15 @@ class AppConfig {
   /// محادثة المستشار الحرة (POST /api/admin/advisor/chat) — جلسة إدارة
   /// + CSRF؛ وسيط خادم فقط بلا مفتاح (المزوّد المجاني افتراضياً).
   static const adminAdvisorChatPath = '/api/admin/advisor/chat';
+
+  /// رفع ملفات PDF لذاكرة البحث (POST/GET /api/admin/research/pdfs)
+  /// — جلسة إدارة + CSRF؛ الملفات تُحفظ خارج public_html، ولا تدخل
+  /// المعرفة إلا بعد مراجعة بشرية.
+  static const adminResearchPdfsPath = '/api/admin/research/pdfs';
+
+  /// محادثة العملاء المصغرة (POST /api/advisor/chat) — نقطة عامة
+  /// بلا مصادقة؛ سياقها كتالوج المتجر فقط (ترشيح عطر + نوتات).
+  static const customerChatPath = '/api/advisor/chat';
   static const analyticsPath = '/api/analytics';
   // حسابات الأعضاء (العملاء) — نفس مسارات المتجر الحي.
   static const customerRegisterPath = '/api/auth/register';

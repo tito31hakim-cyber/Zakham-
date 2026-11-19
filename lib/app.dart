@@ -9,6 +9,7 @@ import 'pages/account_page.dart';
 import 'pages/cart_page.dart';
 import 'pages/collection_page.dart';
 import 'pages/consultation_page.dart';
+import 'pages/customer_chat_page.dart';
 import 'pages/fragrance_cards_page.dart';
 import 'pages/home_page.dart';
 import 'pages/product_page.dart';
@@ -374,6 +375,15 @@ class _StoreShellState extends State<StoreShell> {
     setState(() => selected = 1);
   }
 
+  /// يفتح محادثة العملاء المصغرة — من الأيقونة العائمة في شاشتي
+  /// الرئيسية والتشكيلة؛ بلا مصادقة، ونطاقها كتالوج المتجر فقط.
+  void _openCustomerChat() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CustomerChatPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cartCount = context.watch<CartProvider>().itemCount;
@@ -411,6 +421,19 @@ class _StoreShellState extends State<StoreShell> {
     ];
     return Scaffold(
       body: Directionality(textDirection: TextDirection.rtl, child: pages[selected]),
+      // الأيقونة العائمة لمستشار العطور — دائرية صغيرة، تظهر للزوار
+      // والعملاء على شاشتي الرئيسية والتشكيلة فقط، وتفتح المحادثة
+      // المصغرة (كتالوج المتجر فقط).
+      floatingActionButton: (selected == 0 || selected == 1)
+          ? FloatingActionButton.small(
+              heroTag: 'advisorFab',
+              onPressed: _openCustomerChat,
+              tooltip: 'مستشار العطور',
+              backgroundColor: gold,
+              foregroundColor: Colors.black,
+              child: const Icon(Icons.spa_outlined, size: 22),
+            )
+          : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: selected,
         onDestinationSelected: (value) => setState(() => selected = value),
