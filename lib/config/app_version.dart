@@ -11,22 +11,22 @@ class AppVersion {
   /// Version name from pubspec.yaml (1.1.0).
   static const versionName = '1.1.0';
 
-  /// Flutter build number from pubspec.yaml (the +3 in 1.1.0+3).
-  static const versionCode = 3;
+  /// Flutter build number from pubspec.yaml (the +4 in 1.1.0+4).
+  static const versionCode = 4;
 
   /// Codemagic build number of the published release (label only,
-  /// from the release tag v1.1.0-build32).
-  static const codemagicBuild = 32;
+  /// from the release tag v1.1.0-build34).
+  static const codemagicBuild = 34;
 
   /// Short commit SHA of the source this build was made from.
   ///
   /// Codemagic passes `--dart-define=ZAKHAM_COMMIT=<sha>` at build time;
-  /// the fallback is the tagged commit of the published build 32
-  /// (GitHub Release v1.1.0-build32). Update the fallback at each
+  /// the fallback is the tagged commit of the published build 34
+  /// (GitHub Release v1.1.0-build34). Update the fallback at each
   /// release so a build without the define still reports its source.
   static const commit = String.fromEnvironment(
     'ZAKHAM_COMMIT',
-    defaultValue: 'ad26699',
+    defaultValue: '898420f',
   );
 
   /// نص التذييل للعميل — الإصدار فقط، بلا رقم بناء وبلا Commit:
@@ -35,7 +35,7 @@ class AppVersion {
 
   /// نص التشخيص الكامل (رقم البناء والـ Commit) — لا يظهر في واجهة
   /// العميل أبداً؛ يظهر فقط بضغطة مطولة على تذييل صفحة الحساب،
-  /// مثال: «الإصدار 1.1.0 (3) — بناء Codemagic 32 — Commit ad26699».
+  /// مثال: «الإصدار 1.1.0 (4) — بناء Codemagic 34 — Commit 898420f».
   static String get display =>
       'الإصدار $versionName ($versionCode) — بناء Codemagic $codemagicBuild — Commit $commit';
 }
