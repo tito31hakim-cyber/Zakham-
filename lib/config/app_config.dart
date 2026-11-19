@@ -27,6 +27,11 @@ class AppConfig {
   /// محادثة العملاء المصغرة (POST /api/advisor/chat) — نقطة عامة
   /// بلا مصادقة؛ سياقها كتالوج المتجر فقط (ترشيح عطر + نوتات).
   static const customerChatPath = '/api/advisor/chat';
+
+  /// أحدث إصدار معلن من التطبيق (GET /api/app/latest) — نقطة عامة
+  /// للقراءة فقط بلا مصادقة؛ تعلن versionCode وversionName ورابط
+  /// تحميل الـ APK من المتجر (البناء 35).
+  static const appLatestPath = '/api/app/latest';
   static const analyticsPath = '/api/analytics';
   // حسابات الأعضاء (العملاء) — نفس مسارات المتجر الحي.
   static const customerRegisterPath = '/api/auth/register';

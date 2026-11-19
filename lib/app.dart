@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'config/app_version.dart';
 import 'data/featured_product.dart';
 import 'models/product.dart';
 import 'pages/account_page.dart';
@@ -22,11 +23,13 @@ import 'providers/discount_provider.dart';
 import 'providers/theme_provider.dart';
 import 'services/deep_link_service.dart';
 import 'services/daily_perfume.dart';
+import 'services/app_update_api.dart';
 import 'services/favorites_offer_service.dart';
 import 'services/favorites_service.dart';
 import 'services/product_catalog.dart';
 import 'services/reminder_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/app_update_dialog.dart';
 import 'widgets/common_widgets.dart';
 
 class ZakhamApp extends StatelessWidget {
@@ -46,7 +49,13 @@ class ZakhamApp extends StatelessWidget {
 }
 
 class StoreShell extends StatefulWidget {
-  const StoreShell({super.key});
+  const StoreShell({super.key, this.appUpdateApi});
+
+  /// عميل فحص التحديث — يُحقن في الاختبارات فقط؛ وفي الإنتاج يُبنى
+  /// العميل الحقيقي تلقائياً. (الحقن يجعل اختبار فحص الإطلاق
+  /// حتمياً بلا أي شبكة حقيقية.)
+  final AppUpdateApi? appUpdateApi;
+
   @override
   State<StoreShell> createState() => _StoreShellState();
 }
@@ -72,6 +81,10 @@ class _StoreShellState extends State<StoreShell> {
   static const String _nudgeLastShownKey =
       'zakham_emptycart_nudge_last_shown';
 
+  /// تاريخ آخر فحص لإصدار أحدث (مرة في اليوم كحد أقصى).
+  static const String _appUpdateLastCheckKey =
+      'zakham_app_update_last_check';
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +105,11 @@ class _StoreShellState extends State<StoreShell> {
     unawaited(_reminders.ensureOccasionReminders());
     // عطر اليوم best-effort: من التشكيلة (شبكة أو كاش) مع إشعاره.
     unawaited(_loadDailyPerfume());
+    // فحص التحديث best-effort: مرة في اليوم، وبعد أول إطار حتى يكون
+    // السياق جاهزاً للحوار؛ أي فشل يمر بصمت بلا حوار وبلا عطل.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => unawaited(_checkAppUpdate()),
+    );
   }
 
   @override
@@ -173,6 +191,39 @@ class _StoreShellState extends State<StoreShell> {
       if (mounted && !_showEmptyCartNudge) {
         setState(() => _showEmptyCartNudge = true);
       }
+    } catch (_) {}
+  }
+
+  /// يفحص وجود إصدار أحدث على المتجر (مرة في اليوم كحد أقصى) ويعرض
+  /// حوار «يوجد تحديث جديد» بزر تثبيت يفتح رابط التحميل يدوياً.
+  ///
+  /// التطبيق ليس على Google Play والتحديث لن يتم تلقائياً أبداً،
+  /// فهذا التنبيه هو ما يوجّه المستخدمين لتثبيت كل إصدار جديد.
+  /// best-effort: أي فشل (شبكة أو رد غير صالح) يمر بصمت، ويُسجَّل
+  /// تاريخ الفحص قبل الجلب حتى لا يُعاد التنبيه في نفس اليوم.
+  Future<void> _checkAppUpdate() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastCheckMs = prefs.getInt(_appUpdateLastCheckKey);
+      final lastCheck = lastCheckMs == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(lastCheckMs);
+      final now = DateTime.now();
+      if (!shouldCheckForUpdateToday(lastCheck: lastCheck, now: now)) {
+        return;
+      }
+      await prefs.setInt(_appUpdateLastCheckKey, now.millisecondsSinceEpoch);
+      final latest = await (widget.appUpdateApi ?? AppUpdateApi())
+          .fetchLatest();
+      if (latest == null) return;
+      if (!isUpdateAvailable(
+        latestVersionCode: latest.versionCode,
+        installedVersionCode: AppVersion.versionCode,
+      )) {
+        return;
+      }
+      if (!mounted) return;
+      await showAppUpdateDialog(context, latest);
     } catch (_) {}
   }
 
