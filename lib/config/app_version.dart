@@ -1,8 +1,8 @@
 /// Version identity of the running app (Priority 1 — pin the source).
 ///
 /// The version name stays V1.1 (1.1.0) — the version is one, not
-/// twenty-nine. The Codemagic build number (29) is only a label from
-/// the release tag v1.1.0-build29, NOT the version.
+/// thirty-one. The Codemagic build number (31) is only a label from
+/// the release tag v1.1.0-build31, NOT the version.
 /// Rule before every release: bump versionCode in pubspec by 1 and tag
 /// the release v<versionName>-build<CodemagicBuildNumber>.
 class AppVersion {
@@ -15,22 +15,22 @@ class AppVersion {
   static const versionCode = 3;
 
   /// Codemagic build number of the published release (label only,
-  /// from the release tag v1.1.0-build29).
-  static const codemagicBuild = 29;
+  /// from the release tag v1.1.0-build31).
+  static const codemagicBuild = 31;
 
   /// Short commit SHA of the source this build was made from.
   ///
   /// Codemagic passes `--dart-define=ZAKHAM_COMMIT=<sha>` at build time;
-  /// the fallback is the tagged commit of the published build 29
-  /// (GitHub Release v1.1.0-build29). Update the fallback at each
+  /// the fallback is the tagged commit of the published build 31
+  /// (GitHub Release v1.1.0-build31). Update the fallback at each
   /// release so a build without the define still reports its source.
   static const commit = String.fromEnvironment(
     'ZAKHAM_COMMIT',
-    defaultValue: '9291408',
+    defaultValue: '3ce6ac8b',
   );
 
   /// One-line display string for the account page footer, e.g.
-  /// «الإصدار 1.1.0 (2) — بناء Codemagic 29 — Commit 9291408».
+  /// «الإصدار 1.1.0 (3) — بناء Codemagic 31 — Commit 3ce6ac8b».
   static String get display =>
       'الإصدار $versionName ($versionCode) — بناء Codemagic $codemagicBuild — Commit $commit';
 }
