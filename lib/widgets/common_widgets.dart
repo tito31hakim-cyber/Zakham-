@@ -218,9 +218,12 @@ class AccountGroupHeader extends StatelessWidget {
 }
 
 class HeroBanner extends StatelessWidget {
-  const HeroBanner({super.key, required this.product, required this.onTap});
+  const HeroBanner({super.key, required this.product, required this.onTap, this.badge});
   final Product product;
   final VoidCallback onTap;
+
+  /// شارة صغيرة فوق الصورة (مثلاً «عطر اليوم») — تظهر فقط عند تمريرها.
+  final String? badge;
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -249,6 +252,26 @@ class HeroBanner extends StatelessWidget {
                   ),
                 ),
               ),
+              if (badge != null)
+                Positioned(
+                  top: 14,
+                  right: 14,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: gold,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      badge!,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
               Positioned(
                 right: 20,
                 bottom: 20,

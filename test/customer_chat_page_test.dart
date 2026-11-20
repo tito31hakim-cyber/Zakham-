@@ -40,7 +40,8 @@ void main() {
       ),
     );
     await _pumpPage(tester, api);
-    expect(find.text('مستشار العطور'), findsOneWidget);
+    expect(find.text('مساعد دار زخم'), findsOneWidget);
+    expect(find.text('مساعد ذكي'), findsOneWidget);
     expect(find.text('أي عطر يشبهك؟'), findsOneWidget);
     expect(find.text('رشّح لي عطراً للسهرة'), findsOneWidget);
     expect(find.text('أي عطر فيه ورد وعنبر؟'), findsOneWidget);

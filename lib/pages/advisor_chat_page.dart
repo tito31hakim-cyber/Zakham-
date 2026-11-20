@@ -95,7 +95,20 @@ class _AdvisorChatPageState extends State<AdvisorChatPage> {
         textDirection: TextDirection.rtl,
         child: Scaffold(
           appBar: AppBar(
-            title: const Text('ناقش المستشار'),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('مساعد دار زخم'),
+                Text(
+                  'مساعد ذكي',
+                  style: TextStyle(
+                    color: context.goldText,
+                    fontSize: 12,
+                    fontWeight: FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
           ),
           body: Column(
             children: [

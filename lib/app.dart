@@ -439,19 +439,22 @@ class _StoreShellState extends State<StoreShell> {
   Widget build(BuildContext context) {
     final cartCount = context.watch<CartProvider>().itemCount;
     final savedProducts = favoriteIds.map((id) => knownProducts[id]).whereType<Product>().toList(growable: false);
+    // البطاقة العلوية هي عطر اليوم (دوران يومي) — ورويال احتياطي
+    // قبل تحميل التشكيلة أو بلا نت؛ والمفضلة تتبع العطر المعروض.
+    final heroProduct = _dailyProduct ?? featuredProduct;
     final pages = <Widget>[
       HomePage(
-        product: featuredProduct,
+        product: heroProduct,
         onProduct: openProduct,
         onQuiz: openQuiz,
-        favorite: isFavorite(featuredProduct),
-        onFavorite: () => toggleFavorite(featuredProduct),
+        favorite: isFavorite(heroProduct),
+        onFavorite: () => toggleFavorite(heroProduct),
         onSection: openSection,
         onOpenSections: openSections,
         onFragranceCards: openFragranceCards,
         onVerify: openVerify,
         onConsultation: openConsultation,
-        dailyProduct: _dailyProduct,
+        isDailyPerfume: _dailyProduct != null,
         showEmptyCartNudge: _showEmptyCartNudge,
         onBrowseCollection: openCollectionTab,
         onDismissEmptyCartNudge: () {
@@ -472,17 +475,18 @@ class _StoreShellState extends State<StoreShell> {
     ];
     return Scaffold(
       body: Directionality(textDirection: TextDirection.rtl, child: pages[selected]),
-      // الأيقونة العائمة لمستشار العطور — دائرية صغيرة، تظهر للزوار
-      // والعملاء على شاشتي الرئيسية والتشكيلة فقط، وتفتح المحادثة
-      // المصغرة (كتالوج المتجر فقط).
+      // زر المساعد الذكي العائم — «مساعد دار زخم» بأيقونة ذكاء
+      // اصطناعي، يظهر للزوار والعملاء على شاشتي الرئيسية والتشكيلة
+      // فقط، ويفتح المحادثة المصغرة (كتالوج المتجر فقط).
       floatingActionButton: (selected == 0 || selected == 1)
-          ? FloatingActionButton.small(
+          ? FloatingActionButton.extended(
               heroTag: 'advisorFab',
               onPressed: _openCustomerChat,
-              tooltip: 'مستشار العطور',
+              tooltip: 'مساعد دار زخم',
               backgroundColor: gold,
               foregroundColor: Colors.black,
-              child: const Icon(Icons.spa_outlined, size: 22),
+              icon: const Icon(Icons.auto_awesome, size: 22),
+              label: const Text('مساعد دار زخم'),
             )
           : null,
       bottomNavigationBar: NavigationBar(

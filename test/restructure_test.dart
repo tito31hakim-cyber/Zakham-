@@ -62,7 +62,7 @@ Future<void> _pumpHome(WidgetTester tester) async {
               onFragranceCards: () {},
               onVerify: () {},
               onConsultation: () {},
-              dailyProduct: featuredProduct,
+              isDailyPerfume: true,
               showEmptyCartNudge: true,
               onBrowseCollection: () {},
               onDismissEmptyCartNudge: () {},
@@ -134,11 +134,12 @@ void main() {
       expect(find.text('تجربة تليق بك'), findsOneWidget);
       expect(find.text('سلتك فاضية'), findsOneWidget);
 
-      // الترتيب العمودي: الهوية، ثم عطر اليوم، ثم الأقسام، ثم الخدمات.
+      // الترتيب العمودي: الهوية، ثم شارة عطر اليوم على البطاقة
+      // العلوية، ثم الاختبار، ثم الأقسام، ثم الخدمات.
       double top(String text) =>
           tester.getTopLeft(find.text(text)).dy;
       expect(top('متجر دار زخم'), lessThan(top('عطر اليوم')));
-      expect(top('اعثر على عطرك'), lessThan(top('عطر اليوم')));
+      expect(top('عطر اليوم'), lessThan(top('اعثر على عطرك')));
       expect(top('عطر اليوم'), lessThan(top('أقسام زخم')));
       expect(top('أقسام زخم'), lessThan(top('خدمات الدار')));
       expect(top('خدمات الدار'), lessThan(top('اختيار زخم')));
@@ -159,6 +160,7 @@ void main() {
       await _pumpAccount(tester, CustomerProvider());
       expect(find.text('حسابي'), findsOneWidget);
       expect(find.text('الولاء والمكافآت'), findsNothing);
+      expect(find.text('ادعُ صديق'), findsNothing);
       expect(find.text('التذكيرات'), findsOneWidget);
       expect(find.text('روابط سريعة'), findsOneWidget);
       expect(find.text('الإعدادات'), findsOneWidget);
@@ -180,6 +182,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('هدية عيد ميلادك'), findsOneWidget);
+      expect(find.text('ادعُ صديق'), findsOneWidget);
       expect(find.text('عميل اختبار'), findsOneWidget);
       expect(find.text('طلباتي'), findsOneWidget);
       expect(find.text('عناويني المحفوظة'), findsOneWidget);

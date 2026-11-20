@@ -24,6 +24,7 @@ import 'cart_page.dart';
 import 'consultation_page.dart';
 import 'contact_page.dart';
 import 'notifications_page.dart';
+import 'referral_page.dart';
 
 /// الهامش الموحّد لبطاقات الحساب (العناصر والمبدّلات والأقسام).
 const _cardMargin = EdgeInsets.fromLTRB(20, 6, 20, 6);
@@ -445,6 +446,8 @@ class _AccountPageState extends State<AccountPage> {
             _loyaltyCard(customer),
             const SizedBox(height: 12),
             _birthdaySection(provider),
+            const SizedBox(height: 12),
+            _referralCard(),
           ],
           const AccountGroupHeader(title: 'التذكيرات'),
           _remindersRow(context),
@@ -722,6 +725,55 @@ class _AccountPageState extends State<AccountPage> {
               ),
             ],
           ],
+        ),
+      );
+
+  /// بطاقة «ادعُ صديق» — في مجموعة «الولاء والمكافآت» مع النقاط
+  /// وهدية عيد الميلاد؛ تفتح صفحة البرنامج (25 نقطة للمدعو عند
+  /// التسجيل و25 للداعي عند تسليم أول طلب له). للأعضاء فقط.
+  Widget _referralCard() => InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ReferralPage()),
+        ),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: context.surfaceCard,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: context.hairline),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.group_add_outlined,
+                  color: context.goldText, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'ادعُ صديق',
+                      style: TextStyle(
+                        color: context.ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'شارك دار زخم — 25 نقطة لك و25 لصديقك.',
+                      style: TextStyle(
+                          color: context.subdued, fontSize: 12, height: 1.6),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_left, color: context.subdued),
+            ],
+          ),
         ),
       );
 

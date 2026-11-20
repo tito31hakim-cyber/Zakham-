@@ -88,7 +88,7 @@ Future<void> _sendInCustomerChat(WidgetTester tester) async {
     ),
   );
   await tester.pumpAndSettle();
-  expect(find.text('مستشار العطور'), findsOneWidget);
+  expect(find.text('مساعد دار زخم'), findsOneWidget);
   await tester.tap(find.text('رشّح لي عطراً للسهرة'));
   await tester.pumpAndSettle();
   expect(find.text('جرّب زخم رويال — ورد وعنبر وعود.'), findsOneWidget);
@@ -106,7 +106,7 @@ Future<void> _sendInAdvisorChat(WidgetTester tester) async {
     ),
   );
   await tester.pumpAndSettle();
-  expect(find.text('ناقش المستشار'), findsOneWidget);
+  expect(find.text('مساعد دار زخم'), findsOneWidget);
   await tester.tap(find.text('ما ميكسات الدار الحالية؟'));
   await tester.pumpAndSettle();
   expect(find.text('عطور المتجر المعتمدة: زخم رويال.'), findsOneWidget);

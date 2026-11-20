@@ -41,7 +41,8 @@ void main() {
       ),
     );
     await _pumpPage(tester, api);
-    expect(find.text('ناقش المستشار'), findsOneWidget);
+    expect(find.text('مساعد دار زخم'), findsOneWidget);
+    expect(find.text('مساعد ذكي'), findsOneWidget);
     expect(
       find.textContaining('الردود مسودات للمراجعة فقط'),
       findsOneWidget,

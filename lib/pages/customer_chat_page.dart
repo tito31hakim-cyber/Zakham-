@@ -4,9 +4,9 @@ import '../services/customer_chat_api.dart';
 import '../theme/app_theme.dart';
 import '../utils/chat_text_sanitize.dart';
 
-/// محادثة العملاء المصغرة — نسخة مصغرة للعملاء والزوار فقط.
+/// محادثة العملاء المصغرة — «مساعد دار زخم» للعملاء والزوار فقط.
 ///
-/// تُفتح من الأيقونة العائمة في شاشات المتجر. نطاقها البحث عن
+/// تُفتح من زر المساعد الذكي العائم في شاشات المتجر. نطاقها البحث عن
 /// العطور من كتالوج المتجر فقط: ترشيح عطر، وإعطاء النوتات، واكتشاف
 /// العطور الموجودة — ولا شيء آخر؛ لا ميكسات ولا مواد ولا تركيبات
 /// ولا أي بيانات داخلية. الوسيط على الخادم فقط (نقطة عامة بلا
@@ -113,7 +113,20 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
         textDirection: TextDirection.rtl,
         child: Scaffold(
           appBar: AppBar(
-            title: const Text('مستشار العطور'),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('مساعد دار زخم'),
+                Text(
+                  'مساعد ذكي',
+                  style: TextStyle(
+                    color: context.goldText,
+                    fontSize: 12,
+                    fontWeight: FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
           ),
           body: Column(
             children: [
@@ -171,7 +184,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.spa_outlined, color: context.goldText, size: 20),
+            Icon(Icons.auto_awesome, color: context.goldText, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -189,7 +202,7 @@ class _CustomerChatPageState extends State<CustomerChatPage> {
         padding: const EdgeInsets.all(22),
         children: [
           const SizedBox(height: 50),
-          Icon(Icons.spa_outlined, color: context.goldText, size: 56),
+          Icon(Icons.auto_awesome, color: context.goldText, size: 56),
           const SizedBox(height: 18),
           Text(
             'أي عطر يشبهك؟',

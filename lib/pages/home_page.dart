@@ -18,7 +18,7 @@ class HomePage extends StatelessWidget {
     required this.onFragranceCards,
     required this.onVerify,
     required this.onConsultation,
-    this.dailyProduct,
+    this.isDailyPerfume = false,
     this.showEmptyCartNudge = false,
     this.onBrowseCollection,
     this.onDismissEmptyCartNudge,
@@ -44,9 +44,10 @@ class HomePage extends StatelessWidget {
   /// يفتح صفحة «حجز استشارة عطرية».
   final VoidCallback onConsultation;
 
-  /// عطر اليوم (من التشكيلة، من الشبكة أو الكاش) — يخفى إن لم
-  /// تُحمَّل التشكيلة بعد؛ لا يظهر فارغاً أبداً.
-  final Product? dailyProduct;
+  /// البطاقة العلوية هي عطر اليوم (دوران يومي حتمي — نفس العطر لكل
+  /// المستخدمين في اليوم نفسه) فتظهر شارة «عطر اليوم» فوق صورتها؛
+  /// ورويال احتياطي قبل تحميل التشكيلة فيُعرض بلا شارة.
+  final bool isDailyPerfume;
 
   /// يظهر تنبيه «السلة الفارغة» اللطيف داخل الرئيسية (مرة كل 3 أيام
   /// كحد أقصى — يديره الغلاف StoreShell).
@@ -74,27 +75,21 @@ class HomePage extends StatelessWidget {
               Text('عطور صُنعت لتكون جزءاً من حكايتك،\nوتترك أثراً لا يشبه سواك.', textAlign: TextAlign.right, style: TextStyle(color: context.subdued, fontSize: 14, height: 1.8)),
             ]),
           ),
-          HeroBanner(product: product, onTap: () => onProduct(product)),
+          HeroBanner(
+            product: product,
+            onTap: () => onProduct(product),
+            badge: isDailyPerfume ? 'عطر اليوم' : null,
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 13, 20, 0),
             child: Row(children: [
               IconButton(onPressed: onFavorite, tooltip: favorite ? 'إزالة من المفضلة' : 'أضف للمفضلة', icon: Icon(favorite ? Icons.favorite : Icons.favorite_border, color: favorite ? Colors.redAccent : context.goldText)),
               const Spacer(),
-              TextButton(onPressed: () => onProduct(product), child: Text('اكتشف زخم رويال', style: TextStyle(color: context.goldText))),
+              TextButton(onPressed: () => onProduct(product), child: Text('اكتشف ${product.name}', style: TextStyle(color: context.goldText))),
             ]),
           ),
           SectionHeader(title: 'اعثر على عطرك', actionLabel: 'ابدأ الاختبار', onAction: onQuiz),
           QuizBanner(onTap: onQuiz),
-          if (dailyProduct != null) ...[
-            const SectionHeader(title: 'عطر اليوم'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _DailyPerfumeCard(
-                product: dailyProduct!,
-                onTap: () => onProduct(dailyProduct!),
-              ),
-            ),
-          ],
           if (showEmptyCartNudge)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -189,60 +184,6 @@ class HomePage extends StatelessWidget {
             ]),
           ),
         ],
-      );
-}
-
-class _DailyPerfumeCard extends StatelessWidget {
-  const _DailyPerfumeCard({required this.product, required this.onTap});
-  final Product product;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          color: gold.withOpacity(.10),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: gold.withOpacity(.35)),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.network(
-                  product.image,
-                  width: 56,
-                  height: 64,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 56,
-                    height: 64,
-                    color: const Color(0xFF30271D),
-                    child: const Icon(Icons.spa_outlined, color: gold, size: 22),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(product.name, style: TextStyle(color: context.ink, fontSize: 16, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text('يبدأ من ${product.price.toStringAsFixed(0)} ${product.currency}', style: TextStyle(color: context.subdued, fontSize: 12)),
-                  ],
-                ),
-              ),
-              TextButton(
-                onPressed: onTap,
-                child: Text('عرض العطر', style: TextStyle(color: context.goldText)),
-              ),
-            ]),
-          ),
-        ),
       );
 }
 
