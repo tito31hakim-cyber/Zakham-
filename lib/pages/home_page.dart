@@ -69,7 +69,7 @@ class HomePage extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: [
           const Header(),
-          // هوية المتجر فور فتح التطبيق: هذا هو متجر دار زخم
+          // 1 — الهوية والمتجر: هذا هو متجر دار زخم
           // الإلكتروني الرسمي — لا مجرد أداة.
           const StoreIdentityCard(),
           Padding(
@@ -80,6 +80,7 @@ class HomePage extends StatelessWidget {
               Text('عطور صُنعت لتكون جزءاً من حكايتك،\nوتترك أثراً لا يشبه سواك.', textAlign: TextAlign.right, style: TextStyle(color: context.subdued, fontSize: 14, height: 1.8)),
             ]),
           ),
+          // 2 — عطر اليوم وأدوات الترشيح (الاختبار + بصمة زخم).
           HeroBanner(
             product: product,
             onTap: () => onProduct(product),
@@ -105,6 +106,7 @@ class HomePage extends StatelessWidget {
                 onDismiss: onDismissEmptyCartNudge ?? () {},
               ),
             ),
+          // 3 — أقسام زخم و«اختيار زخم».
           SectionHeader(title: 'أقسام زخم', actionLabel: 'عرض الكل', onAction: onOpenSections),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -139,6 +141,8 @@ class HomePage extends StatelessWidget {
               },
             ),
           ),
+          const SectionHeader(title: 'اختيار زخم'),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: ProductTile(product: product, onTap: () => onProduct(product), favorite: favorite, onFavorite: onFavorite)),
           const SectionHeader(title: 'خدمات الدار'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -173,15 +177,17 @@ class HomePage extends StatelessWidget {
               ],
             ),
           ),
+          // 4 — المناسبات الموسمية.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: OccasionsSection(onProduct: onProduct),
           ),
-          const SectionHeader(title: 'اختيار زخم'),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: ProductTile(product: product, onTap: () => onProduct(product), favorite: favorite, onFavorite: onFavorite)),
+          // 5 — «تجربة تليق بك».
           const SectionHeader(title: 'تجربة تليق بك'),
           const Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
+            // حشو سفلي 96 يُخلي العناصر الأخيرة من زر «مساعد دار
+            // زخم» العائم (نفس حشو التشكيلة).
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 96),
             child: Row(children: [
               Expanded(child: _Promise(icon: Icons.local_shipping_outlined, title: 'توصيل لبابك', detail: 'في جميع أنحاء مصر')),
               SizedBox(width: 10),
@@ -277,7 +283,11 @@ class _IdentityEntryCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(Icons.chevron_left, color: context.goldText),
+              Icon(
+                Icons.arrow_back_ios_new,
+                color: context.goldText,
+                size: 15,
+              ),
             ],
           ),
         ),
@@ -306,7 +316,15 @@ class _SectionTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: context.goldText, size: 24),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: gold.withOpacity(.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: context.goldText, size: 22),
+              ),
               const SizedBox(height: 8),
               Text(title, style: TextStyle(color: context.ink, fontSize: 15, fontWeight: FontWeight.w600)),
               const SizedBox(height: 2),
@@ -327,6 +345,17 @@ class _Promise extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 112),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(color: context.surfaceCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: context.hairline)),
-        child: Column(children: [Icon(icon, color: context.goldText), const SizedBox(height: 8), Text(title, textAlign: TextAlign.center, style: TextStyle(color: context.ink, fontSize: 12, fontWeight: FontWeight.w600)), const SizedBox(height: 4), Text(detail, textAlign: TextAlign.center, style: TextStyle(color: context.subdued, fontSize: 10))]),
+        child: Column(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: gold.withOpacity(.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: context.goldText, size: 22),
+          ),
+          const SizedBox(height: 8),
+          Text(title, textAlign: TextAlign.center, style: TextStyle(color: context.ink, fontSize: 12, fontWeight: FontWeight.w600)), const SizedBox(height: 4), Text(detail, textAlign: TextAlign.center, style: TextStyle(color: context.subdued, fontSize: 10))]),
       );
 }

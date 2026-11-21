@@ -136,15 +136,16 @@ void main() {
       expect(find.text('سلتك فاضية'), findsOneWidget);
 
       // الترتيب العمودي: الهوية، ثم شارة عطر اليوم على البطاقة
-      // العلوية، ثم الاختبار، ثم الأقسام، ثم الخدمات.
+      // العلوية، ثم الاختبار، ثم الأقسام، ثم «اختيار زخم»، ثم
+      // الخدمات، ثم المناسبات، ثم «تجربة تليق بك» (ترتيب 2026-11-21).
       double top(String text) =>
           tester.getTopLeft(find.text(text)).dy;
       expect(top('متجر دار زخم'), lessThan(top('عطر اليوم')));
       expect(top('عطر اليوم'), lessThan(top('اعثر على عطرك')));
       expect(top('عطر اليوم'), lessThan(top('أقسام زخم')));
-      expect(top('أقسام زخم'), lessThan(top('خدمات الدار')));
-      expect(top('خدمات الدار'), lessThan(top('اختيار زخم')));
-      expect(top('اختيار زخم'), lessThan(top('تجربة تليق بك')));
+      expect(top('أقسام زخم'), lessThan(top('اختيار زخم')));
+      expect(top('اختيار زخم'), lessThan(top('خدمات الدار')));
+      expect(top('خدمات الدار'), lessThan(top('تجربة تليق بك')));
     });
 
     testWidgets('عنوان القسم يميناً وزر الإجراء يساراً (عربي)',
@@ -157,17 +158,20 @@ void main() {
   });
 
   group('إعادة هيكلة الحساب — مجموعات بعناوين', () {
-    testWidgets('الضيف: المجموعات الأربع بلا مجموعة الولاء', (tester) async {
+    testWidgets('الضيف: مجموعتان بلا مجموعة الولاء وبلا التذكيرات',
+        (tester) async {
       await _pumpAccount(tester, CustomerProvider());
       expect(find.text('حسابي'), findsOneWidget);
       expect(find.text('الولاء والمكافآت'), findsNothing);
       expect(find.text('ادعُ صديق'), findsNothing);
-      expect(find.text('التذكيرات'), findsOneWidget);
+      // «التذكيرات» انتقلت إلى صفحة «الإشعارات» المتكاملة (2026-11-21)
+      // فلا تظهر في «حسابي» لا للضيف ولا للعضو.
+      expect(find.text('التذكيرات'), findsNothing);
+      expect(find.text('تذكيرات السلة والطلبات'), findsNothing);
       expect(find.text('روابط سريعة'), findsOneWidget);
       expect(find.text('الإعدادات'), findsOneWidget);
       expect(find.text('أهلاً بك في زخم'), findsOneWidget);
       expect(find.text('تسجيل الدخول'), findsOneWidget);
-      expect(find.text('تذكيرات السلة والطلبات'), findsOneWidget);
       expect(find.text('الواجهة الفاتحة'), findsOneWidget);
       expect(find.text('أقسام زخم'), findsOneWidget);
       expect(find.text('دخول الإدارة'), findsOneWidget);
@@ -188,7 +192,7 @@ void main() {
       expect(find.text('طلباتي'), findsOneWidget);
       expect(find.text('عناويني المحفوظة'), findsOneWidget);
       expect(find.text('تسجيل الخروج'), findsOneWidget);
-      expect(find.text('التذكيرات'), findsOneWidget);
+      expect(find.text('التذكيرات'), findsNothing);
       expect(find.text('الإعدادات'), findsOneWidget);
     });
   });

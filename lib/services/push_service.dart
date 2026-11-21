@@ -32,6 +32,12 @@ class PushHistoryEntry {
   final String event;
   final DateTime receivedAt;
 
+  /// بطاقة تحديث تطبيق: إشعارات التحديث التي يرسلها المتجر تحمل
+  /// العنوان المعتمد «تحديث جديد …» (بناء 35 و36 و37 كلها به)،
+  /// فتظهر في البطاقة زر «تحديث الآن». إشعارات الطلب تحمل
+  /// «تحديث للطلب …» فلا تطابق هذا الفحص.
+  bool get isAppUpdate => title.contains('تحديث جديد');
+
   Map<String, dynamic> toJson() => <String, dynamic>{
         'title': title,
         'body': body,

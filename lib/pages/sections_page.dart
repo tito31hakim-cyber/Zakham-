@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/store_sections.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
+import '../widgets/common_widgets.dart';
 import '../widgets/occasions_section.dart';
 
 /// صفحة «الأقسام»: تسرد أقسام الدار الخمسة (التشكيلة، طقس زخم،
@@ -47,7 +48,7 @@ class SectionsPage extends StatelessWidget {
                 'تصفّح الدار',
                 style: TextStyle(
                   color: context.ink,
-                  fontSize: 26,
+                  fontSize: 30,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -68,16 +69,7 @@ class SectionsPage extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'خدمات الدار',
-                style: TextStyle(
-                  color: context.ink,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
+              const SectionHeader(title: 'خدمات الدار', horizontal: 0),
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _ServiceCard(
@@ -125,12 +117,12 @@ class _SectionCard extends StatelessWidget {
         color: context.surfaceCard,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: context.hairline),
         ),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -200,12 +192,12 @@ class _ServiceCard extends StatelessWidget {
         color: context.surfaceCard,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: context.hairline),
         ),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -319,10 +311,10 @@ class SectionDetailPage extends StatelessWidget {
               const SizedBox(height: 22),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: gold.withOpacity(.1),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: gold.withOpacity(.3)),
                 ),
                 child: Column(
@@ -374,12 +366,12 @@ class SectionDetailPage extends StatelessWidget {
               const SizedBox(height: 22),
               ...section.steps.map(
                 (step) => Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.only(bottom: 12),
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: context.surfaceCard,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: context.hairline),
                     ),
                     child: Column(
@@ -438,10 +430,10 @@ class SectionDetailPage extends StatelessWidget {
               const SizedBox(height: 10),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   border: Border.all(color: gold.withOpacity(.3)),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -10,10 +10,8 @@ import '../providers/theme_provider.dart';
 import '../services/birthday.dart';
 import '../services/consultation.dart';
 import '../services/customer_auth.dart';
-import '../services/favorites_offer_service.dart';
 import '../services/invoice_pdf.dart';
 import '../services/occasions.dart';
-import '../services/reminder_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
 import 'about_page.dart';
@@ -77,72 +75,6 @@ class _AccountPageState extends State<AccountPage> {
 
   /// أرقام الطلبات الجاري إعادة رفع إثبات دفعها الآن.
   final Set<String> _resubmittingReceipts = <String>{};
-  bool? _remindersEnabled;
-  bool? _favOffersEnabled;
-  bool? _dailyPerfumeEnabled;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadReminderPrefs();
-  }
-
-  Future<void> _loadReminderPrefs() async {
-    final reminders = await ReminderService.instance.isEnabled();
-    final favOffers = await FavoritesOfferService().isEnabled();
-    final dailyPerfume =
-        await ReminderService.instance.isDailyPerfumeEnabled();
-    if (mounted) {
-      setState(() {
-        _remindersEnabled = reminders;
-        _favOffersEnabled = favOffers;
-        _dailyPerfumeEnabled = dailyPerfume;
-      });
-    }
-  }
-
-  Future<void> _toggleReminders(bool value) async {
-    setState(() => _remindersEnabled = value);
-    await ReminderService.instance.setEnabled(value);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(value
-              ? 'التذكيرات مفعّلة — سنذكّرك بلطف بسلة متروكة وإعادة الشراء.'
-              : 'أُوقفت التذكيرات — لن تصلك تذكيرات السلة أو إعادة الشراء.'),
-        ),
-      );
-    }
-  }
-
-  Future<void> _toggleFavOffers(bool value) async {
-    setState(() => _favOffersEnabled = value);
-    await FavoritesOfferService().setEnabled(value);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(value
-              ? 'ستصلك تنبيهات عروض عطورك المفضلة.'
-              : 'أُوقفت تنبيهات عروض المفضلة.'),
-        ),
-      );
-    }
-  }
-
-  Future<void> _toggleDailyPerfume(bool value) async {
-    setState(() => _dailyPerfumeEnabled = value);
-    await ReminderService.instance.setDailyPerfumeEnabled(value);
-    if (value) widget.onDailyPerfumeEnabled?.call();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(value
-              ? 'سيصلك إشعار «عطر اليوم» كل يوم الساعة 6 مساءً.'
-              : 'أُوقف إشعار «عطر اليوم» اليومي.'),
-        ),
-      );
-    }
-  }
 
   @override
   void didChangeDependencies() {
@@ -384,7 +316,7 @@ class _AccountPageState extends State<AccountPage> {
         padding: EdgeInsets.zero,
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(22, 34, 22, 12),
+            padding: EdgeInsets.fromLTRB(20, 34, 20, 12),
             child: Text(
               'حسابي',
               style: TextStyle(
@@ -395,7 +327,7 @@ class _AccountPageState extends State<AccountPage> {
             ),
           ),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 22),
+            padding: EdgeInsets.symmetric(horizontal: 20),
             child: Text(
               'كل ما تحتاجه لتجربة تسوّق مريحة مع دار زخم.',
               style: TextStyle(color: context.subdued, height: 1.6),
@@ -404,28 +336,16 @@ class _AccountPageState extends State<AccountPage> {
           const SizedBox(height: 8),
           // عنوان الصفحة «حسابي» هو نفسه عنوان المجموعة الأولى.
           if (customer == null) _guestCard() else _memberCard(customer),
-          if (customer == null) ...[
-            _item(
-              context,
-              Icons.login,
-              'تسجيل الدخول',
-              'ادخل بحسابك لإتمام الطلب ومتابعة طلباتك',
-              _openLogin,
-            ),
-            _item(
-              context,
-              Icons.person_add_outlined,
-              'إنشاء حساب جديد',
-              'حساب زخم لطلباتك وعروضك',
-              _openRegister,
-            ),
-          ] else ...[
+          // الضيف: «تسجيل الدخول» و«إنشاء حساب جديد» كتلة واحدة
+          // مترابطة (بطاقة واحدة بفاصل) لا بطاقتين منفصلتين.
+          if (customer == null) _guestAuthBlock(context),
+          if (customer != null) ...[
             _ordersSection(provider),
             _item(
               context,
               Icons.location_on_outlined,
               'عناويني المحفوظة',
-              'أضف عناوينك لاختيارها بضغطة واحدة عند إتمام الطلب',
+              'اختر عنوانك بضغطة واحدة عند الطلب',
               () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -449,10 +369,6 @@ class _AccountPageState extends State<AccountPage> {
             const SizedBox(height: 12),
             _referralCard(),
           ],
-          const AccountGroupHeader(title: 'التذكيرات'),
-          _remindersRow(context),
-          _favOffersRow(context),
-          _dailyPerfumeRow(context),
           const AccountGroupHeader(title: 'روابط سريعة'),
           _item(
             context,
@@ -480,10 +396,14 @@ class _AccountPageState extends State<AccountPage> {
             context,
             Icons.notifications_outlined,
             'الإشعارات',
-            'تحديثات الطلبات والعروض والوصلات الجديدة',
+            'التذكيرات وتحديثات الطلبات والعروض',
             () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const NotificationsPage()),
+              MaterialPageRoute(
+                builder: (_) => NotificationsPage(
+                  onDailyPerfumeEnabled: widget.onDailyPerfumeEnabled,
+                ),
+              ),
             ),
           ),
           _item(
@@ -586,6 +506,10 @@ class _AccountPageState extends State<AccountPage> {
     return Card(
       color: context.surfaceCard,
       margin: _cardMargin,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: context.hairline),
+      ),
       child: SwitchListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
         secondary: Icon(
@@ -598,65 +522,12 @@ class _AccountPageState extends State<AccountPage> {
         ),
         subtitle: Text(
           theme.isLight ? 'خلفية عاجية فاتحة' : 'خلفية داكنة سوداء',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(color: context.subdued, fontSize: 11),
         ),
         value: theme.isLight,
-        activeColor: context.goldText,
         onChanged: theme.setLight,
-      ),
-    );
-  }
-
-  /// مبدّل التذكيرات المحلية (تذكير السلة وإعادة الشراء و«السلة الفارغة»).
-  Widget _remindersRow(BuildContext context) {
-    return Card(
-      color: context.surfaceCard,
-      margin: _cardMargin,
-      child: SwitchListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-        secondary: Icon(
-          (_remindersEnabled ?? true)
-              ? Icons.notifications_active_outlined
-              : Icons.notifications_off_outlined,
-          color: context.goldText,
-        ),
-        title: Text(
-          'تذكيرات السلة والطلبات',
-          style: TextStyle(color: context.ink, fontSize: 15),
-        ),
-        subtitle: Text(
-          'تذكير لطيف عند ترك السلة، وإعادة الشراء بعد فترة',
-          style: TextStyle(color: context.subdued, fontSize: 11),
-        ),
-        value: _remindersEnabled ?? true,
-        activeColor: context.goldText,
-        onChanged: _toggleReminders,
-      ),
-    );
-  }
-
-  /// مبدّل تنبيهات عروض العطور المفضلة.
-  Widget _favOffersRow(BuildContext context) {
-    return Card(
-      color: context.surfaceCard,
-      margin: _cardMargin,
-      child: SwitchListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-        secondary: Icon(
-          Icons.local_offer_outlined,
-          color: context.goldText,
-        ),
-        title: Text(
-          'تنبيهات عروض المفضلة',
-          style: TextStyle(color: context.ink, fontSize: 15),
-        ),
-        subtitle: Text(
-          'إشعار عند نزول عرض أو انخفاض سعر عطر محفوظ',
-          style: TextStyle(color: context.subdued, fontSize: 11),
-        ),
-        value: _favOffersEnabled ?? true,
-        activeColor: context.goldText,
-        onChanged: _toggleFavOffers,
       ),
     );
   }
@@ -720,7 +591,7 @@ class _AccountPageState extends State<AccountPage> {
             if (customer.pointsBalance != null) ...[
               const SizedBox(height: 4),
               Text(
-                'تُضاف النقاط بعد توصيل طلبك (5 نقاط لكل 100 جنيه من سعر العطور).',
+                'تُضاف بعد التوصيل: 5 نقاط لكل 100 جنيه.',
                 style: TextStyle(color: context.subdued, fontSize: 11, height: 1.5),
               ),
             ],
@@ -771,7 +642,11 @@ class _AccountPageState extends State<AccountPage> {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_left, color: context.subdued),
+              Icon(
+                Icons.arrow_back_ios_new,
+                color: context.goldText,
+                size: 15,
+              ),
             ],
           ),
         ),
@@ -833,7 +708,7 @@ class _AccountPageState extends State<AccountPage> {
           const SizedBox(height: 8),
           if (birthday == null) ...[
             Text(
-              'في أسبوع عيد ميلادك من كل عام، تهديك الدار خصماً على طلب واحد — يُطبَّق تلقائياً عند إتمام الطلب. سجّل تاريخ ميلادك مرة واحدة، فهو ثابت ولا يُغيَّر بعد التسجيل.',
+              'خصم على طلب واحد في أسبوع ميلادك كل عام، يُطبَّق تلقائياً. سجّله مرة واحدة — ثابت بعدها.',
               style: TextStyle(color: context.subdued, fontSize: 12, height: 1.7),
             ),
             const SizedBox(height: 12),
@@ -872,7 +747,7 @@ class _AccountPageState extends State<AccountPage> {
                   border: Border.all(color: gold.withOpacity(.4)),
                 ),
                 child: Text(
-                  'عيد ميلاد سعيد — هديتك من الدار: خصم على طلب واحد خلال هذا الأسبوع، يُطبَّق تلقائياً عند إتمام الطلب.',
+                  'عيد ميلاد سعيد — خصم على طلب واحد هذا الأسبوع، يُطبَّق تلقائياً.',
                   style: TextStyle(
                     color: context.goldText,
                     fontSize: 13,
@@ -954,32 +829,6 @@ class _AccountPageState extends State<AccountPage> {
     } finally {
       if (mounted) setState(() => _savingBirthday = false);
     }
-  }
-
-  /// مبدّل إشعار «عطر اليوم» اليومي (الساعة 6 مساءً).
-  Widget _dailyPerfumeRow(BuildContext context) {
-    return Card(
-      color: context.surfaceCard,
-      margin: _cardMargin,
-      child: SwitchListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-        secondary: Icon(
-          Icons.calendar_today_outlined,
-          color: context.goldText,
-        ),
-        title: Text(
-          'عطر اليوم',
-          style: TextStyle(color: context.ink, fontSize: 15),
-        ),
-        subtitle: Text(
-          'إشعار يومي الساعة 6 مساءً بعطر مختلف كل يوم',
-          style: TextStyle(color: context.subdued, fontSize: 11),
-        ),
-        value: _dailyPerfumeEnabled ?? true,
-        activeColor: context.goldText,
-        onChanged: _toggleDailyPerfume,
-      ),
-    );
   }
 
   Widget _guestCard() => Container(
@@ -1281,6 +1130,72 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
+  /// كتلة دخول الضيف المترابطة: «تسجيل الدخول» و«إنشاء حساب
+  /// جديد» في بطاقة واحدة يفصل بينهما خط رفيع، بنفس شكل عناصر
+  /// «حسابي» (أيقونة ذهبية + عنوان + جملة موجزة + سهم إرشادي).
+  Widget _guestAuthBlock(BuildContext context) => Card(
+        color: context.surfaceCard,
+        margin: _cardMargin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: context.hairline),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _authTile(
+              context,
+              Icons.login,
+              'تسجيل الدخول',
+              'سجّل دخولك لمتابعة طلباتك',
+              _openLogin,
+            ),
+            Divider(
+              height: 1,
+              indent: 56,
+              endIndent: 16,
+              color: context.hairline,
+            ),
+            _authTile(
+              context,
+              Icons.person_add_outlined,
+              'إنشاء حساب جديد',
+              'حساب زخم لطلباتك وعروضك',
+              _openRegister,
+            ),
+          ],
+        ),
+      );
+
+  Widget _authTile(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String subtitle,
+    VoidCallback onTap,
+  ) =>
+      ListTile(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        leading: Icon(icon, color: context.goldText),
+        title: Text(
+          title,
+          style: TextStyle(color: context.ink, fontSize: 15),
+        ),
+        subtitle: Text(
+          subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: context.subdued, fontSize: 11),
+        ),
+        trailing: Icon(
+          Icons.arrow_back_ios_new,
+          color: context.goldText,
+          size: 15,
+        ),
+        onTap: onTap,
+      );
+
   Widget _item(
     BuildContext context,
     IconData icon,
@@ -1291,6 +1206,10 @@ class _AccountPageState extends State<AccountPage> {
       Card(
         color: context.surfaceCard,
         margin: _cardMargin,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: context.hairline),
+        ),
         child: ListTile(
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
@@ -1301,6 +1220,8 @@ class _AccountPageState extends State<AccountPage> {
           ),
           subtitle: Text(
             subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(color: context.subdued, fontSize: 11),
           ),
           trailing: Icon(
@@ -1368,6 +1289,10 @@ class _ConsultationsSectionState extends State<_ConsultationsSection> {
     return Card(
       color: context.surfaceCard,
       margin: _cardMargin,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: context.hairline),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -1387,8 +1312,13 @@ class _ConsultationsSectionState extends State<_ConsultationsSection> {
                     ),
                   ),
                 ),
-                TextButton(
+                FilledButton(
                   onPressed: _openBooking,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   child: const Text('احجز استشارة'),
                 ),
               ],
@@ -1400,7 +1330,7 @@ class _ConsultationsSectionState extends State<_ConsultationsSection> {
               )
             else if (_requests.isEmpty)
               Text(
-                'لم تحجز أي استشارة بعد — اختر يومك ووقتك المفضلين وسيتواصل معك فريق الدار.',
+                'لا استشارات بعد — احجز يومك ووقتك، وسيتواصل معك فريق الدار.',
                 style: TextStyle(color: context.subdued, fontSize: 12, height: 1.7),
               )
             else
@@ -1416,6 +1346,8 @@ class _ConsultationsSectionState extends State<_ConsultationsSection> {
                       Expanded(
                         child: Text(
                           '${date == null ? request.date : formatArabicDate(date)} • ${request.timeLabel} • ${request.typeLabel}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: context.ink, fontSize: 13),
                         ),
                       ),

@@ -122,8 +122,10 @@ class IdentityResultCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           if (price != null)
+            // مسافة غير فاصلة (U+00A0) بين الرقم و«مل» حتى لا تنفصل
+            // الوحدة في سطر جديد عن الرقم.
             Text(
-              '${price!.toStringAsFixed(0)} ج.م — $concentrationLabel · $sizeMl مل',
+              '${price!.toStringAsFixed(0)} ج.م — $concentrationLabel · $sizeMl\u00A0مل',
               style: TextStyle(
                 color: context.goldText,
                 fontSize: 16,

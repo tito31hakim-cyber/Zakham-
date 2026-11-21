@@ -260,6 +260,15 @@ class Product {
     return key;
   }
 
+  /// التركيزات المتوفرة بأسمائها العربية المختصرة فقط
+  /// (حُضور · فَوْحان · نووي) — سطر واحد متوازن في بطاقة التشكيلة.
+  /// التسميات الثنائية الطويلة من الخادم غير موحدة بين العطور
+  /// (Extrait Prime في 6 عطور مقابل Extra في 5) فلا تُستخدم هنا؛
+  /// تبقى التسمية الكاملة في صفحة العطر ومحدد التركيز.
+  String get availableConcentrationsShort => availableConcentrations
+      .map((key) => concentrationNamesAr[key] ?? key)
+      .join(' · ');
+
   /// نسخة من المنتج بتركيز/حجم/سعر مختارين (تُستخدم عند الإضافة إلى السلة).
   Product copyWith({double? price, String? size, String? defaultConcentration}) {
     return Product(

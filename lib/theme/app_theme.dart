@@ -48,6 +48,48 @@ extension ZakhamColors on BuildContext {
 class AppTheme {
   AppTheme._();
 
+  /// ثيم مفتاح التبديل (الداكن) كدالة مستقلة: التشغيل ذهبي
+  /// (مقبض + مسار) والإيقاف رمادي (مقبض باهت + مسار خافت بإطار).
+  /// الاستقلال عن `dark()` مقصود: بناء الثيم الكامل يستدعي
+  /// `GoogleFonts.tajawalTextTheme` الذي يجدول تحميل الخط دائماً
+  /// فيفشل أي اختبار يبنيه في بيئة الاختبار — أما هنا فالقيم
+  /// نفسها حرفياً بلا أي تحميل.
+  static SwitchThemeData switchThemeDark() => SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? gold : muted,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? gold.withOpacity(.35)
+              : Colors.white24,
+        ),
+        trackOutlineColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? Colors.transparent
+              : Colors.white38,
+        ),
+      );
+
+  /// ثيم مفتاح التبديل (الفاتح) — نفس الفكرة والقيم الذهبية
+  /// الداكنة للقراءة على الفاتح.
+  static SwitchThemeData switchThemeLight() => SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? lightGoldText
+              : lightMuted,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? gold.withOpacity(.45)
+              : lightBorder.withOpacity(.55),
+        ),
+        trackOutlineColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? Colors.transparent
+              : lightBorder,
+        ),
+      );
+
   static ThemeData dark() {
     final base = ThemeData.dark();
     return ThemeData(
@@ -93,10 +135,18 @@ class AppTheme {
             textStyle: const TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
-        cardTheme: const CardThemeData(
+        cardTheme: CardThemeData(
           color: card,
           elevation: 0,
+          // زوايا موحدة 20 لكل بطاقات التطبيق (مطابقة لحاويات
+          // الأقسام) — البطاقات ذات الشكل الخاص تحتفظ بشكلها.
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
         ),
+        // مفتاح التبديل: التشغيل ذهبي (مقبض + مسار ذهبي) والإيقاف
+        // رمادي (مقبض باهت + مسار خافت بإطار) — فرق بصري واضح.
+        switchTheme: switchThemeDark(),
         useMaterial3: true,
       );
   }
@@ -148,10 +198,16 @@ class AppTheme {
             textStyle: const TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
-        cardTheme: const CardThemeData(
+        cardTheme: CardThemeData(
           color: lightCard,
           elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
         ),
+        // مفتاح التبديل (الفاتح): التشغيل ذهبي داكن والإيقاف رمادي
+        // بمسار خافت بإطار — نفس الفرق البصري الواضح.
+        switchTheme: switchThemeLight(),
         useMaterial3: true,
       );
   }

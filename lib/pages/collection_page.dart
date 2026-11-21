@@ -39,10 +39,14 @@ const List<String> _occasionOptions = <String>[
 ];
 
 /// النوع: (التسمية، قيمة `gender` من وسوم الخادم).
+/// «غير محدد» يطابق العطور بلا وسم نوع (6 من 11 حالياً في الكتالوج
+/// الحي) حتى يغطي العدّاد التشكيلة كلها؛ تصنيفها الصحيح يحتاج
+/// وسم gender على الخادم، لا اختراعاً هنا.
 const List<(String, String)> _genderOptions = <(String, String)>[
   ('رجالي', 'male'),
   ('نسائي', 'female'),
   ('للجنسين', 'unisex'),
+  ('غير محدد', ''),
 ];
 
 class CollectionPage extends StatefulWidget {
@@ -244,10 +248,13 @@ class _CollectionPageState extends State<CollectionPage> {
                         selectedSeason: selectedSeason,
                         selectedOccasion: selectedOccasion,
                         selectedGender: selectedGender,
-                        onNote: (value) => setState(() => selectedNote = selectedNote == value ? null : value),
-                        onSeason: (value) => setState(() => selectedSeason = selectedSeason == value ? null : value),
-                        onOccasion: (value) => setState(() => selectedOccasion = selectedOccasion == value ? null : value),
-                        onGender: (value) => setState(() => selectedGender = selectedGender == value ? null : value),
+                        onNote: (value) => setState(() => selectedNote = value),
+                        onSeason: (value) =>
+                            setState(() => selectedSeason = value),
+                        onOccasion: (value) =>
+                            setState(() => selectedOccasion = value),
+                        onGender: (value) =>
+                            setState(() => selectedGender = value),
                       ),
                       if (products.isEmpty) _buildEmptyState(),
                       ...products.map((product) => ApiProductCard(
@@ -260,7 +267,10 @@ class _CollectionPageState extends State<CollectionPage> {
                   );
                 },
               ),
-              const SizedBox(height: 28),
+              // مساحة سفلية تُخلي البطاقة الأخيرة من زر «مساعد دار
+              // زخم» العائم أثناء التمرير (الزر ~48px فوق شريط
+              // التنقل السفلي).
+              const SizedBox(height: 96),
             ],
           ),
         ),
@@ -336,9 +346,26 @@ class _StaleCatalogBanner extends StatelessWidget {
   }
 }
 
-/// صفوف التصفية الذكية: النوتة / الموسم / المناسبة / النوع.
+/// خيارات فلتر مع عدّادها: (التسمية، القيمة، عدد المطابقات).
 /// يُعرض كل خيار فقط إن طابق عطراً واحداً على الأقل من التشكيلة
-/// المحمّلة، مع عدد المطابقات بين قوسين.
+/// المحمّلة. دالة خالصة (قابلة للاختبار) — يستخدمها `_SmartFilters`.
+List<(String, String, int)> filterOptionsWithCounts(
+  List<Product> products,
+  List<(String, String)> options,
+  bool Function(Product, String) matches,
+) =>
+    options
+        .map((option) {
+          final count =
+              products.where((p) => matches(p, option.$2)).length;
+          return (option.$1, option.$2, count);
+        })
+        .where((option) => option.$3 > 0)
+        .toList(growable: false);
+
+/// قوائم التصفية الذكية المنسدلة: النوتة / الموسم / المناسبة / النوع.
+/// كل فلتر قائمة منسدلة مدمجة (التسمية + العدد بين قوسين) بدل صفوف
+/// الأزرار المفرودة التي كانت تدفع التشكيلة للأسفل؛ «الكل» يلغي الفلتر.
 class _SmartFilters extends StatelessWidget {
   const _SmartFilters({
     required this.products,
@@ -357,44 +384,30 @@ class _SmartFilters extends StatelessWidget {
   final String? selectedSeason;
   final String? selectedOccasion;
   final String? selectedGender;
-  final ValueChanged<String> onNote;
-  final ValueChanged<String> onSeason;
-  final ValueChanged<String> onOccasion;
-  final ValueChanged<String> onGender;
-
-  List<(String, String, int)> _withCounts(
-    List<(String, String)> options,
-    bool Function(Product, String) matches,
-  ) =>
-      options
-          .map((option) {
-            final count =
-                products.where((p) => matches(p, option.$2)).length;
-            return (option.$1, option.$2, count);
-          })
-          .where((option) => option.$3 > 0)
-          .toList(growable: false);
+  final ValueChanged<String?> onNote;
+  final ValueChanged<String?> onSeason;
+  final ValueChanged<String?> onOccasion;
+  final ValueChanged<String?> onGender;
 
   @override
   Widget build(BuildContext context) {
-    final notes = _withCounts(
+    final notes = filterOptionsWithCounts(
+      products,
       _noteOptions,
       (product, keyword) => product.matchesNote(keyword),
     );
-    final seasons = _withCounts(
+    final seasons = filterOptionsWithCounts(
+      products,
       _seasonOptions,
       (product, needle) => product.matchesSeason(needle),
     );
-    final occasions = _occasionOptions
-        .map((label) {
-          final count = products
-              .where((p) => p.matchesOccasion(label))
-              .length;
-          return (label, label, count);
-        })
-        .where((option) => option.$3 > 0)
-        .toList(growable: false);
-    final genders = _withCounts(
+    final occasions = filterOptionsWithCounts(
+      products,
+      _occasionOptions.map((label) => (label, label)).toList(),
+      (product, label) => product.matchesOccasion(label),
+    );
+    final genders = filterOptionsWithCounts(
+      products,
       _genderOptions,
       (product, value) => product.gender == value,
     );
@@ -420,28 +433,28 @@ class _SmartFilters extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           if (notes.isNotEmpty)
-            _FilterRow(
+            _FilterDropdown(
               label: 'النوتة',
               options: notes,
               selected: selectedNote,
               onSelected: onNote,
             ),
           if (seasons.isNotEmpty)
-            _FilterRow(
+            _FilterDropdown(
               label: 'الموسم',
               options: seasons,
               selected: selectedSeason,
               onSelected: onSeason,
             ),
           if (occasions.isNotEmpty)
-            _FilterRow(
+            _FilterDropdown(
               label: 'المناسبة',
               options: occasions,
               selected: selectedOccasion,
               onSelected: onOccasion,
             ),
           if (genders.isNotEmpty)
-            _FilterRow(
+            _FilterDropdown(
               label: 'النوع',
               options: genders,
               selected: selectedGender,
@@ -453,8 +466,10 @@ class _SmartFilters extends StatelessWidget {
   }
 }
 
-class _FilterRow extends StatelessWidget {
-  const _FilterRow({
+/// قائمة منسدلة واحدة لفلتر: تسمية صغيرة فوق حقل منسدل منسق
+/// (خلفية بطاقة، زوايا 16، سهم ذهبي)؛ الخيار الأول «الكل» يلغي الفلتر.
+class _FilterDropdown extends StatelessWidget {
+  const _FilterDropdown({
     required this.label,
     required this.options,
     required this.selected,
@@ -464,7 +479,7 @@ class _FilterRow extends StatelessWidget {
   final String label;
   final List<(String, String, int)> options;
   final String? selected;
-  final ValueChanged<String> onSelected;
+  final ValueChanged<String?> onSelected;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -474,22 +489,40 @@ class _FilterRow extends StatelessWidget {
           children: [
             Text(label, style: TextStyle(color: context.subdued, fontSize: 12)),
             const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: options.map((option) {
-                final isSelected = selected == option.$2;
-                return ChoiceChip(
-                  label: Text('${option.$1} (${option.$3})'),
-                  selected: isSelected,
-                  onSelected: (_) => onSelected(option.$2),
-                  selectedColor: gold.withOpacity(.25),
-                  labelStyle: TextStyle(
-                    color: isSelected ? context.goldText : context.ink,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+            DropdownButtonFormField<String?>(
+              value: selected,
+              isExpanded: true,
+              dropdownColor: context.surfaceCard,
+              icon: Icon(
+                Icons.keyboard_arrow_down,
+                color: context.goldText,
+                size: 20,
+              ),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: context.surfaceCard,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 4,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              items: <DropdownMenuItem<String?>>[
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('الكل'),
+                ),
+                ...options.map(
+                  (option) => DropdownMenuItem<String?>(
+                    value: option.$2,
+                    child: Text('${option.$1} (${option.$3})'),
                   ),
-                );
-              }).toList(growable: false),
+                ),
+              ],
+              onChanged: onSelected,
             ),
           ],
         ),

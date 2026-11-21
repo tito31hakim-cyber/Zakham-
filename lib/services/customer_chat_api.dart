@@ -118,7 +118,7 @@ class CustomerChatApi {
       final content = message.content.trim();
       if (content.isEmpty || content.length > maxMessageChars) {
         throw const FormatException(
-          'نص الرسالة يجب أن يكون بين حرف و1000 حرف.',
+          'نص الرسالة يجب أن يكون بين 1 و1000 حرف.',
         );
       }
     }

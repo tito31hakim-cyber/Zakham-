@@ -184,13 +184,21 @@ class SectionHeader extends StatelessWidget {
 /// يوحّد عناوين المجموعات (حسابي، الولاء والمكافآت، التذكيرات،
 /// روابط سريعة، الإعدادات).
 class AccountGroupHeader extends StatelessWidget {
-  const AccountGroupHeader({super.key, required this.title});
+  const AccountGroupHeader({
+    super.key,
+    required this.title,
+    this.horizontal = 20,
+  });
 
   final String title;
 
+  /// الهامش الأفقي (20 في «حسابي»؛ 0 داخل صفحة لها حشوها الخاص
+  /// مثل «الإشعارات» حتى لا يتضاعف الهامش).
+  final double horizontal;
+
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 28, 22, 10),
+        padding: EdgeInsets.fromLTRB(horizontal, 28, horizontal, 10),
         child: Row(
           children: [
             Container(
@@ -325,7 +333,7 @@ class QuizBanner extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.arrow_back_ios_new, size: 16, color: context.goldText),
+              Icon(Icons.arrow_back_ios_new, size: 15, color: context.goldText),
             ],
           ),
         ),
@@ -449,11 +457,14 @@ class ApiProductCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              // سطر واحد متوازن بأسماء التركيزات العربية المختصرة
+              // فقط — التسميات الثنائية الطويلة من الخادم كانت
+              // تلتف 3 أسطر وتتداخل عربي/لاتيني.
               Text(
-                product.availableConcentrations
-                    .map(product.concentrationLabel)
-                    .join(' • '),
+                product.availableConcentrationsShort,
                 textAlign: TextAlign.right,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: context.subdued, fontSize: 11),
               ),
             ],

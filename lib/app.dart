@@ -74,6 +74,27 @@ class _StoreShellState extends State<StoreShell> {
   /// يظهر تنبيه «السلة الفارغة» داخل الرئيسية (مرة كل 3 أيام كحد أقصى).
   bool _showEmptyCartNudge = false;
 
+  /// زر المساعد العائم ظاهر أم مخفي أثناء التمرير: يُخفى عند
+  /// التمرير للأسفل حتى لا يحجب أسطر البطاقات، ويعود عند التمرير
+  /// للأعلى (سلوك معتاد للأزرار العائمة).
+  bool _fabVisible = true;
+
+  /// يخفي زر المساعد أثناء التمرير العمودي للأسفل ويعيده عند
+  /// التمرير للأعلى؛ التمرير الأفقي (قوائم جانبية) لا يؤثر فيه.
+  bool _onScroll(ScrollNotification notification) {
+    if (notification is ScrollUpdateNotification &&
+        notification.metrics.axis == Axis.vertical &&
+        notification.scrollDelta != null) {
+      final delta = notification.scrollDelta!;
+      if (delta > 0 && _fabVisible) {
+        setState(() => _fabVisible = false);
+      } else if (delta < 0 && !_fabVisible) {
+        setState(() => _fabVisible = true);
+      }
+    }
+    return false;
+  }
+
   /// عطر اليوم من التشكيلة (من الشبكة أو الكاش) — يخفى إن لم تُحمَّل
   /// التشكيلة بعد.
   Product? _dailyProduct;
@@ -491,19 +512,30 @@ class _StoreShellState extends State<StoreShell> {
       ),
     ];
     return Scaffold(
-      body: Directionality(textDirection: TextDirection.rtl, child: pages[selected]),
+      body: NotificationListener<ScrollNotification>(
+        onNotification: _onScroll,
+        child: Directionality(textDirection: TextDirection.rtl, child: pages[selected]),
+      ),
       // زر المساعد الذكي العائم — «مساعد دار زخم» بأيقونة ذكاء
       // اصطناعي، يظهر للزوار والعملاء على شاشتي الرئيسية والتشكيلة
-      // فقط، ويفتح المحادثة المصغرة (كتالوج المتجر فقط).
+      // فقط، ويفتح المحادثة المصغرة (كتالوج المتجر فقط). يُخفى
+      // أثناء التمرير للأسفل (انظر _onScroll) حتى لا يحجب البطاقات.
       floatingActionButton: (selected == 0 || selected == 1)
-          ? FloatingActionButton.extended(
-              heroTag: 'advisorFab',
-              onPressed: _openCustomerChat,
-              tooltip: 'مساعد دار زخم',
-              backgroundColor: gold,
-              foregroundColor: Colors.black,
-              icon: const Icon(Icons.auto_awesome, size: 22),
-              label: const Text('مساعد دار زخم'),
+          ? IgnorePointer(
+              ignoring: !_fabVisible,
+              child: AnimatedOpacity(
+                opacity: _fabVisible ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: FloatingActionButton.extended(
+                  heroTag: 'advisorFab',
+                  onPressed: _openCustomerChat,
+                  tooltip: 'مساعد دار زخم',
+                  backgroundColor: gold,
+                  foregroundColor: Colors.black,
+                  icon: const Icon(Icons.auto_awesome, size: 22),
+                  label: const Text('مساعد دار زخم'),
+                ),
+              ),
             )
           : null,
       bottomNavigationBar: NavigationBar(

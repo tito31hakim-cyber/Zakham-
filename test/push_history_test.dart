@@ -70,4 +70,33 @@ void main() {
       expect(restored.event, '');
     });
   });
+
+  group('بطاقات التحديث — زر «تحديث الآن»', () {
+    PushHistoryEntry entry(String title) => PushHistoryEntry(
+          title: title,
+          body: 'يتوفر الآن تحديث جديد لتطبيق دار زَخَم للعطور.',
+          receivedAt: DateTime.fromMillisecondsSinceEpoch(1794800000000),
+        );
+
+    test('عناوين التحديث المعتمدة (35 و36 و37) بطاقات تحديث', () {
+      expect(entry('تحديث جديد – دار زَخَم للعطور (1.1.0)').isAppUpdate,
+          isTrue);
+      expect(entry('يوجد تحديث جديد لتطبيق دار زخم').isAppUpdate, isTrue);
+    });
+
+    test('إشعار طلب («تحديث للطلب») ليس بطاقة تحديث', () {
+      final order = PushHistoryEntry(
+        title: 'تحديث للطلب ZH-NOV-000002',
+        body: 'تم شحن طلبك.',
+        orderRef: 'ZH-NOV-000002',
+        event: 'shipped',
+        receivedAt: DateTime.fromMillisecondsSinceEpoch(1794800000000),
+      );
+      expect(order.isAppUpdate, isFalse);
+    });
+
+    test('إشعار عام ليس بطاقة تحديث', () {
+      expect(entry('وصل عطر جديد').isAppUpdate, isFalse);
+    });
+  });
 }

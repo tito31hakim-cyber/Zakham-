@@ -1,8 +1,8 @@
 /// Version identity of the running app (Priority 1 — pin the source).
 ///
 /// The version name stays V1.1 (1.1.0) — the version is one, not
-/// thirty-seven. The Codemagic build number (37) is only a label from
-/// the release tag v1.1.0-build37, NOT the version.
+/// thirty-eight. The Codemagic build number (38) is only a label from
+/// the release tag v1.1.0-build38, NOT the version.
 /// Rule before every release: bump versionCode in pubspec by 1 and tag
 /// the release v<versionName>-build<CodemagicBuildNumber>.
 class AppVersion {
@@ -11,18 +11,18 @@ class AppVersion {
   /// Version name from pubspec.yaml (1.1.0).
   static const versionName = '1.1.0';
 
-  /// Flutter build number from pubspec.yaml (the +7 in 1.1.0+7).
-  static const versionCode = 7;
+  /// Flutter build number from pubspec.yaml (the +8 in 1.1.0+8).
+  static const versionCode = 8;
 
   /// Codemagic build number of the published release (label only,
-  /// from the release tag v1.1.0-build37).
-  static const codemagicBuild = 37;
+  /// from the release tag v1.1.0-build38).
+  static const codemagicBuild = 38;
 
   /// Short commit SHA of the source this build was made from.
   ///
   /// Codemagic passes `--dart-define=ZAKHAM_COMMIT=<sha>` at build time;
-  /// the fallback is the tagged commit of the published build 37
-  /// (GitHub Release v1.1.0-build37). Update the fallback at each
+  /// the fallback is the tagged commit of the published build 38
+  /// (GitHub Release v1.1.0-build38). Update the fallback at each
   /// release so a build without the define still reports its source.
   static const commit = String.fromEnvironment(
     'ZAKHAM_COMMIT',
