@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 class QuizPage extends StatefulWidget {
-  const QuizPage({super.key, this.onViewProduct});
+  const QuizPage({super.key, this.onViewProduct, this.onOpenIdentity});
 
   /// يُستدعى عند الضغط على «شاهد العطر» في نافذة النتيجة — يفتح
   /// الغلاف صفحة العطر المرشَّح (رويال دائماً في هذا الاختبار).
   /// إن لم يُمرَّر لا يظهر الزر (توافق مع أي استخدام قديم).
   final VoidCallback? onViewProduct;
+
+  /// يُستدعى عند الضغط على «اكتشف بصمتك الكاملة» في نافذة النتيجة —
+  /// يفتح الغلاف أداة «بصمة زخم» كمسار أعمق دون تغيير هذا الاختبار.
+  /// إن لم يُمرَّر لا يظهر الزر.
+  final VoidCallback? onOpenIdentity;
   @override
   State<QuizPage> createState() => _QuizPageState();
 }
@@ -42,6 +47,14 @@ class _QuizPageState extends State<QuizPage> {
                 widget.onViewProduct?.call();
               },
               child: const Text('شاهد العطر'),
+            ),
+          if (widget.onOpenIdentity != null)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                widget.onOpenIdentity?.call();
+              },
+              child: const Text('اكتشف بصمتك الكاملة'),
             ),
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('حسنًا')),
         ],

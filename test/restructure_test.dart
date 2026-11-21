@@ -55,6 +55,7 @@ Future<void> _pumpHome(WidgetTester tester) async {
               product: featuredProduct,
               onProduct: (_) {},
               onQuiz: () {},
+              onFragranceIdentity: () {},
               favorite: false,
               onFavorite: () {},
               onSection: (_) {},

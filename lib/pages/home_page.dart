@@ -11,6 +11,7 @@ class HomePage extends StatelessWidget {
     required this.product,
     required this.onProduct,
     required this.onQuiz,
+    required this.onFragranceIdentity,
     required this.favorite,
     required this.onFavorite,
     required this.onSection,
@@ -26,6 +27,10 @@ class HomePage extends StatelessWidget {
   final Product product;
   final ValueChanged<Product> onProduct;
   final VoidCallback onQuiz;
+
+  /// يفتح أداة «بصمة زخم: دليلك للهوية العطرية».
+  final VoidCallback onFragranceIdentity;
+
   final bool favorite;
   final VoidCallback onFavorite;
 
@@ -90,6 +95,8 @@ class HomePage extends StatelessWidget {
           ),
           SectionHeader(title: 'اعثر على عطرك', actionLabel: 'ابدأ الاختبار', onAction: onQuiz),
           QuizBanner(onTap: onQuiz),
+          const SizedBox(height: 12),
+          _IdentityEntryCard(onTap: onFragranceIdentity),
           if (showEmptyCartNudge)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -228,6 +235,50 @@ class _EmptyCartNudge extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
               ),
             ]),
+          ),
+        ),
+      );
+}
+
+class _IdentityEntryCard extends StatelessWidget {
+  const _IdentityEntryCard({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: context.surfaceCard,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: gold.withOpacity(.3)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.fingerprint, color: context.goldText, size: 34),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('4 خطوات لترشيح صادق', style: TextStyle(color: context.goldText, fontSize: 12)),
+                    Text(
+                      'بصمة زخم: دليلك للهوية العطرية',
+                      style: TextStyle(color: context.ink, fontSize: 18, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'اكتشف هويتك العطرية من تشكيلة الدار',
+                      style: TextStyle(color: context.subdued, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_left, color: context.goldText),
+            ],
           ),
         ),
       );

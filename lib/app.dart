@@ -12,6 +12,7 @@ import 'pages/collection_page.dart';
 import 'pages/consultation_page.dart';
 import 'pages/customer_chat_page.dart';
 import 'pages/fragrance_cards_page.dart';
+import 'pages/fragrance_identity_page.dart';
 import 'pages/home_page.dart';
 import 'pages/product_page.dart';
 import 'pages/quiz_page.dart';
@@ -357,7 +358,22 @@ class _StoreShellState extends State<StoreShell> {
   void openQuiz() => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => QuizPage(onViewProduct: () => openProduct(featuredProduct)),
+          builder: (_) => QuizPage(
+            onViewProduct: () => openProduct(featuredProduct),
+            onOpenIdentity: openFragranceIdentity,
+          ),
+        ),
+      );
+
+  /// يفتح أداة «بصمة زخم: دليلك للهوية العطرية» (4 خطوات + نتيجة).
+  void openFragranceIdentity() => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FragranceIdentityPage(
+            onProduct: openProduct,
+            onConsultation: openConsultation,
+            onOpenChat: _openCustomerChat,
+          ),
         ),
       );
 
@@ -447,6 +463,7 @@ class _StoreShellState extends State<StoreShell> {
         product: heroProduct,
         onProduct: openProduct,
         onQuiz: openQuiz,
+        onFragranceIdentity: openFragranceIdentity,
         favorite: isFavorite(heroProduct),
         onFavorite: () => toggleFavorite(heroProduct),
         onSection: openSection,
