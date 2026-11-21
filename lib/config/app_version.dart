@@ -21,12 +21,12 @@ class AppVersion {
   /// Short commit SHA of the source this build was made from.
   ///
   /// Codemagic passes `--dart-define=ZAKHAM_COMMIT=<sha>` at build time;
-  /// the fallback is the tagged commit of the published build 35
-  /// (GitHub Release v1.1.0-build35). Update the fallback at each
+  /// the fallback is the tagged commit of the published build 37
+  /// (GitHub Release v1.1.0-build37). Update the fallback at each
   /// release so a build without the define still reports its source.
   static const commit = String.fromEnvironment(
     'ZAKHAM_COMMIT',
-    defaultValue: 'fb1c6e2',
+    defaultValue: 'c7e0343',
   );
 
   /// نص التذييل للعميل — الإصدار فقط، بلا رقم بناء وبلا Commit:
