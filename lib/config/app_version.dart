@@ -26,7 +26,7 @@ class AppVersion {
   /// release so a build without the define still reports its source.
   static const commit = String.fromEnvironment(
     'ZAKHAM_COMMIT',
-    defaultValue: '44c7910',
+    defaultValue: '0f1b451',
   );
 
   /// نص التذييل للعميل — الإصدار فقط، بلا رقم بناء وبلا Commit:
