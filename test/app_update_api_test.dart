@@ -10,8 +10,7 @@ import 'package:house_of_zakham/services/app_update_api.dart';
 /// لا استدعاء شبكة حقيقي إطلاقاً: كل الردود من `MockClient`.
 /// ما يثبته الاختبار هو عقد العميل: GET عام بلا أي مصادقة إلى
 /// /api/app/latest، وتحليل الرد الصالح، ورجوع null بصمت عند أي
-/// فشل (بلا استثناء يصل إلى الواجهة)، وقاعدتا المقارنة والفحص
-/// اليومي.
+/// فشل (بلا استثناء يصل إلى الواجهة)، وقاعدة المقارنة.
 
 http.Response _jsonResponse(Object body, int status) =>
     http.Response.bytes(
@@ -124,37 +123,6 @@ void main() {
       expect(
         isUpdateAvailable(latestVersionCode: 3, installedVersionCode: 4),
         isFalse,
-      );
-    });
-  });
-
-  group('shouldCheckForUpdateToday — مرة في اليوم', () {
-    final now = DateTime(2026, 11, 20, 10, 30);
-
-    test('بلا فحص سابق يُفحص', () {
-      expect(
-        shouldCheckForUpdateToday(lastCheck: null, now: now),
-        isTrue,
-      );
-    });
-
-    test('فحص اليوم نفسه لا يُعاد', () {
-      expect(
-        shouldCheckForUpdateToday(
-          lastCheck: DateTime(2026, 11, 20, 8, 0),
-          now: now,
-        ),
-        isFalse,
-      );
-    });
-
-    test('فحص أمس يُعاد اليوم', () {
-      expect(
-        shouldCheckForUpdateToday(
-          lastCheck: DateTime(2026, 11, 19, 23, 59),
-          now: now,
-        ),
-        isTrue,
       );
     });
   });

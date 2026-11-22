@@ -120,8 +120,9 @@ Future<void> _sendInAdvisorChat(WidgetTester tester) async {
 
 void main() {
   // التخزين المحلي مشترك بين اختبارات الملف في العملية نفسها،
-  // وفحص التحديث يسجّل تاريخ اليوم قبل الجلب — فيُصفَّر قبل كل
-  // اختبار حتى لا يحجب اختبار سابق فحص اختبار لاحق.
+  // فيُصفَّر قبل كل اختبار حتى لا يؤثر اختبار سابق في لاحق.
+  // (البوابة اليومية أُزيلت في البناء 39: الفحص يعمل عند كل
+  // فتح، والرفض لا يُحفظ — فلا مفتاح فحص يومي يُصفَّر أصلاً.)
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
   });
@@ -136,7 +137,7 @@ void main() {
         ),
       );
       // الإطلاق سليم بلا حوار تحديث.
-      expect(find.text('يوجد تحديث جديد'), findsNothing);
+      expect(find.text('تحديث جديد'), findsNothing);
       expect(find.text('السلة'), findsOneWidget);
       // تدفقا الإرسال في المحادثتين يعملان كما هما.
       await _sendInCustomerChat(tester);
@@ -151,7 +152,7 @@ void main() {
           MockClient((_) async => throw Exception('offline')),
         ),
       );
-      expect(find.text('يوجد تحديث جديد'), findsNothing);
+      expect(find.text('تحديث جديد'), findsNothing);
       expect(find.text('السلة'), findsOneWidget);
       await _sendInCustomerChat(tester);
       await _sendInAdvisorChat(tester);
@@ -166,28 +167,55 @@ void main() {
         ),
       );
       // الحوار ظهر بلا أخطاء.
-      expect(find.text('يوجد تحديث جديد'), findsOneWidget);
-      expect(find.text('تثبيت التحديث'), findsOneWidget);
+      expect(find.text('تحديث جديد'), findsOneWidget);
+      expect(find.text('تحديث الآن'), findsOneWidget);
       expect(find.text('لاحقاً'), findsOneWidget);
       // «لاحقاً» يغلقه، والتطبيق والمحادثتان يعملان بعده.
       await tester.tap(find.text('لاحقاً'));
       await tester.pumpAndSettle();
-      expect(find.text('يوجد تحديث جديد'), findsNothing);
+      expect(find.text('تحديث جديد'), findsNothing);
       await _sendInCustomerChat(tester);
       await _sendInAdvisorChat(tester);
     });
 
+    testWidgets(
+        '«لاحقاً» لا تُحفظ والبوابة اليومية أُزيلت: الحوار يظهر مجدداً '
+        'عند فتح ثانٍ في اليوم نفسه', (tester) async {
+      final api = _updateApiWith(
+        MockClient((_) async => _jsonResponse(_newerVersionBody, 200)),
+      );
+      await _pumpShell(tester, api);
+      expect(find.text('تحديث جديد'), findsOneWidget);
+      await tester.tap(find.text('لاحقاً'));
+      await tester.pumpAndSettle();
+      expect(find.text('تحديث جديد'), findsNothing);
+      // فتح ثانٍ (غلاف جديد) في الجلسة نفسها: الفحص يعمل مجدداً
+      // والحوار يظهر — بلا بوابة يومية تحجبه وبلا رفض محفوظ.
+      // (ضخ شجرة مختلفة أولاً يلغي حالة الغلاف القديم، فالضخ
+      // التالي إقلاع جديد حقيقي: initState يعمل من جديد. ضخ
+      // الغلاف نفسه مرتين يعيد استخدام الحالة القديمة ولا يعيد
+      // الفحص إطلاقاً.)
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      await tester.pumpAndSettle();
+      await _pumpShell(tester, api);
+      expect(find.text('تحديث جديد'), findsOneWidget);
+      expect(find.text('تحديث الآن'), findsOneWidget);
+      await tester.tap(find.text('لاحقاً'));
+      await tester.pumpAndSettle();
+      expect(find.text('تحديث جديد'), findsNothing);
+    });
+
     testWidgets('النقطة ترد الإصدار المثبَّت نفسه: بلا حوار ويعمل كل شيء',
         (tester) async {
-      // أسبوع التجارب: لا إصدار أحدث إطلاقاً — التطبيق يعمل كاملاً
-      // (الكتالوج والطلبات والمحادثتان) بلا أي حاجة لتحديث.
+      // لا إصدار أحدث إطلاقاً — التطبيق يعمل كاملاً (الكتالوج
+      // والطلبات والمحادثتان) بلا أي حاجة لتحديث.
       await _pumpShell(
         tester,
         _updateApiWith(
           MockClient(
             (_) async => _jsonResponse({
               'ok': true,
-              'versionCode': 5,
+              'versionCode': 9,
               'versionName': '1.1.0',
               'downloadUrl':
                   'https://zakhamhouse.shop/downloads/zakhamhouse.apk',
@@ -195,7 +223,7 @@ void main() {
           ),
         ),
       );
-      expect(find.text('يوجد تحديث جديد'), findsNothing);
+      expect(find.text('تحديث جديد'), findsNothing);
       expect(find.text('السلة'), findsOneWidget);
       await _sendInCustomerChat(tester);
       await _sendInAdvisorChat(tester);

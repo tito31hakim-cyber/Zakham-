@@ -103,10 +103,6 @@ class _StoreShellState extends State<StoreShell> {
   static const String _nudgeLastShownKey =
       'zakham_emptycart_nudge_last_shown';
 
-  /// تاريخ آخر فحص لإصدار أحدث (مرة في اليوم كحد أقصى).
-  static const String _appUpdateLastCheckKey =
-      'zakham_app_update_last_check';
-
   @override
   void initState() {
     super.initState();
@@ -127,8 +123,12 @@ class _StoreShellState extends State<StoreShell> {
     unawaited(_reminders.ensureOccasionReminders());
     // عطر اليوم best-effort: من التشكيلة (شبكة أو كاش) مع إشعاره.
     unawaited(_loadDailyPerfume());
-    // فحص التحديث best-effort: مرة في اليوم، وبعد أول إطار حتى يكون
+    // فحص التحديث best-effort: عند كل فتح، وبعد أول إطار حتى يكون
     // السياق جاهزاً للحوار؛ أي فشل يمر بصمت بلا حوار وبلا عطل.
+    // (البوابة اليومية أُزيلت في البناء 39: كانت تسجّل تاريخ
+    // الفحص قبل الجلب، فمن فتح التطبيق قبل تحديث النقطة لم يظهر
+    // له التنبيه حتى اليوم التالي — الآن استدعاء GET واحد عند
+    // كل فتح يكفي.)
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => unawaited(_checkAppUpdate()),
     );
@@ -216,25 +216,17 @@ class _StoreShellState extends State<StoreShell> {
     } catch (_) {}
   }
 
-  /// يفحص وجود إصدار أحدث على المتجر (مرة في اليوم كحد أقصى) ويعرض
-  /// حوار «يوجد تحديث جديد» بزر تثبيت يفتح رابط التحميل يدوياً.
+  /// يفحص وجود إصدار أحدث على المتجر عند كل فتح للتطبيق ويعرض
+  /// حوار «تحديث جديد» — زر «تحديث الآن» فيه يفتح قناة تليجرام،
+  /// و«لاحقاً» يغلقه فقط ويظهر مجدداً عند الفتح التالي طالما
+  /// التحديث معلّق (الرفض لا يُحفظ أبداً).
   ///
   /// التطبيق ليس على Google Play والتحديث لن يتم تلقائياً أبداً،
   /// فهذا التنبيه هو ما يوجّه المستخدمين لتثبيت كل إصدار جديد.
-  /// best-effort: أي فشل (شبكة أو رد غير صالح) يمر بصمت، ويُسجَّل
-  /// تاريخ الفحص قبل الجلب حتى لا يُعاد التنبيه في نفس اليوم.
+  /// best-effort: أي فشل (شبكة أو رد غير صالح) يمر بصمت بلا
+  /// حوار وبلا عطل — استدعاء GET واحد للنقطة عند الفتح يكفي.
   Future<void> _checkAppUpdate() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final lastCheckMs = prefs.getInt(_appUpdateLastCheckKey);
-      final lastCheck = lastCheckMs == null
-          ? null
-          : DateTime.fromMillisecondsSinceEpoch(lastCheckMs);
-      final now = DateTime.now();
-      if (!shouldCheckForUpdateToday(lastCheck: lastCheck, now: now)) {
-        return;
-      }
-      await prefs.setInt(_appUpdateLastCheckKey, now.millisecondsSinceEpoch);
       final latest = await (widget.appUpdateApi ?? AppUpdateApi())
           .fetchLatest();
       if (latest == null) return;
@@ -245,7 +237,7 @@ class _StoreShellState extends State<StoreShell> {
         return;
       }
       if (!mounted) return;
-      await showAppUpdateDialog(context, latest);
+      await showAppUpdateDialog(context);
     } catch (_) {}
   }
 

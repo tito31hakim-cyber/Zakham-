@@ -1,8 +1,8 @@
 /// Version identity of the running app (Priority 1 — pin the source).
 ///
 /// The version name stays V1.1 (1.1.0) — the version is one, not
-/// thirty-eight. The Codemagic build number (38) is only a label from
-/// the release tag v1.1.0-build38, NOT the version.
+/// thirty-nine. The Codemagic build number (39) is only a label from
+/// the release tag v1.1.0-build39, NOT the version.
 /// Rule before every release: bump versionCode in pubspec by 1 and tag
 /// the release v<versionName>-build<CodemagicBuildNumber>.
 class AppVersion {
@@ -11,12 +11,12 @@ class AppVersion {
   /// Version name from pubspec.yaml (1.1.0).
   static const versionName = '1.1.0';
 
-  /// Flutter build number from pubspec.yaml (the +8 in 1.1.0+8).
-  static const versionCode = 8;
+  /// Flutter build number from pubspec.yaml (the +9 in 1.1.0+9).
+  static const versionCode = 9;
 
   /// Codemagic build number of the published release (label only,
-  /// from the release tag v1.1.0-build38).
-  static const codemagicBuild = 38;
+  /// from the release tag v1.1.0-build39).
+  static const codemagicBuild = 39;
 
   /// Short commit SHA of the source this build was made from.
   ///

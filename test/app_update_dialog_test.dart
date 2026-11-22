@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:house_of_zakham/services/app_update_api.dart';
 import 'package:house_of_zakham/widgets/app_update_dialog.dart';
 
-/// اختبارات حوار «يوجد تحديث جديد» (app_update_dialog) — البناء 35.
+/// اختبارات حوار «تحديث جديد» (app_update_dialog) — البناء 39.
 ///
-/// يثبت الاختبار أن الحوار يعرض اسم الإصدار وزرّي «تثبيت التحديث»
-/// و«لاحقاً»، وأن زر التثبيت يفتح رابط التحميل بالضبط ويغلق
-/// الحوار، وأن «لاحقاً» يغلقه بلا أي فتح رابط.
+/// يثبت الاختبار أن الحوار يعرض العنوان والنص المعتمدين حرفياً
+/// وزرّي «تحديث الآن» و«لاحقاً»، وأن زر التحديث يفتح قناة
+/// تليجرام بالضبط ويغلق الحوار، وأن «لاحقاً» يغلقه بلا أي فتح
+/// رابط (والرفض لا يُحفظ — إثبات ظهوره مجدداً عند فتح ثانٍ في
+/// اختبار التكامل app_update_chat_integration_test).
 
-const _info = AppUpdateInfo(
-  versionCode: 5,
-  versionName: '1.1.0',
-  downloadUrl: 'https://zakhamhouse.shop/downloads/zakhamhouse.apk',
-);
+const _message =
+    'يوجد تحديث جديد لتطبيق دار زخم — حدّث التطبيق للحصول على '
+    'جميع المزايا الحديثة لدار زخم.';
 
 Future<BuildContext> _pumpHost(WidgetTester tester) async {
   late BuildContext captured;
@@ -33,39 +32,37 @@ Future<BuildContext> _pumpHost(WidgetTester tester) async {
 
 void main() {
   group('showAppUpdateDialog — حوار التحديث', () {
-    testWidgets('يعرض اسم الإصدار والزرّين', (tester) async {
+    testWidgets('يعرض العنوان والنص المعتمدين والزرّين', (tester) async {
       final context = await _pumpHost(tester);
-      final shown = showAppUpdateDialog(context, _info);
+      final shown = showAppUpdateDialog(context);
       await tester.pumpAndSettle();
-      expect(find.text('يوجد تحديث جديد'), findsOneWidget);
-      expect(find.textContaining('1.1.0'), findsOneWidget);
-      expect(find.text('تثبيت التحديث'), findsOneWidget);
+      expect(find.text('تحديث جديد'), findsOneWidget);
+      expect(find.text(_message), findsOneWidget);
+      expect(find.text('تحديث الآن'), findsOneWidget);
       expect(find.text('لاحقاً'), findsOneWidget);
       await tester.tap(find.text('لاحقاً'));
       await tester.pumpAndSettle();
       await shown;
     });
 
-    testWidgets('زر التثبيت يفتح رابط التحميل ويغلق الحوار', (tester) async {
+    testWidgets('زر «تحديث الآن» يفتح قناة تليجرام ويغلق الحوار',
+        (tester) async {
       final context = await _pumpHost(tester);
       Uri? launched;
       final shown = showAppUpdateDialog(
         context,
-        _info,
         launch: (uri) async {
           launched = uri;
           return true;
         },
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('تثبيت التحديث'));
+      await tester.tap(find.text('تحديث الآن'));
       await tester.pumpAndSettle();
       await shown;
-      expect(
-        launched.toString(),
-        'https://zakhamhouse.shop/downloads/zakhamhouse.apk',
-      );
-      expect(find.text('يوجد تحديث جديد'), findsNothing);
+      expect(launched.toString(), zakhamTelegramChannelUrl);
+      expect(launched.toString(), 'https://t.me/zakhamapp');
+      expect(find.text('تحديث جديد'), findsNothing);
     });
 
     testWidgets('«لاحقاً» يغلق الحوار بلا فتح رابط', (tester) async {
@@ -73,7 +70,6 @@ void main() {
       var launched = false;
       final shown = showAppUpdateDialog(
         context,
-        _info,
         launch: (_) async {
           launched = true;
           return true;
@@ -84,7 +80,7 @@ void main() {
       await tester.pumpAndSettle();
       await shown;
       expect(launched, isFalse);
-      expect(find.text('يوجد تحديث جديد'), findsNothing);
+      expect(find.text('تحديث جديد'), findsNothing);
     });
   });
 }

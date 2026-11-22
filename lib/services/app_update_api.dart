@@ -103,15 +103,3 @@ bool isUpdateAvailable({
   required int installedVersionCode,
 }) =>
     latestVersionCode > installedVersionCode;
-
-/// هل يحين فحص اليوم؟ مرة واحدة في اليوم: يُفحص فقط إن كان تاريخ
-/// آخر فحص أقدم من اليوم الحالي (بتاريخ الجهاز المحلي).
-bool shouldCheckForUpdateToday({
-  required DateTime? lastCheck,
-  required DateTime now,
-}) {
-  if (lastCheck == null) return true;
-  return lastCheck.year != now.year ||
-      lastCheck.month != now.month ||
-      lastCheck.day != now.day;
-}
