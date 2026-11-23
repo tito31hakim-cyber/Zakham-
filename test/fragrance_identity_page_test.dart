@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:house_of_zakham/data/fragrance_cards.dart';
 import 'package:house_of_zakham/models/product.dart';
 import 'package:house_of_zakham/pages/fragrance_identity_page.dart';
 import 'package:house_of_zakham/providers/cart_provider.dart';
 import 'package:house_of_zakham/theme/app_theme.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+  });
+
   testWidgets('تدفق بصمة زخم: 4 خطوات ثم النتيجة مع قسم الثقة',
       (tester) async {
     final products = [
@@ -135,5 +144,71 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('أضف للسلة'), findsWidgets);
+  });
+
+  testWidgets('بصمة زخم بلا نت وبلا كاش: الكتالوج المضمّن يفتح المعالج ويعمل أوفلاين',
+      (tester) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => CartProvider(),
+        child: MaterialApp(
+          theme: AppTheme.dark(),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: FragranceIdentityPage(
+              httpClient: MockClient(
+                (_) async => throw http.ClientException('بلا اتصال.'),
+              ),
+              onProduct: (_) {},
+              onConsultation: () {},
+              onOpenChat: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // بلا شبكة وبلا نسخة محفوظة: لا شاشة خطأ — المعالج يفتح مباشرة.
+    expect(find.text('تعذر تحميل التشكيلة الآن.'), findsNothing);
+    expect(
+      find.text('ما هي طبيعة المناسبة أو الأجواء المراد ارتداء العطر فيها؟'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byType(OutlinedButton).first);
+    await tester.pumpAndSettle();
+
+    // الخطوة 2: الطابع — الخيار الأول (خشبي).
+    await tester.tap(find.byType(OutlinedButton).first);
+    await tester.pumpAndSettle();
+
+    // الخطوة 3: التركيز — الخيار الأول (حُضور).
+    expect(find.text('ما التركيز الذي تفضله؟'), findsOneWidget);
+    await tester.tap(find.byType(OutlinedButton).first);
+    await tester.pumpAndSettle();
+
+    // الخطوة 4: الحجم — 50 مل (الخيار الثاني).
+    expect(find.text('ما الحجم المناسب لك؟'), findsOneWidget);
+    await tester.tap(find.byType(OutlinedButton).at(1));
+    await tester.pumpAndSettle();
+
+    // شاشة النتيجة من البطاقات المضمّنة: فارس زخم أولاً (رسمية + خشبي)،
+    // وسعر حُضور 50 مل (350 ج.م) ظاهر، مع سطر البيانات المضمّنة
+    // بدل سطر النسخة المحفوظة — وكلها أعلى القائمة قبل أي تمرير.
+    expect(find.text('بصمتك العطرية'), findsOneWidget);
+    expect(find.text('فارس زخم'), findsWidgets);
+    expect(find.textContaining('350 ج.م'), findsWidgets);
+    expect(
+      find.text('بيانات مضمّنة — تعمل بلا نت، وتُحدَّث من المتجر عند عودة الاتصال.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('نسخة محفوظة — تُعرض بيانات آخر تشكيلة محفوظة بلا نت.'),
+      findsNothing,
+    );
+    // البطاقة الثالثة (زخم رويال) تحت الطي في القائمة — تُمرَّر إليها أولاً.
+    await tester.scrollUntilVisible(find.text('زخم رويال'), 200);
+    await tester.pumpAndSettle();
+    expect(find.text('زخم رويال'), findsOneWidget);
   });
 }

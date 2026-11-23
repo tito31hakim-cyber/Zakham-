@@ -290,6 +290,69 @@ List<FragranceCard> mergeFragranceCards(List<Product> products) {
   }).toList(growable: false);
 }
 
+/// أسعار تشكيلة 2027 الموحدة (نفسها لكل العطور) — جدول المتجر
+/// المنشور: حُضور 250/350/500، فَوْحان 350/500/700، نووي 650/950
+/// (50 و100 مل فقط، بلا 30 مل).
+/// تُستخدم فقط في الكتالوج المضمّن عند غياب الشبكة والنسخة المحفوظة؛
+/// وأسعار المتجر الحية تحل محلها فور عودة الاتصال.
+const Map<String, Map<String, int>> _fallbackVariantPrices =
+    <String, Map<String, int>>{
+  'presence': <String, int>{'30': 250, '50': 350, '100': 500},
+  'extra': <String, int>{'30': 350, '50': 500, '100': 700},
+  'nuclear': <String, int>{'50': 650, '100': 950},
+};
+
+/// أسماء العطور الأحد عشر بالترتيب الحي للتشكيلة
+/// (ليل، إلكسير، سلطان أولاً، ثم الثمانية من الكتالوج).
+const List<(String, String)> _fallbackPerfumeNames = <(String, String)>[
+  ('layl', 'ليل زخم'),
+  ('elixir', 'إلكسير القوة'),
+  ('sultan', 'سلطان'),
+  ('royal', 'زخم رويال'),
+  ('storm', 'إعصار زخم'),
+  ('aura', 'أورا جولد'),
+  ('aurora', 'أورورا'),
+  ('fares', 'فارس زخم'),
+  ('tobacco', 'توباكو نايت'),
+  ('fahd', 'فهد الأساطير'),
+  ('musk', 'المسك'),
+];
+
+/// الكتالوج المضمّن — بطاقات العطور الأحد عشر من البيانات المحلية
+/// وحدها (بلا شبكة وبلا نسخة محفوظة): منتج احتياطي لكل عطر باسمه
+/// وأسعار تشكيلة 2027 الموحدة، مدموج مع بيانات البطاقات المحلية
+/// (الاقتباس والهرم والدرجات وتصنيف المستكشف).
+/// النوتات الحية غير مضمّنة — الهرم النثري في بيانات البطاقات هو
+/// المرجع للعرض، والمحرك لا يستخدم النوتات إطلاقاً.
+List<FragranceCard> embeddedFallbackCards() {
+  final products = _fallbackPerfumeNames.map((entry) {
+    final extra = fragranceCardExtras[entry.$1]!;
+    return Product(
+      id: entry.$1,
+      name: entry.$2,
+      price: 500,
+      currency: 'EGP',
+      size: '100 ml',
+      category: 'عطور',
+      topNotes: const <String>[],
+      heartNotes: const <String>[],
+      baseNotes: const <String>[],
+      image: '',
+      inStock: true,
+      description: extra.quote,
+      occasion: extra.tag,
+      variants: _fallbackVariantPrices.map(
+        (key, value) => MapEntry<String, dynamic>(
+          key,
+          <String, dynamic>{'prices': value},
+        ),
+      ),
+      prices: const <String, dynamic>{'30': 250, '50': 350, '100': 500},
+    );
+  }).toList(growable: false);
+  return mergeFragranceCards(products);
+}
+
 /// توصية المستكشف الذكي — نفس منطق صفحة الموقع حرفياً: مطابقة
 /// دقيقة (المناسبة + الطابع)، ثم مطابقة المناسبة وحدها، ثم أول بطاقة.
 FragranceCard recommendFragranceCard(

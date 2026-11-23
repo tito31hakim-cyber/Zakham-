@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import '../data/fragrance_cards.dart';
@@ -6,6 +7,7 @@ import '../models/fragrance_identity.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../services/fragrance_identity_engine.dart';
+import '../services/product_api.dart';
 import '../services/product_catalog.dart';
 import '../theme/app_theme.dart';
 import '../widgets/identity_result_card.dart';
@@ -16,7 +18,8 @@ import '../widgets/identity_result_card.dart';
 /// أسئلة الخطوتين الأولى والثانية هي أسئلة المستكشف نفسها
 /// (wizardQuestions) بنصوصها وخياراتها؛ والترشيح من محرك
 /// `FragranceIdentityEngine` على البطاقات المدموجة (منتج حي +
-/// بيانات البطاقات المحلية)، ويعمل بلا نت من النسخة المحفوظة.
+/// بيانات البطاقات المحلية)، ويعمل بلا نت من النسخة المحفوظة،
+/// وإن غابت النسخة المحفوظة أيضاً فمن البطاقات المضمّنة.
 ///
 /// بلا أي أسعار محسوبة داخل الأداة: سعر التركيز والحجم المختارين
 /// يُقرأ من بيانات المتجر الحية فقط (`priceFor`)، والحساب النهائي
@@ -25,6 +28,7 @@ class FragranceIdentityPage extends StatefulWidget {
   const FragranceIdentityPage({
     super.key,
     this.initialCards,
+    this.httpClient,
     required this.onProduct,
     required this.onConsultation,
     required this.onOpenChat,
@@ -33,6 +37,10 @@ class FragranceIdentityPage extends StatefulWidget {
   /// بطاقات جاهزة — تُمرَّر في الاختبارات فقط لتفادي الشبكة؛ وفي
   /// الإنتاج تُحمَّل من الكتالوج (شبكة أو نسخة محفوظة).
   final List<FragranceCard>? initialCards;
+
+  /// عميل HTTP للكتالوج — يُمرَّر في الاختبارات فقط؛ وفي الإنتاج
+  /// يُستخدم العميل الحقيقي المثبّت كما كان قبل الحقن تماماً.
+  final http.Client? httpClient;
 
   /// يفتح صفحة عطر.
   final ValueChanged<Product> onProduct;
@@ -56,10 +64,12 @@ class FragranceIdentityPage extends StatefulWidget {
 }
 
 class _FragranceIdentityPageState extends State<FragranceIdentityPage> {
-  final ProductCatalog _catalog = ProductCatalog();
+  ProductCatalog get _catalog =>
+      ProductCatalog(api: ProductApi(client: widget.httpClient));
   List<FragranceCard> _cards = <FragranceCard>[];
   bool _loading = true;
   bool _fromCache = false;
+  bool _fromEmbedded = false;
   String? _error;
   bool _retrying = false;
 
@@ -87,14 +97,20 @@ class _FragranceIdentityPageState extends State<FragranceIdentityPage> {
       setState(() {
         _cards = mergeFragranceCards(result.products);
         _fromCache = result.fromCache;
+        _fromEmbedded = false;
         _loading = false;
         _error = null;
       });
     } catch (_) {
+      // بلا نت وبلا نسخة محفوظة: الكتالوج المضمّن بدل شاشة الخطأ —
+      // والمعالج يفتح ويعمل أوفلاين بالكامل من البطاقات المضمّنة.
       if (!mounted) return;
       setState(() {
+        _cards = embeddedFallbackCards();
+        _fromCache = false;
+        _fromEmbedded = true;
         _loading = false;
-        _error = 'تعذر تحميل التشكيلة الآن.';
+        _error = null;
       });
     }
   }
@@ -194,6 +210,7 @@ class _FragranceIdentityPageState extends State<FragranceIdentityPage> {
                           sizeMl: _sizeMl ?? 50,
                         ),
                         fromCache: _fromCache,
+                        fromEmbedded: _fromEmbedded,
                         onProduct: widget.onProduct,
                         onConsultation: widget.onConsultation,
                         onOpenChat: widget.onOpenChat,
@@ -345,6 +362,7 @@ class _ResultView extends StatelessWidget {
     required this.cards,
     required this.answers,
     required this.fromCache,
+    required this.fromEmbedded,
     required this.onProduct,
     required this.onConsultation,
     required this.onOpenChat,
@@ -355,6 +373,7 @@ class _ResultView extends StatelessWidget {
   final List<FragranceCard> cards;
   final IdentityAnswers answers;
   final bool fromCache;
+  final bool fromEmbedded;
   final ValueChanged<Product> onProduct;
   final VoidCallback onConsultation;
   final VoidCallback onOpenChat;
@@ -377,6 +396,14 @@ class _ResultView extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
               'نسخة محفوظة — تُعرض بيانات آخر تشكيلة محفوظة بلا نت.',
+              style: TextStyle(color: context.subdued, fontSize: 12),
+            ),
+          ),
+        if (fromEmbedded)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              'بيانات مضمّنة — تعمل بلا نت، وتُحدَّث من المتجر عند عودة الاتصال.',
               style: TextStyle(color: context.subdued, fontSize: 12),
             ),
           ),
