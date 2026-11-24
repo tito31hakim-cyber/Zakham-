@@ -548,7 +548,7 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
                 ),
                 const SizedBox(height: 10),
               ],
-              _runSummaryCard(context, digest.run),
+              _runSummaryCard(context, digest),
               const SizedBox(height: 10),
               if (!digest.draftsUnavailable && digest.drafts.isEmpty)
                 _researchNote(
@@ -570,8 +570,14 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
         },
       );
 
-  Widget _runSummaryCard(BuildContext context, ResearchRunSummary run) =>
-      Container(
+  /// بطاقة خلاصة البحث: عند وجود كتلة `v3` في ملخص المعرفة تعرض
+  /// عدادات دورات v3 الأربع (113 شركة / 5 مواد / 247 سعراً / 9 حدود
+  /// IFRA كما يحسبها الخادم حياً — لا أرقام مثبّتة هنا)، وعند غيابها
+  /// (خادم قديم) تُعرض بطاقة آخر دورة كما هي تماماً.
+  Widget _runSummaryCard(BuildContext context, ResearchDigest digest) {
+    final v3 = digest.v3;
+    if (v3 != null) {
+      return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: context.surfaceCard,
@@ -587,7 +593,7 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'آخر دورة بحث — ${_date(run.startedAt)}',
+                  'الدورة التكميلية v3 — ${_date(v3.latestStartedAt)}',
                   textAlign: TextAlign.right,
                   style: TextStyle(
                       color: context.ink,
@@ -596,31 +602,82 @@ class _BusinessAdvisorPageState extends State<BusinessAdvisorPage> {
                 ),
               ),
               const SizedBox(width: 8),
-              _badge(context, _runStatusLabel(run.status),
-                  _runStatusColor(run.status)),
+              _badge(context, _runStatusLabel(v3.status),
+                  _runStatusColor(v3.status)),
             ]),
             const SizedBox(height: 12),
             Row(children: [
-              _metric(context, 'مصادر وُجدت', '${run.sourcesFound}',
-                  Icons.search_outlined),
-              _metric(context, 'مصادر قُبلت', '${run.sourcesAccepted}',
-                  Icons.verified_outlined),
-              _metric(context, 'مواد جديدة', '${run.newMaterials}',
+              _metric(context, 'شركات جديدة', '${v3.newCompanies}',
+                  Icons.business_outlined),
+              _metric(context, 'مواد جديدة', '${v3.newMaterials}',
                   Icons.science_outlined),
-              _metric(context, 'ميكسات جديدة', '${run.newMixes}',
-                  Icons.auto_awesome),
+              _metric(context, 'أسعار جديدة', '${v3.newPrices}',
+                  Icons.sell_outlined),
+              _metric(context, 'حدود IFRA جديدة', '${v3.newIfraLimits}',
+                  Icons.verified_outlined),
             ]),
             const SizedBox(height: 10),
             Text(
-              // الخادم الحي لا يرد إصدار مكتبة المعرفة في ملخص آخر دورة،
-              // فيُخفى الجزء كاملاً بدل عرض تسمية بلا قيمة.
-              'الوكيل ${run.agentVersion}${run.knowledgeVersion.isEmpty ? '' : ' • مكتبة المعرفة ${run.knowledgeVersion}'}',
+              '${v3.runs} دورات — ${_runStatusLabel(v3.status)}',
               textAlign: TextAlign.center,
               style: TextStyle(color: context.subdued, fontSize: 11),
             ),
           ],
         ),
       );
+    }
+    final run = digest.run;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.surfaceCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.goldText.withOpacity(.22)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Row(children: [
+            Icon(Icons.calendar_month_outlined,
+                color: context.goldText, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'آخر دورة بحث — ${_date(run.startedAt)}',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                    color: context.ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _badge(context, _runStatusLabel(run.status),
+                _runStatusColor(run.status)),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            _metric(context, 'مصادر وُجدت', '${run.sourcesFound}',
+                Icons.search_outlined),
+            _metric(context, 'مصادر قُبلت', '${run.sourcesAccepted}',
+                Icons.verified_outlined),
+            _metric(context, 'مواد جديدة', '${run.newMaterials}',
+                Icons.science_outlined),
+            _metric(context, 'ميكسات جديدة', '${run.newMixes}',
+                Icons.auto_awesome),
+          ]),
+          const SizedBox(height: 10),
+          Text(
+            // الخادم الحي لا يرد إصدار مكتبة المعرفة في ملخص آخر دورة،
+            // فيُخفى الجزء كاملاً بدل عرض تسمية بلا قيمة.
+            'الوكيل ${run.agentVersion}${run.knowledgeVersion.isEmpty ? '' : ' • مكتبة المعرفة ${run.knowledgeVersion}'}',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: context.subdued, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
 
   String _runStatusLabel(String status) => switch (status) {
         'completed' => 'مكتملة',

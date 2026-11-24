@@ -46,6 +46,11 @@ class AppConfig {
   static const customerLogoutAllPath = '/api/auth/logout-all';
   static const customerOrdersPath = '/api/account/orders';
   static const customerPointsPath = '/api/account/points';
+
+  /// كود الدعوة الشخصي للعميل (GET /api/account/referral-code) —
+  /// نقطة خادم منشورة حية بمصادقة العميل؛ تعيد {'ok':true,
+  /// 'code':'ZKXXXXXX','link':'https://zakhamhouse.shop/?ref=...'}.
+  static const customerReferralCodePath = '/api/account/referral-code';
   static const customerAddressesPath = '/api/account/addresses';
 
   /// تاريخ ميلاد العميل (GET/POST /api/account/birthday) — نقطة

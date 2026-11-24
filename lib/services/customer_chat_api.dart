@@ -27,7 +27,8 @@ class CustomerChatMessage {
 /// ولا أي بيانات داخلية تصل إلى هذه المحادثة إطلاقاً.
 ///
 /// حدود العميل (والخادم يفرض حدوده هو أيضاً): 10 رسائل كحد أقصى في
-/// السجل المُرسل، و1000 حرف كحد أقصى للرسالة الواحدة، و30 رسالة
+/// السجل المُرسل، و1000 حرف كحد أقصى لرسالة المستخدم و2000 حرف لرد
+/// المساعد (مطابق لإصلاح الخادم المنشور: الحد حسب الدور)، و30 رسالة
 /// كحد أقصى في الجلسة الواحدة.
 class CustomerChatApi {
   CustomerChatApi({http.Client? client}) : _client = client ?? http.Client();
@@ -37,8 +38,12 @@ class CustomerChatApi {
   /// حد السجل المُرسل في الطلب الواحد.
   static const maxHistoryMessages = 10;
 
-  /// حد حروف الرسالة الواحدة.
+  /// حد حروف رسالة المستخدم الواحدة.
   static const maxMessageChars = 1000;
+
+  /// حد حروف رد المساعد الواحد في السجل — مطابقة للخادم الذي يقبل
+  /// ردود المساعد حتى 2000 حرف (إصلاح سجل العملاء المنشور).
+  static const maxReplyChars = 2000;
 
   /// حد رسائل المستخدم في جلسة المحادثة الواحدة.
   static const maxSessionMessages = 30;
@@ -116,9 +121,15 @@ class CustomerChatApi {
         throw const FormatException('دور الرسالة غير مسموح.');
       }
       final content = message.content.trim();
-      if (content.isEmpty || content.length > maxMessageChars) {
-        throw const FormatException(
-          'نص الرسالة يجب أن يكون بين 1 و1000 حرف.',
+      // الحد حسب الدور كما يفرضه الخادم: 1000 لرسائل المستخدم
+      // و2000 لردود المساعد — فحص كل رسالة بحد 1000 كان يرفض أي
+      // متابعة بعد رد مساعد طويل (عطل حي مثبت).
+      final limit = message.role == 'assistant'
+          ? maxReplyChars
+          : maxMessageChars;
+      if (content.isEmpty || content.length > limit) {
+        throw FormatException(
+          'نص الرسالة يجب أن يكون بين 1 و$limit حرف.',
         );
       }
     }

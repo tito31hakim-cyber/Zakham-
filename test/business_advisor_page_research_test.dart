@@ -55,10 +55,36 @@ Map<String, dynamic> _trialRunSummary() => {
       },
     };
 
+/// ملخص حي بدورة تغذية 003 (أصفار) مع كتلة `v3` (113/5/247/9).
+Map<String, dynamic> _v3Summary() => {
+      'lastRun': {
+        'run_key': 'zakham-feeding-2026-11-20-003',
+        'started_at': '2026-11-20T23:31:00Z',
+        'status': 'review',
+        'sources_found': 0,
+        'sources_accepted': 0,
+        'new_materials': 0,
+        'new_mixes': 0,
+        'agent_version': '0.1.0',
+      },
+      'v3': {
+        'runs': 4,
+        'status': 'review',
+        'newCompanies': 113,
+        'newMaterials': 5,
+        'newPrices': 247,
+        'newIfraLimits': 9,
+        'newMixes': 0,
+        'sourcesFound': 0,
+        'latestStartedAt': '2026-11-20T23:31:00Z',
+      },
+    };
+
 ResearchSyncApi _researchApi({
   required bool mixesFail,
   bool summaryFail = false,
   bool summaryEmpty = false,
+  bool v3Summary = false,
   Duration delay = Duration.zero,
 }) =>
     ResearchSyncApi(
@@ -72,6 +98,7 @@ ResearchSyncApi _researchApi({
         if (request.url.path.endsWith('/knowledge-summary')) {
           if (summaryFail) return http.Response('', 500);
           if (summaryEmpty) return _jsonResponse({}, 200);
+          if (v3Summary) return _jsonResponse(_v3Summary(), 200);
           return _jsonResponse(_trialRunSummary(), 200);
         }
         return http.Response('', 404);
@@ -263,5 +290,33 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('آخر دورة بحث'), findsNothing);
+  });
+
+  testWidgets('كتلة v3 تعرض 113/5/247/9 بدل أصفار آخر دورة',
+      (tester) async {
+    await _pumpPage(
+      tester,
+      _FakeAdminApi(
+        researchApi: _researchApi(mixesFail: false, v3Summary: true),
+      ),
+    );
+
+    // عنوان بطاقة v3 لا بطاقة آخر دورة.
+    expect(
+      find.textContaining('الدورة التكميلية v3'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('آخر دورة بحث'), findsNothing);
+    // عدادات v3 كما يحسبها الخادم (الأرقام الفريدة تثبت المصدر).
+    expect(find.text('113'), findsOneWidget);
+    expect(find.text('247'), findsOneWidget);
+    expect(find.text('شركات جديدة'), findsOneWidget);
+    expect(find.text('مواد جديدة'), findsOneWidget);
+    expect(find.text('أسعار جديدة'), findsOneWidget);
+    expect(find.text('حدود IFRA جديدة'), findsOneWidget);
+    // عدادات آخر دورة القديمة لا تظهر.
+    expect(find.text('مصادر وُجدت'), findsNothing);
+    expect(find.text('ميكسات جديدة'), findsNothing);
+    expect(find.textContaining('4 دورات'), findsOneWidget);
   });
 }

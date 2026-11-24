@@ -65,6 +65,16 @@ class AdvisorChatApi {
             : 'تعذّر إرسال الرسالة إلى المستشار.',
       );
     }
+    // الخادم يرد 200 مع ok:false عند فشل المزوّد أو الكتالوج (إصلاح
+    // خادمي منشور) — يُعامل كفشل برسالة الجسم نفسها، لا كرد صالح.
+    // غياب الحقل أصلاً يُقبل توافقاً مع ردود قديمة.
+    if (data['ok'] == false) {
+      throw Exception(
+        (data['message'] as String?)?.trim().isNotEmpty == true
+            ? data['message']
+            : 'تعذّر إرسال الرسالة إلى المستشار.',
+      );
+    }
     final reply = (data['reply'] as String?)?.trim() ?? '';
     if (reply.isEmpty) {
       throw const FormatException('استجابة المستشار غير صالحة.');

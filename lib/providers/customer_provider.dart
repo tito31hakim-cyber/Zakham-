@@ -103,6 +103,11 @@ class CustomerProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// كود الدعوة الشخصي (GET /api/account/referral-code) — يرمي
+  /// [AuthRequiredException] عند غياب الجلسة فيسقط المتصل لحالة
+  /// الضيف، ويرمي Exception برسالة واضحة عند أي فشل آخر.
+  Future<ReferralCode> fetchReferralCode() => _auth.fetchReferralCode();
+
   /// يحدّث تاريخ الميلاد (الخادم أولاً ثم المحلي) ويجدول إشعار
   /// الهدية قبل عيد الميلاد بـ 3 أيام. best-effort ولا يرمي أبداً.
   Future<void> refreshBirthday() async {

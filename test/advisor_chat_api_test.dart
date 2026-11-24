@@ -100,6 +100,38 @@ void main() {
       );
     });
 
+    test('send يرمي رسالة الجسم عند 200 مع ok:false', () async {
+      final api = _apiWith(MockClient(
+        (_) async => _jsonResponse({
+          'ok': false,
+          'error': 'advisor_upstream_error',
+          'message': 'تعذّر الوصول إلى خدمة الذكاء حالياً. حاول مجدداً.',
+        }, 200),
+      ));
+      await expectLater(
+        api.send(_history),
+        throwsA(isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('تعذّر الوصول إلى خدمة الذكاء'),
+        )),
+      );
+    });
+
+    test('send يرمي خطأ عاماً عند 200 مع ok:false بلا رسالة', () async {
+      final api = _apiWith(MockClient(
+        (_) async => _jsonResponse({'ok': false}, 200),
+      ));
+      await expectLater(
+        api.send(_history),
+        throwsA(isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('تعذّر إرسال الرسالة إلى المستشار'),
+        )),
+      );
+    });
+
     test('send يرمي FormatException عند رد بلا نص', () async {
       final api = _apiWith(MockClient(
         (_) async => _jsonResponse({'ok': true, 'reply': '   '}, 200),

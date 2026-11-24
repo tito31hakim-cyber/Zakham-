@@ -5,6 +5,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/app_version.dart';
+
 /// Background message handler — must be a top-level function.
 @pragma('vm:entry-point')
 Future<void> zakhamPushBackgroundHandler(RemoteMessage message) async {
@@ -19,6 +21,7 @@ class PushHistoryEntry {
     this.orderRef = '',
     this.event = '',
     required this.receivedAt,
+    this.versionCode = 0,
   });
 
   final String title;
@@ -32,6 +35,11 @@ class PushHistoryEntry {
   final String event;
   final DateTime receivedAt;
 
+  /// الإصدار المثبَّت وقت تسجيل الإشعار (0 لسجلات قديمة قبل هذا
+  /// الحقل) — مفتاح منع تكرار إشعارات التحديث: الإعلان نفسه لا
+  /// يُسجَّل مرتين طالما الإصدار المثبَّت لم يتغيّر.
+  final int versionCode;
+
   /// بطاقة تحديث تطبيق: إشعارات التحديث التي يرسلها المتجر تحمل
   /// العنوان المعتمد «تحديث جديد …» (بناء 35 و36 و37 كلها به)،
   /// فتظهر في البطاقة زر «تحديث الآن». إشعارات الطلب تحمل
@@ -44,6 +52,7 @@ class PushHistoryEntry {
         'orderRef': orderRef,
         'event': event,
         'receivedAt': receivedAt.millisecondsSinceEpoch,
+        'versionCode': versionCode,
       };
 
   factory PushHistoryEntry.fromJson(Map<String, dynamic> json) =>
@@ -55,6 +64,7 @@ class PushHistoryEntry {
         receivedAt: DateTime.fromMillisecondsSinceEpoch(
           (json['receivedAt'] as num?)?.toInt() ?? 0,
         ),
+        versionCode: (json['versionCode'] as num?)?.toInt() ?? 0,
       );
 }
 
@@ -93,6 +103,18 @@ class PushService {
   /// إشعار، وتقرؤه صفحة الإشعارات لتعرض زر «عرض طلباتي».
   static const String _pendingOrderKey = 'zakham_pending_order_ref';
 
+  /// راية فتح صفحة الإشعارات: تُرفع عند نقر إشعار تحديث تطبيق،
+  /// ويستهلكها الغلاف عند الإقلاع فيفتح صفحة الإشعارات مباشرة
+  /// (حيث بطاقة التحديث وزر «تحديث الآن») بدل الرئيسية.
+  static const String _pendingOpenNotificationsKey =
+      'zakham_pending_open_notifications';
+
+  /// حمولة الإشعار المحلي لإشعار تحديث تطبيق (بلا orderRef):
+  /// تميّزه عن إشعارات الطلبات عند النقر عليه في الواجهة، فتُرفع
+  /// راية فتح صفحة الإشعارات بدل حفظ رقم طلب. لا يطابق أي رقم
+  /// طلب حقيقي (أرقام الطلبات بصيغة ZH-...).
+  static const String _appUpdatePayload = '__zakham_app_update__';
+
   /// يبني سجلاً من رسالة FCM — الربط برقم الطلب يأتي من حقل
   /// data.orderRef الذي يرسله الخادم مع إشعارات أحداث الطلب.
   static PushHistoryEntry entryFromMessage(RemoteMessage message) =>
@@ -102,6 +124,7 @@ class PushService {
         orderRef: '${message.data['orderRef'] ?? ''}'.trim(),
         event: '${message.data['event'] ?? ''}'.trim(),
         receivedAt: DateTime.now(),
+        versionCode: AppVersion.versionCode,
       );
 
   /// يحفظ رسالة في سجل الإشعارات (الأحدث أولاً، بحد أقصى 50).
@@ -135,6 +158,23 @@ class PushService {
             entry.receivedAt.difference(latest.receivedAt).inSeconds.abs() <
                 120) {
           return;
+        }
+      }
+      // إشعار تحديث تطبيق مطابق: لا يُسجَّل مرة ثانية طالما الإصدار
+      // المثبَّت لم يتغيّر — إعادة إرسال الإعلان نفسه (ولو بعد أيام)
+      // لا تملأ السجل. والرسالة نفسها بلا رقم إصدار، فالمفتاح هو
+      // الإصدار المثبَّت وقت التسجيل: إعلان بناء أحدث بعد تثبيت
+      // الجديد يُسجَّل لأن المثبَّت تغيّر. سجلات ما قبل هذا الحقل
+      // (versionCode صفر) لا تطابق أبداً فلا تكتم إعلاناً جديداً.
+      if (entry.isAppUpdate) {
+        final installed = AppVersion.versionCode;
+        for (final existing in entries) {
+          if (existing.isAppUpdate &&
+              existing.title == entry.title &&
+              existing.body == entry.body &&
+              existing.versionCode == installed) {
+            return;
+          }
         }
       }
       entries.insert(0, entry);
@@ -189,6 +229,28 @@ class PushService {
     final ref = prefs.getString(_pendingOrderKey);
     if (ref != null) await prefs.remove(_pendingOrderKey);
     return ref;
+  }
+
+  /// يرفع راية فتح صفحة الإشعارات عند نقر إشعار تحديث تطبيق.
+  static Future<void> setPendingOpenNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_pendingOpenNotificationsKey, true);
+    } catch (_) {
+      // لا يوقف شيئاً.
+    }
+  }
+
+  /// يقرأ راية فتح صفحة الإشعارات ويمسحها (تُستهلك مرة واحدة).
+  Future<bool> takePendingOpenNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final pending = prefs.getBool(_pendingOpenNotificationsKey) ?? false;
+      if (pending) await prefs.remove(_pendingOpenNotificationsKey);
+      return pending;
+    } catch (_) {
+      return false;
+    }
   }
 
   static const Map<String, String> topicTitles = {
@@ -267,10 +329,15 @@ class PushService {
     const ios = DarwinInitializationSettings();
     await _local.initialize(
       const InitializationSettings(android: android, iOS: ios),
-      // نقر إشعار معروض محلياً: حمولته رقم الطلب المرتبط (إن وجد).
+      // نقر إشعار معروض محلياً: حمولته رقم الطلب المرتبط (إن وجد)،
+      // أو علامة تحديث التطبيق فتُرفع راية فتح صفحة الإشعارات.
       onDidReceiveNotificationResponse: (response) async {
-        final ref = (response.payload ?? '').trim();
-        if (ref.isNotEmpty) await setPendingOrderRef(ref);
+        final payload = (response.payload ?? '').trim();
+        if (payload == _appUpdatePayload) {
+          await setPendingOpenNotifications();
+        } else if (payload.isNotEmpty) {
+          await setPendingOrderRef(payload);
+        }
       },
     );
     _localReady = true;
@@ -281,9 +348,19 @@ class PushService {
   }
 
   Future<void> _onMessageOpened(RemoteMessage message) async {
+    await handleMessageOpened(message);
+  }
+
+  /// ما يحدث عند فتح التطبيق من إشعار FCM (خلفية أو مغلق):
+  /// يُسجَّل الإشعار، ويُحفظ رقم طلبه إن وُجد (لزر «عرض طلباتي»
+  /// كما كان)، وإن كان إشعار تحديث تطبيق تُرفع راية فتح صفحة
+  /// الإشعارات (حيث بطاقة التحديث وزر «تحديث الآن») بدل فتح
+  /// الرئيسية فقط. عامة لتُختبَر بلا Firebase.
+  static Future<void> handleMessageOpened(RemoteMessage message) async {
+    final entry = entryFromMessage(message);
     await recordMessage(message);
-    final ref = entryFromMessage(message).orderRef;
-    if (ref.isNotEmpty) await setPendingOrderRef(ref);
+    if (entry.orderRef.isNotEmpty) await setPendingOrderRef(entry.orderRef);
+    if (entry.isAppUpdate) await setPendingOpenNotifications();
   }
 
   /// Displays a received FCM message as a local notification and records
@@ -296,7 +373,9 @@ class PushService {
     await instance._showLocal(
       title: entry.title,
       body: entry.body,
-      payload: entry.orderRef,
+      // إشعار التحديث بلا orderRef: حمولته علامة التحديث حتى
+      // يوجَّه نقره لصفحة الإشعارات؛ إشعار الطلب حمولته رقم طلبه.
+      payload: entry.isAppUpdate ? _appUpdatePayload : entry.orderRef,
     );
   }
 

@@ -191,6 +191,21 @@ class CustomerOrder {
       );
 }
 
+/// كود الدعوة الشخصي للعميل كما تعيده
+/// `GET /api/account/referral-code`: الكود (ZK + 6 أحرف/أرقام)
+/// ورابط الدعوة الكامل.
+class ReferralCode {
+  const ReferralCode({required this.code, required this.link});
+
+  final String code;
+  final String link;
+
+  factory ReferralCode.fromJson(Map<String, dynamic> json) => ReferralCode(
+        code: '${json['code'] ?? ''}'.trim(),
+        link: '${json['link'] ?? ''}'.trim(),
+      );
+}
+
 /// Customer auth client for the real store backend.
 ///
 /// The PHP backend authenticates customers with PHP sessions, exactly like
@@ -352,6 +367,35 @@ class CustomerAuth {
     } catch (_) {
       return null;
     }
+  }
+
+  /// كود الدعوة الشخصي للعميل (GET /api/account/referral-code).
+  /// يرمي [AuthRequiredException] عند غياب الجلسة أو انتهائها
+  /// (401) فيسقط المتصل لحالة الضيف؛ ويرمي Exception برسالة واضحة
+  /// عند غياب النقطة (404) أو رد بلا كود. الرابط الفارغ يُبنى من
+  /// الكود بالصيغة المعلنة من الخادم، لا يُخترع كود أبداً.
+  Future<ReferralCode> fetchReferralCode() async {
+    final response = await _http
+        .get(
+          _url(AppConfig.customerReferralCodePath),
+          headers: _headers(),
+        )
+        .timeout(const Duration(seconds: 20));
+    _captureCookies(response);
+    if (response.statusCode == 404) {
+      throw Exception('كود الدعوة غير متوفر بعد — سيتوفر قريباً.');
+    }
+    final data = _validate(response);
+    final referral = ReferralCode.fromJson(data);
+    if (referral.code.isEmpty) {
+      throw Exception('تعذّر تحميل كود الدعوة.');
+    }
+    return ReferralCode(
+      code: referral.code,
+      link: referral.link.isEmpty
+          ? '${AppConfig.apiBaseUrl}/?ref=${referral.code}'
+          : referral.link,
+    );
   }
 
   /// تاريخ ميلاد العميل من الخادم (GET /api/account/birthday)، أو null

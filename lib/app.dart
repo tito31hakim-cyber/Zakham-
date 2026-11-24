@@ -14,6 +14,7 @@ import 'pages/customer_chat_page.dart';
 import 'pages/fragrance_cards_page.dart';
 import 'pages/fragrance_identity_page.dart';
 import 'pages/home_page.dart';
+import 'pages/notifications_page.dart';
 import 'pages/product_page.dart';
 import 'pages/quiz_page.dart';
 import 'pages/sections_page.dart';
@@ -28,6 +29,7 @@ import 'services/app_update_api.dart';
 import 'services/favorites_offer_service.dart';
 import 'services/favorites_service.dart';
 import 'services/product_catalog.dart';
+import 'services/push_service.dart';
 import 'services/reminder_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_update_dialog.dart';
@@ -130,7 +132,12 @@ class _StoreShellState extends State<StoreShell> {
     // له التنبيه حتى اليوم التالي — الآن استدعاء GET واحد عند
     // كل فتح يكفي.)
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => unawaited(_checkAppUpdate()),
+      (_) {
+        unawaited(_checkAppUpdate());
+        // فتح التطبيق من إشعار تحديث: يفتح صفحة الإشعارات مباشرة
+        // (حيث بطاقة التحديث وزر «تحديث الآن») بدل الرئيسية فقط.
+        unawaited(_handlePendingNotificationTap());
+      },
     );
   }
 
@@ -238,6 +245,25 @@ class _StoreShellState extends State<StoreShell> {
       }
       if (!mounted) return;
       await showAppUpdateDialog(context);
+    } catch (_) {}
+  }
+
+  /// يستهلك راية فتح صفحة الإشعارات (تُرفع عند نقر إشعار تحديث
+  /// تطبيق) فيفتح الصفحة مرة واحدة عند الإقلاع. best-effort بلا
+  /// عطل — غياب الراية يعني إقلاعاً عادياً على الرئيسية.
+  Future<void> _handlePendingNotificationTap() async {
+    try {
+      final open =
+          await PushService.instance.takePendingOpenNotifications();
+      if (!open || !mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => NotificationsPage(
+            onDailyPerfumeEnabled: _scheduleDailyPerfume,
+          ),
+        ),
+      );
     } catch (_) {}
   }
 

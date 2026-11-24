@@ -133,6 +133,32 @@ class ResearchDraftMix {
       };
 }
 
+/// تجميع دورات v3 الأربع كما يرده `GET /api/admin/research/knowledge-summary`
+/// في كتلة `v3` (محسوب حياً من research_runs؛ لا أرقام مثبّتة هنا).
+class ResearchV3Summary {
+  const ResearchV3Summary({
+    required this.runs,
+    required this.status,
+    required this.newCompanies,
+    required this.newMaterials,
+    required this.newPrices,
+    required this.newIfraLimits,
+    required this.newMixes,
+    required this.sourcesFound,
+    required this.latestStartedAt,
+  });
+
+  final int runs;
+  final String status;
+  final int newCompanies;
+  final int newMaterials;
+  final int newPrices;
+  final int newIfraLimits;
+  final int newMixes;
+  final int sourcesFound;
+  final DateTime latestStartedAt;
+}
+
 /// خلاصة «بحث وابتكار» المعروضة في مركز الذكاء.
 class ResearchDigest {
   const ResearchDigest({
@@ -141,11 +167,16 @@ class ResearchDigest {
     required this.generatedAt,
     this.draftsUnavailable = false,
     this.hasSavedRun = true,
+    this.v3,
   });
 
   final ResearchRunSummary run;
   final List<ResearchDraftMix> drafts;
   final DateTime generatedAt;
+
+  /// تجميع دورات v3 الأربع من كتلة `v3` في ملخص المعرفة، أو null
+  /// عند غيابها (خادم قديم) — حينها تُعرض بطاقة آخر دورة كما هي.
+  final ResearchV3Summary? v3;
 
   /// صحيح حين تعذّر تحميل مسودات الميكسات بينما وُجدت خلاصة محفوظة؛
   /// حينها تُعرض الخلاصة المحفوظة بتاريخها مع تنبيه، ولا تظهر رسالة
@@ -263,6 +294,7 @@ class ApiResearchRepository implements ResearchRepository {
       generatedAt: DateTime.now(),
       draftsUnavailable: draftsUnavailable,
       hasSavedRun: hasSavedRun,
+      v3: _parseV3(summary),
     );
   }
 
@@ -319,6 +351,27 @@ class ApiResearchRepository implements ResearchRepository {
               summary['knowledge_version'] ??
               '')
           .toString(),
+    );
+  }
+
+  /// يعيد null عند غياب كتلة `v3` فيبقى عرض آخر دورة كما هو.
+  static ResearchV3Summary? _parseV3(Map<String, dynamic> summary) {
+    final raw = summary['v3'];
+    if (raw is! Map<String, dynamic>) return null;
+    return ResearchV3Summary(
+      runs: _asInt(raw['runs']),
+      status: (raw['status'] ?? 'unknown').toString(),
+      newCompanies: _asInt(raw['newCompanies'] ?? raw['new_companies']),
+      newMaterials: _asInt(raw['newMaterials'] ?? raw['new_materials']),
+      newPrices: _asInt(raw['newPrices'] ?? raw['new_prices']),
+      newIfraLimits: _asInt(raw['newIfraLimits'] ?? raw['new_ifra_limits']),
+      newMixes: _asInt(raw['newMixes'] ?? raw['new_mixes']),
+      sourcesFound: _asInt(raw['sourcesFound'] ?? raw['sources_found']),
+      latestStartedAt: DateTime.tryParse(
+            (raw['latestStartedAt'] ?? raw['latest_started_at'] ?? '')
+                .toString(),
+          ) ??
+          DateTime.now(),
     );
   }
 

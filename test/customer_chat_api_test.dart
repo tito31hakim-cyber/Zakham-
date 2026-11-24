@@ -93,6 +93,47 @@ void main() {
       expect(calls, 0);
     });
 
+    test('send يقبل رد مساعد حتى 2000 حرف — سيناريو العطل الحي', () async {
+      var calls = 0;
+      final api = _apiWith(MockClient((_) async {
+        calls++;
+        return _jsonResponse({'ok': true, 'reply': 'رد.'}, 200);
+      }));
+      // سؤال مقارنة + رد مساعد طويل (1500 حرف) + متابعة قصيرة:
+      // كان يُرفض بالحد القديم (1000 للكل)، ويُقبل بالحد حسب الدور.
+      final reply = await api.send([
+        const CustomerChatMessage(
+          role: 'user',
+          content: 'قارن بين رويال وإعصار',
+        ),
+        CustomerChatMessage(role: 'assistant', content: 'أ' * 1500),
+        const CustomerChatMessage(role: 'user', content: 'زخم'),
+      ]);
+      expect(reply, 'رد.');
+      expect(calls, 1);
+    });
+
+    test('send يرفض رد مساعد أطول من 2000 حرف برسالة الحد', () async {
+      var calls = 0;
+      final api = _apiWith(MockClient((_) async {
+        calls++;
+        return _jsonResponse({'ok': true, 'reply': 'رد.'}, 200);
+      }));
+      await expectLater(
+        api.send([
+          const CustomerChatMessage(role: 'user', content: 'سؤال'),
+          CustomerChatMessage(role: 'assistant', content: 'أ' * 2001),
+          const CustomerChatMessage(role: 'user', content: 'زخم'),
+        ]),
+        throwsA(isA<FormatException>().having(
+          (e) => e.message,
+          'message',
+          contains('2000'),
+        )),
+      );
+      expect(calls, 0);
+    });
+
     test('send يرفض سجلاً فارغاً أو آخره ليس من المستخدم', () async {
       final api = _apiWith(MockClient(
         (_) async => _jsonResponse({'ok': true, 'reply': 'رد.'}, 200),
