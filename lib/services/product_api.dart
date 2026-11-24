@@ -7,10 +7,14 @@ import '../models/product.dart';
 import 'secure_http.dart';
 
 class ProductApi {
-  ProductApi({this.baseUrl = AppConfig.apiBaseUrl, this.token});
+  ProductApi({this.baseUrl = AppConfig.apiBaseUrl, this.token, this.client});
 
   final String baseUrl;
   final String? token;
+
+  /// عميل HTTP اختياري — يُمرَّر في الاختبارات فقط؛ وفي الإنتاج
+  /// يُستخدم العميل المثبّت `SecureHttp.client` كما كان قبل الحقن تماماً.
+  final http.Client? client;
 
   Future<List<Product>> fetchProducts() async =>
       parseProducts(await fetchProductsRaw());
@@ -43,7 +47,7 @@ class ProductApi {
         : Uri.parse(baseUrl);
     late final http.Response response;
     try {
-      response = await SecureHttp.client.get(uri, headers: {
+      response = await (client ?? SecureHttp.client).get(uri, headers: {
         'Accept': 'application/json',
         'User-Agent': 'HouseOfZakham/1.1 (Flutter; Android/iOS)',
         'X-API-Client': 'house-of-zakham-mobile',
