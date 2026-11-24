@@ -85,7 +85,7 @@ void main() {
   });
 
   group('ApiProductCard — عرض احترافي', () {
-    testWidgets('تعرض «يبدأ من» بأقل سعر وأسماء التركيزات',
+    testWidgets('تعرض «يبدأ من» بأقل سعر ونوتات العطر وشارة «متوفر»',
         (tester) async {
       final product = _standardProduct();
       await tester.pumpWidget(
@@ -102,11 +102,48 @@ void main() {
       await tester.pump();
 
       expect(find.text('يبدأ من 250 ج.م'), findsOneWidget);
-      expect(find.textContaining('حُضور'), findsOneWidget);
-      expect(find.textContaining('فَوْحان'), findsOneWidget);
-      expect(find.textContaining('نووي'), findsOneWidget);
+      // سطر النوتات الفعلية بدل سطر التركيزات الموحد.
+      expect(find.text('ورد · عود · مسك'), findsOneWidget);
+      expect(find.textContaining('حُضور'), findsNothing);
+      expect(find.textContaining('فَوْحان'), findsNothing);
+      expect(find.textContaining('نووي'), findsNothing);
+      // شارة نصية مقروءة بدل أيقونة الصح الخضراء.
+      expect(find.text('متوفر'), findsOneWidget);
       // لا يظهر السعر الواحد القديم بصيغته (حجم • سعر عشري).
       expect(find.textContaining('500.00'), findsNothing);
+    });
+
+    testWidgets('العطر غير المتوفر: شارة «غير متوفر»',
+        (tester) async {
+      final product = Product.fromJson(<String, dynamic>{
+        'product_id': 'layl',
+        'name': 'ليل زخم',
+        'prices': <String, dynamic>{'100': 500, '50': 350, '30': 250},
+        'variants': <String, dynamic>{},
+        'visible': true,
+        'stockStatus': 'out_of_stock',
+        'notes': <String, dynamic>{
+          'top': ['برغموت'],
+          'middle': ['ورد'],
+          'base': ['عود']
+        },
+      });
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark(),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: ApiProductCard(product: product, onTap: () {}),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('غير متوفر'), findsOneWidget);
+      expect(find.text('متوفر'), findsNothing);
+      expect(find.text('برغموت · ورد · عود'), findsOneWidget);
     });
   });
 }

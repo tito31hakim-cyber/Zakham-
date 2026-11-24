@@ -269,6 +269,23 @@ class Product {
       .map((key) => concentrationNamesAr[key] ?? key)
       .join(' · ');
 
+  /// نوتات العطر للعرض في بطاقة التشكيلة: أول 3 نوتات مفردة من
+  /// بيانات المنتج الحقيقية (المقدمة ثم القلب ثم القاعدة)، بعد
+  /// تفكيك النصوص المفصولة بفواصل وحذف النقاط الزائدة — مفصولة
+  /// بـ « · ». إن لم توجد نوتات موثقة يُرجع سطر التركيزات كما كان.
+  String get displayNotesLine {
+    final parts = <String>[];
+    for (final raw in <String>[...topNotes, ...heartNotes, ...baseNotes]) {
+      for (final piece in raw.split(RegExp(r'[،,]'))) {
+        final cleaned =
+            piece.trim().replaceAll(RegExp(r'\.+$'), '').trim();
+        if (cleaned.isNotEmpty) parts.add(cleaned);
+      }
+    }
+    if (parts.isEmpty) return availableConcentrationsShort;
+    return parts.take(3).join(' · ');
+  }
+
   /// نسخة من المنتج بتركيز/حجم/سعر مختارين (تُستخدم عند الإضافة إلى السلة).
   Product copyWith({double? price, String? size, String? defaultConcentration}) {
     return Product(

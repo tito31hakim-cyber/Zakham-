@@ -18,7 +18,6 @@ import 'about_page.dart';
 import 'addresses_page.dart';
 import 'admin_page.dart';
 import 'auth_page.dart';
-import 'cart_page.dart';
 import 'consultation_page.dart';
 import 'contact_page.dart';
 import 'notifications_page.dart';
@@ -377,21 +376,10 @@ class _AccountPageState extends State<AccountPage> {
             'التشكيلة، طقس زخم، الإهداء، التغليف، باقات التوفير',
             widget.onOpenSections,
           ),
-          _item(
-            context,
-            Icons.shopping_bag_outlined,
-            'سلة المشتريات',
-            'راجع اختياراتك وأكمل طلبك',
-            () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => Scaffold(
-                  appBar: AppBar(title: const Text('سلة المشتريات')),
-                  body: const CartPage(),
-                ),
-              ),
-            ),
-          ),
+          // بطاقة «سلة المشتريات» حُذفت: كانت تفتح صفحة السلة نفسها
+          // التي يفتحها تبويب «السلة» في الشريط السفلي — تكرار بلا
+          // وظيفة. سجل الطلبات موجود أصلاً في قسم «طلباتي» في هذه
+          // الصفحة نفسها، ولا توجد شاشة طلبات منفصلة تُربط بها البطاقة.
           _item(
             context,
             Icons.notifications_outlined,
@@ -488,7 +476,7 @@ class _AccountPageState extends State<AccountPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '© 2026 دار زخم للعطور — جميع الحقوق محفوظة',
+                  '© 2026 جميع الحقوق محفوظة',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: context.subdued, fontSize: 11),
                 ),
@@ -1312,17 +1300,9 @@ class _ConsultationsSectionState extends State<_ConsultationsSection> {
                     ),
                   ),
                 ),
-                FilledButton(
-                  onPressed: _openBooking,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(0, 36),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text('احجز استشارة'),
-                ),
               ],
             ),
+            const SizedBox(height: 10),
             if (!_loaded)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
@@ -1373,6 +1353,20 @@ class _ConsultationsSectionState extends State<_ConsultationsSection> {
                   ),
                 );
               }),
+            // زر الحجز في أسفل البطاقة بعرض كامل، والنص فوقه — حتى
+            // لا يلتف أي نص تحت الزر ولا تنكسر كلمة في سطر منفرد.
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _openBooking,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 44),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('احجز استشارة'),
+              ),
+            ),
           ],
         ),
       ),

@@ -175,6 +175,25 @@ void main() {
       expect(find.text('الواجهة الفاتحة'), findsOneWidget);
       expect(find.text('أقسام زخم'), findsOneWidget);
       expect(find.text('دخول الإدارة'), findsOneWidget);
+      // مراجعة «حسابي» (بناء 41): بطاقة «سلة المشتريات» المكررة مع
+      // تبويب «السلة» حُذفت بلا بديل — لا شاشة طلبات منفصلة تُربط بها.
+      expect(find.text('سلة المشتريات'), findsNothing);
+      // الفوتر: اسم الدار مرة واحدة، وسطر الحقوق مختصر بلا تكرار.
+      expect(find.text('دار زخم للعطور • مصر'), findsOneWidget);
+      expect(find.text('الإصدار 1.1.0'), findsOneWidget);
+      expect(find.text('© 2026 جميع الحقوق محفوظة'), findsOneWidget);
+      expect(
+        find.text('© 2026 دار زخم للعطور — جميع الحقوق محفوظة'),
+        findsNothing,
+      );
+      // «استشاراتي»: زر الحجز في أسفل البطاقة بعرض كامل.
+      expect(find.text('احجز استشارة'), findsOneWidget);
+      expect(
+        tester
+            .getSize(find.widgetWithText(FilledButton, 'احجز استشارة'))
+            .width,
+        728,
+      );
     });
 
     testWidgets('العضو: الولاء وعيد الميلاد في مجموعة المكافآت',

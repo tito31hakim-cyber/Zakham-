@@ -193,24 +193,31 @@ class _CollectionPageState extends State<CollectionPage> {
                   ),
                 ),
               ),
+              // سطر أفقي واحد قابل للتمرير بدل سطرين غير متماثلين
+              // (زران فوق وواحد منفرد تحتهما).
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
-                child: Wrap(spacing: 8, children: [
-                  ChoiceChip(label: const Text('كل العطور'), selected: !availableOnly && !favoritesOnly, onSelected: (_) => setState(() { availableOnly = false; favoritesOnly = false; })),
-                  ChoiceChip(label: const Text('المتوفر فقط'), selected: availableOnly, onSelected: (_) => setState(() => availableOnly = true)),
-                  ChoiceChip(
-                    label: const Text('المفضلة فقط'),
-                    selected: favoritesOnly,
-                    onSelected: (_) => setState(() {
-                      favoritesOnly = !favoritesOnly;
-                      if (favoritesOnly) availableOnly = false;
-                    }),
-                  ),
-                ]),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(children: [
+                    ChoiceChip(label: const Text('كل العطور'), selected: !availableOnly && !favoritesOnly, onSelected: (_) => setState(() { availableOnly = false; favoritesOnly = false; })),
+                    const SizedBox(width: 8),
+                    ChoiceChip(label: const Text('المتوفر فقط'), selected: availableOnly, onSelected: (_) => setState(() => availableOnly = true)),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: const Text('المفضلة فقط'),
+                      selected: favoritesOnly,
+                      onSelected: (_) => setState(() {
+                        favoritesOnly = !favoritesOnly;
+                        if (favoritesOnly) availableOnly = false;
+                      }),
+                    ),
+                  ]),
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: ProductTile(product: featuredProduct, onTap: () => widget.onProduct(featuredProduct), favorite: widget.isFavorite(featuredProduct), onFavorite: () => widget.onFavorite(featuredProduct)),
+                child: ProductTile(product: featuredProduct, badge: 'عطر مميز', onTap: () => widget.onProduct(featuredProduct), favorite: widget.isFavorite(featuredProduct), onFavorite: () => widget.onFavorite(featuredProduct)),
               ),
               Padding(padding: EdgeInsets.fromLTRB(20, 24, 20, 12), child: Text('كل العطور', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 20, fontWeight: FontWeight.w600))),
               FutureBuilder<CatalogResult>(
@@ -417,6 +424,36 @@ class _SmartFilters extends StatelessWidget {
         genders.isEmpty) {
       return const SizedBox.shrink();
     }
+    final filters = <Widget>[
+      if (notes.isNotEmpty)
+        _FilterDropdown(
+          label: 'النوتة',
+          options: notes,
+          selected: selectedNote,
+          onSelected: onNote,
+        ),
+      if (seasons.isNotEmpty)
+        _FilterDropdown(
+          label: 'الموسم',
+          options: seasons,
+          selected: selectedSeason,
+          onSelected: onSeason,
+        ),
+      if (occasions.isNotEmpty)
+        _FilterDropdown(
+          label: 'المناسبة',
+          options: occasions,
+          selected: selectedOccasion,
+          onSelected: onOccasion,
+        ),
+      if (genders.isNotEmpty)
+        _FilterDropdown(
+          label: 'النوع',
+          options: genders,
+          selected: selectedGender,
+          onSelected: onGender,
+        ),
+    ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       child: Column(
@@ -432,33 +469,23 @@ class _SmartFilters extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          if (notes.isNotEmpty)
-            _FilterDropdown(
-              label: 'النوتة',
-              options: notes,
-              selected: selectedNote,
-              onSelected: onNote,
-            ),
-          if (seasons.isNotEmpty)
-            _FilterDropdown(
-              label: 'الموسم',
-              options: seasons,
-              selected: selectedSeason,
-              onSelected: onSeason,
-            ),
-          if (occasions.isNotEmpty)
-            _FilterDropdown(
-              label: 'المناسبة',
-              options: occasions,
-              selected: selectedOccasion,
-              onSelected: onOccasion,
-            ),
-          if (genders.isNotEmpty)
-            _FilterDropdown(
-              label: 'النوع',
-              options: genders,
-              selected: selectedGender,
-              onSelected: onGender,
+          // شبكة 2×2 (قائمتان في كل سطر) حتى لا تدفع القوائم الأربع
+          // التشكيلة للأسفل بارتفاع كبير.
+          for (var i = 0; i < filters.length; i += 2)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: filters[i]),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: i + 1 < filters.length
+                        ? filters[i + 1]
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
             ),
         ],
       ),
@@ -482,14 +509,12 @@ class _FilterDropdown extends StatelessWidget {
   final ValueChanged<String?> onSelected;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(label, style: TextStyle(color: context.subdued, fontSize: 12)),
-            const SizedBox(height: 6),
-            DropdownButtonFormField<String?>(
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(label, style: TextStyle(color: context.subdued, fontSize: 12)),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<String?>(
               value: selected,
               isExpanded: true,
               dropdownColor: context.surfaceCard,
@@ -525,6 +550,5 @@ class _FilterDropdown extends StatelessWidget {
               onChanged: onSelected,
             ),
           ],
-        ),
-      );
+        );
 }

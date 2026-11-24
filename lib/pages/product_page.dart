@@ -155,17 +155,31 @@ class _ProductPageState extends State<ProductPage> {
               const SizedBox(height: 16),
               Text('الحجم', textAlign: TextAlign.right, style: TextStyle(color: context.ink, fontSize: 18, fontWeight: FontWeight.w600)),
               const SizedBox(height: 10),
-              Wrap(spacing: 8, runSpacing: 8, children: _sizes.map((size) {
-                final selected = size == _sizeMl;
-                final price = product.priceFor(concentration: _concentration, sizeMl: size) ?? 0;
-                return ChoiceChip(
-                  label: Text('$size مل • ${price.toStringAsFixed(0)} ${product.currency}'),
-                  selected: selected,
-                  onSelected: (_) => setState(() => _sizeMl = size),
-                  selectedColor: gold.withOpacity(.25),
-                  labelStyle: TextStyle(color: selected ? context.goldText : context.ink, fontWeight: selected ? FontWeight.w700 : FontWeight.normal),
-                );
-              }).toList(growable: false)),
+              // صف أفقي واحد متساوٍ لكل الأحجام (لا سطران 2+1):
+              // كل زر Expanded بعرض متساوٍ، والنص يتقلص قليلاً
+              // (FittedBox) عند الحاجة حتى لا يفيض.
+              Row(
+                children: [
+                  for (var i = 0; i < _sizes.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    Expanded(
+                      child: ChoiceChip(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '${_sizes[i]} مل • ${(product.priceFor(concentration: _concentration, sizeMl: _sizes[i]) ?? 0).toStringAsFixed(0)} ${product.currency}',
+                          ),
+                        ),
+                        selected: _sizes[i] == _sizeMl,
+                        onSelected: (_) => setState(() => _sizeMl = _sizes[i]),
+                        selectedColor: gold.withOpacity(.25),
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                        labelStyle: TextStyle(color: _sizes[i] == _sizeMl ? context.goldText : context.ink, fontWeight: _sizes[i] == _sizeMl ? FontWeight.w700 : FontWeight.normal),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
               const SizedBox(height: 20),
               Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: context.surfaceCard, borderRadius: BorderRadius.circular(16)), child: Row(children: [
                 Text('${_unitPrice.toStringAsFixed(0)} ${product.currency}', style: TextStyle(color: context.goldText, fontSize: 21, fontWeight: FontWeight.bold)),

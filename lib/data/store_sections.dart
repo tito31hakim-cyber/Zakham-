@@ -36,6 +36,7 @@ class StoreSection {
     required this.id,
     required this.title,
     required this.eyebrow,
+    required this.tileDetail,
     required this.lead,
     required this.icon,
     this.highlightValue = '',
@@ -54,6 +55,11 @@ class StoreSection {
 
   /// سطر تعريفي صغير فوق العنوان.
   final String eyebrow;
+
+  /// سطر فرعي قصير لبطاقة القسم في شبكة الرئيسية — سطر واحد مكتمل
+  /// بلا قص ولا تكرار إنجليزي؛ يختلف عن `eyebrow` (سطر الترويسة
+  /// الذهبي في صفحة تفاصيل القسم).
+  final String tileDetail;
 
   /// الفقرة الافتتاحية للقسم.
   final String lead;
@@ -87,6 +93,7 @@ const List<StoreSection> storeSections = <StoreSection>[
     id: 'collection',
     title: 'التشكيلة',
     eyebrow: 'تشكيلة زخم الرسمية · 2027',
+    tileDetail: '11 عطراً',
     lead:
         'أحد عشر عطرًا في تشكيلة زخم 2027، وثلاثة تركيزات معتمدة مع أسعار كل سعة داخل بطاقة العطر.',
     icon: Icons.grid_view_rounded,
@@ -97,6 +104,7 @@ const List<StoreSection> storeSections = <StoreSection>[
     id: 'ritual',
     title: 'طقس زخم',
     eyebrow: 'THE ZAKHAM RITUAL · طقس زخم',
+    tileDetail: 'تجربة التعتيق والرش',
     lead:
         'العطر أكثر من رائحة؛ إنه اللمسة الأخيرة التي تُعرّف بحضورك. امنحه لحظةً من العناية، ودعه يترك أثره.',
     icon: Icons.auto_awesome,
@@ -131,6 +139,7 @@ const List<StoreSection> storeSections = <StoreSection>[
     id: 'gifts',
     title: 'الإهداء',
     eyebrow: 'الهدايا الملكية · صندوق زخم الخشبي',
+    tileDetail: 'صندوق الإهداء الملكي',
     lead:
         'حين تصبح الهدية أثرًا. خشب صُنع بلمسات يدوية، نقش يكتب لأجلك، وعطور تختارها لتحكيا حكايتك. قطعة تُحفظ قبل أن تُفتح.',
     icon: Icons.card_giftcard_outlined,
@@ -148,6 +157,7 @@ const List<StoreSection> storeSections = <StoreSection>[
     id: 'packaging',
     title: 'التغليف الفاخر',
     eyebrow: 'THE ZAKHAM FINISH · التغليف الفاخر',
+    tileDetail: 'تغليف فاخر يليق بك',
     lead:
         'الفخامة تبدأ قبل الرشّة. في دار زخم، تمتد التجربة من اختيار العطر إلى تفاصيل العبوة؛ ملمسٌ مخملي، درجةٌ مارونية عميقة، وزجاجةٌ كريستالية تليق بحضور العطر.',
     icon: Icons.diamond_outlined,
@@ -177,6 +187,7 @@ const List<StoreSection> storeSections = <StoreSection>[
     id: 'bundles',
     title: 'باقات التوفير',
     eyebrow: 'باقات التوفير من زخم · متعة البداية',
+    tileDetail: 'باقات التوفير من زخم · متعة البداية',
     lead:
         'هدية أكبر، أثر أبقى. كوّن اختياراتك من التشكيلة المفضلة واستمتع بتغليف فاخر وتوفير خاص — السعر النهائي يحدد حسب اختياراتك عبر VIP WhatsApp.',
     icon: Icons.layers_outlined,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../data/featured_product.dart';
 import '../data/store_sections.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
@@ -19,6 +20,9 @@ class HomePage extends StatelessWidget {
     required this.onFragranceCards,
     required this.onVerify,
     required this.onConsultation,
+    this.pickProduct = featuredProduct,
+    this.pickFavorite,
+    this.onPickFavorite,
     this.isDailyPerfume = false,
     this.showEmptyCartNudge = false,
     this.onBrowseCollection,
@@ -28,11 +32,21 @@ class HomePage extends StatelessWidget {
   final ValueChanged<Product> onProduct;
   final VoidCallback onQuiz;
 
+  /// عطر «اختيار زخم» — مختلف عن عطر اليوم (سلطان أولاً، يختاره
+  /// الغلاف) ليرى العميل تشكيلة أوسع بمجرد التمرير؛ الافتراضي رويال
+  /// (نفس احتياطي البطل) قبل تحميل التشكيلة.
+  final Product pickProduct;
+
   /// يفتح أداة «بصمة زخم: دليلك للهوية العطرية».
   final VoidCallback onFragranceIdentity;
 
   final bool favorite;
   final VoidCallback onFavorite;
+
+  /// حالة المفضلة لعطر «اختيار زخم» (تتبع `favorite`/`onFavorite`
+  /// عند غيابها — كما في الاختبارات القديمة).
+  final bool? pickFavorite;
+  final VoidCallback? onPickFavorite;
 
   /// يفتح صفحة تفاصيل قسم (طقس زخم، الإهداء، ...).
   final ValueChanged<String> onSection;
@@ -86,12 +100,13 @@ class HomePage extends StatelessWidget {
             onTap: () => onProduct(product),
             badge: isDailyPerfume ? 'عطر اليوم' : null,
           ),
+          // زر المفضلة لعطر اليوم فقط — رابط «اكتشف ...» حُذف لأنه
+          // يكرر نص البطاقة نفسها («اكتشف العطر»)، والبطاقة قابلة
+          // للضغط للدخول.
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 13, 20, 0),
             child: Row(children: [
               IconButton(onPressed: onFavorite, tooltip: favorite ? 'إزالة من المفضلة' : 'أضف للمفضلة', icon: Icon(favorite ? Icons.favorite : Icons.favorite_border, color: favorite ? Colors.redAccent : context.goldText)),
-              const Spacer(),
-              TextButton(onPressed: () => onProduct(product), child: Text('اكتشف ${product.name}', style: TextStyle(color: context.goldText))),
             ]),
           ),
           SectionHeader(title: 'اعثر على عطرك', actionLabel: 'ابدأ الاختبار', onAction: onQuiz),
@@ -133,7 +148,7 @@ class HomePage extends StatelessWidget {
                 return _SectionTile(
                   icon: section.icon,
                   title: section.title,
-                  detail: section.id == 'collection' ? '11 عطراً' : section.eyebrow,
+                  detail: section.tileDetail,
                   onTap: () => section.id == 'collection'
                       ? onOpenSections()
                       : onSection(section.id),
@@ -142,37 +157,51 @@ class HomePage extends StatelessWidget {
             ),
           ),
           const SectionHeader(title: 'اختيار زخم'),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: ProductTile(product: product, onTap: () => onProduct(product), favorite: favorite, onFavorite: onFavorite)),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: ProductTile(product: pickProduct, onTap: () => onProduct(pickProduct), favorite: pickFavorite ?? favorite, onFavorite: onPickFavorite ?? onFavorite)),
           const SectionHeader(title: 'خدمات الدار'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: GridView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 1.55,
-              ),
+            child: Column(
+              // stretch حتى تملأ بطاقة «استشارة عطرية» عرض الصف كاملاً:
+              // بلا stretch تنكمش البطاقة على محتواها (236px بدل 760).
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _SectionTile(
-                  icon: Icons.style_outlined,
-                  title: 'البطاقات العطرية',
-                  detail: 'المستكشف والرادار',
-                  onTap: onFragranceCards,
+                SizedBox(
+                  height: 116,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _SectionTile(
+                          icon: Icons.style_outlined,
+                          title: 'البطاقات العطرية',
+                          detail: 'المستكشف والرادار',
+                          onTap: onFragranceCards,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _SectionTile(
+                          icon: Icons.verified_outlined,
+                          title: 'تحقق من الأصالة',
+                          detail: 'رقم الكرت أو QR',
+                          onTap: onVerify,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                _SectionTile(
-                  icon: Icons.verified_outlined,
-                  title: 'تحقق من الأصالة',
-                  detail: 'رقم الكرت أو QR',
-                  onTap: onVerify,
-                ),
-                _SectionTile(
-                  icon: Icons.support_agent_outlined,
-                  title: 'استشارة عطرية',
-                  detail: 'احجز مكالمة أو واتساب',
-                  onTap: onConsultation,
+                const SizedBox(height: 10),
+                // «استشارة عطرية» بعرض الصف الكامل حتى لا تبقى بطاقة
+                // منفردة في صف ثانٍ بمساحة فارغة بجانبها.
+                SizedBox(
+                  height: 116,
+                  child: _SectionTile(
+                    icon: Icons.support_agent_outlined,
+                    title: 'استشارة عطرية',
+                    detail: 'احجز مكالمة أو واتساب',
+                    onTap: onConsultation,
+                  ),
                 ),
               ],
             ),
@@ -269,7 +298,7 @@ class _IdentityEntryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('4 خطوات لترشيح صادق', style: TextStyle(color: context.goldText, fontSize: 12)),
+                    Text('تحليل بصمتك العطرية الكاملة', style: TextStyle(color: context.goldText, fontSize: 12)),
                     Text(
                       'بصمة زخم: دليلك للهوية العطرية',
                       style: TextStyle(color: context.ink, fontSize: 18, fontWeight: FontWeight.w600),

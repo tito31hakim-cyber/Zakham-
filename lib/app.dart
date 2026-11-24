@@ -486,6 +486,19 @@ class _StoreShellState extends State<StoreShell> {
     setState(() => selected = 1);
   }
 
+  /// عطر «اختيار زخم» في الرئيسية — مختلف عن عطر اليوم ليرى العميل
+  /// تشكيلة أوسع بمجرد التمرير: سلطان أولاً، ثم رويال، ثم أول عطر
+  /// محمّل غير البطل؛ وإن لم يوجد غيره يُعرض البطل نفسه كما كان.
+  Product _pickProduct(Product hero) {
+    final sultan = knownProducts['sultan'];
+    if (sultan != null && sultan.id != hero.id) return sultan;
+    if (featuredProduct.id != hero.id) return featuredProduct;
+    for (final item in knownProducts.values) {
+      if (item.id != hero.id) return item;
+    }
+    return hero;
+  }
+
   /// يفتح محادثة العملاء المصغرة — من الأيقونة العائمة في شاشتي
   /// الرئيسية والتشكيلة؛ بلا مصادقة، ونطاقها كتالوج المتجر فقط.
   void _openCustomerChat() {
@@ -502,14 +515,18 @@ class _StoreShellState extends State<StoreShell> {
     // البطاقة العلوية هي عطر اليوم (دوران يومي) — ورويال احتياطي
     // قبل تحميل التشكيلة أو بلا نت؛ والمفضلة تتبع العطر المعروض.
     final heroProduct = _dailyProduct ?? featuredProduct;
+    final pickProduct = _pickProduct(heroProduct);
     final pages = <Widget>[
       HomePage(
         product: heroProduct,
+        pickProduct: pickProduct,
         onProduct: openProduct,
         onQuiz: openQuiz,
         onFragranceIdentity: openFragranceIdentity,
         favorite: isFavorite(heroProduct),
         onFavorite: () => toggleFavorite(heroProduct),
+        pickFavorite: isFavorite(pickProduct),
+        onPickFavorite: () => toggleFavorite(pickProduct),
         onSection: openSection,
         onOpenSections: openSections,
         onFragranceCards: openFragranceCards,

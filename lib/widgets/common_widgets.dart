@@ -24,8 +24,10 @@ class Header extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: 0,
-            left: 0,
+            // هامش من الأعلى واليسار حتى لا تلتصق أيقونة تبديل
+            // الواجهة بحافة الشاشة ولا بزخرفة الشعار.
+            top: 8,
+            left: 8,
             child: IconButton(
               onPressed: theme.toggle,
               tooltip: theme.isLight ? 'الواجهة الداكنة' : 'الواجهة الفاتحة',
@@ -280,9 +282,11 @@ class HeroBanner extends StatelessWidget {
                     ),
                   ),
                 ),
+              // النص مرفوع عن أسفل البطاقة حتى لا يغطيه زر «مساعد
+              // دار زخم» العائم عند التمرير.
               Positioned(
                 right: 20,
-                bottom: 20,
+                bottom: 48,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -324,7 +328,7 @@ class QuizBanner extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('ثلاثة أسئلة فقط', style: TextStyle(color: context.goldText, fontSize: 12)),
+                    Text('ترشيح سريع في 30 ثانية', style: TextStyle(color: context.goldText, fontSize: 12)),
                     Text(
                       'اكتشف الرائحة الأقرب لك',
                       style: TextStyle(color: context.ink, fontSize: 17, fontWeight: FontWeight.w600),
@@ -347,12 +351,17 @@ class ProductTile extends StatelessWidget {
     required this.onTap,
     required this.favorite,
     required this.onFavorite,
+    this.badge,
   });
 
   final Product product;
   final VoidCallback onTap;
   final bool favorite;
   final VoidCallback onFavorite;
+
+  /// شارة صغيرة فوق الاسم (مثلاً «عطر مميز» للبطاقة المميزة في
+  /// التشكيلة) — تظهر فقط عند تمريرها.
+  final String? badge;
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -375,6 +384,26 @@ class ProductTile extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
+                      if (badge != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: gold,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            badge!,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      if (badge != null) const SizedBox(height: 8),
                       Text(
                         product.name,
                         style: TextStyle(color: context.ink, fontSize: 19, fontWeight: FontWeight.w600),
@@ -394,8 +423,11 @@ class ProductTile extends StatelessWidget {
                         style: TextStyle(color: context.subdued, fontSize: 12, height: 1.4),
                       ),
                       const Spacer(),
+                      // السعر موحّد بصيغة «يبدأ من» بأقل سعر (250 ج.م
+                      // للتشكيلة القياسية) كما في بطاقات التشكيلة —
+                      // لا سعر حجم واحد بصيغة EGP.
                       Text(
-                        '${product.price.toStringAsFixed(0)} ${product.currency}',
+                        'يبدأ من ${product.lowestPrice.toStringAsFixed(0)} ج.م',
                         style: TextStyle(color: context.goldText, fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -457,11 +489,12 @@ class ApiProductCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              // سطر واحد متوازن بأسماء التركيزات العربية المختصرة
-              // فقط — التسميات الثنائية الطويلة من الخادم كانت
-              // تلتف 3 أسطر وتتداخل عربي/لاتيني.
+              // سطر النوتات الفعلية للعطر (أول 3 نوتات موثقة من
+              // بيانات المنتج) بدل سطر التركيزات الموحد الذي كان
+              // يتكرر في كل العطور؛ وإن غابت النوتات يعود السطر
+              // نفسه إلى التركيزات (انظر `displayNotesLine`).
               Text(
-                product.availableConcentrationsShort,
+                product.displayNotesLine,
                 textAlign: TextAlign.right,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -480,9 +513,22 @@ class ApiProductCard extends StatelessWidget {
                   size: 20,
                 ),
               ),
-            Icon(
-              product.inStock ? Icons.check_circle_outline : Icons.remove_circle_outline,
-              color: product.inStock ? Colors.green : Colors.redAccent,
+            // شارة نصية مقروءة «متوفر» (أو «غير متوفر») بدل أيقونة
+            // الصح الخضراء التي كان يلتبس معناها على المستخدم الجديد.
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: (product.inStock ? const Color(0xFF2E7D32) : Colors.redAccent).withOpacity(.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                product.inStock ? 'متوفر' : 'غير متوفر',
+                style: TextStyle(
+                  color: product.inStock ? const Color(0xFF2E7D32) : Colors.redAccent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ]),
         ),
@@ -502,17 +548,32 @@ class NoteCard extends StatelessWidget {
           border: Border.all(color: context.hairline),
           borderRadius: BorderRadius.circular(14),
         ),
+        // القراءة العربية الطبيعية من اليمين لليسار: النقطة الذهبية
+        // في اليمين، يليها عنوان المرحلة مباشرة («المقدمة:»)، ثم
+        // المكونات — لا عنوان المرحلة في أقصى اليسار منفصلاً عن نقطته.
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.circle, color: context.goldText, size: 8),
-            const SizedBox(width: 12),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Icon(Icons.circle, color: context.goldText, size: 8),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$title:',
+              style: TextStyle(
+                color: context.ink,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 notes.isEmpty ? 'لا توجد بيانات بعد' : notes.join('، '),
                 style: TextStyle(color: context.subdued, fontSize: 12),
               ),
             ),
-            Text(title, style: TextStyle(color: context.ink, fontWeight: FontWeight.w600)),
           ],
         ),
       );
