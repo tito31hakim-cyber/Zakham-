@@ -12,7 +12,7 @@ class AppUpdateInfo {
     required this.versionName,
     required this.downloadUrl,
     this.updatedAt,
-    this.releaseNotes,
+    this.notes,
   });
 
   /// رقم البناء (versionCode) المعلن — يُقارن بـ AppVersion.versionCode.
@@ -27,8 +27,10 @@ class AppUpdateInfo {
   /// تاريخ إعلان الإصدار (اختياري).
   final String? updatedAt;
 
-  /// ملاحظات الإصدار (اختياري).
-  final String? releaseNotes;
+  /// ملاحظات الإصدار — قائمة نقطية لقسم «ما الجديد» في حوار
+  /// التحديث (اختياري من حقل `notes` في الرد؛ غيابه أو فراغه
+  /// يخفي القسم كاملاً ولا تُخترع ملاحظة بديلة أبداً).
+  final List<String>? notes;
 
   /// يحلل جسم نقطة /api/app/latest؛ يرجع null عند أي نقص أو شكل
   /// غير صالح — فالحوار لا يظهر إلا على بيانات مكتملة موثوقة.
@@ -45,13 +47,20 @@ class AppUpdateInfo {
       return null;
     }
     final updatedAt = (data['updatedAt'] as String?)?.trim();
-    final releaseNotes = (data['releaseNotes'] as String?)?.trim();
+    final rawNotes = data['notes'];
+    final notes = rawNotes is List
+        ? rawNotes
+            .whereType<String>()
+            .map((note) => note.trim())
+            .where((note) => note.isNotEmpty)
+            .toList()
+        : null;
     return AppUpdateInfo(
       versionCode: versionCode,
       versionName: versionName,
       downloadUrl: downloadUrl,
       updatedAt: updatedAt?.isEmpty == true ? null : updatedAt,
-      releaseNotes: releaseNotes?.isEmpty == true ? null : releaseNotes,
+      notes: notes?.isEmpty == true ? null : notes,
     );
   }
 }

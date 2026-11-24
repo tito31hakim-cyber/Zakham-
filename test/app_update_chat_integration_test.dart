@@ -137,7 +137,7 @@ void main() {
         ),
       );
       // الإطلاق سليم بلا حوار تحديث.
-      expect(find.text('تحديث جديد'), findsNothing);
+      expect(find.text('تحديث جديد!'), findsNothing);
       expect(find.text('السلة'), findsOneWidget);
       // تدفقا الإرسال في المحادثتين يعملان كما هما.
       await _sendInCustomerChat(tester);
@@ -152,7 +152,7 @@ void main() {
           MockClient((_) async => throw Exception('offline')),
         ),
       );
-      expect(find.text('تحديث جديد'), findsNothing);
+      expect(find.text('تحديث جديد!'), findsNothing);
       expect(find.text('السلة'), findsOneWidget);
       await _sendInCustomerChat(tester);
       await _sendInAdvisorChat(tester);
@@ -167,13 +167,13 @@ void main() {
         ),
       );
       // الحوار ظهر بلا أخطاء.
-      expect(find.text('تحديث جديد'), findsOneWidget);
+      expect(find.text('تحديث جديد!'), findsOneWidget);
       expect(find.text('تحديث الآن'), findsOneWidget);
       expect(find.text('لاحقاً'), findsOneWidget);
       // «لاحقاً» يغلقه، والتطبيق والمحادثتان يعملان بعده.
       await tester.tap(find.text('لاحقاً'));
       await tester.pumpAndSettle();
-      expect(find.text('تحديث جديد'), findsNothing);
+      expect(find.text('تحديث جديد!'), findsNothing);
       await _sendInCustomerChat(tester);
       await _sendInAdvisorChat(tester);
     });
@@ -185,10 +185,10 @@ void main() {
         MockClient((_) async => _jsonResponse(_newerVersionBody, 200)),
       );
       await _pumpShell(tester, api);
-      expect(find.text('تحديث جديد'), findsOneWidget);
+      expect(find.text('تحديث جديد!'), findsOneWidget);
       await tester.tap(find.text('لاحقاً'));
       await tester.pumpAndSettle();
-      expect(find.text('تحديث جديد'), findsNothing);
+      expect(find.text('تحديث جديد!'), findsNothing);
       // فتح ثانٍ (غلاف جديد) في الجلسة نفسها: الفحص يعمل مجدداً
       // والحوار يظهر — بلا بوابة يومية تحجبه وبلا رفض محفوظ.
       // (ضخ شجرة مختلفة أولاً يلغي حالة الغلاف القديم، فالضخ
@@ -198,11 +198,11 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: SizedBox()));
       await tester.pumpAndSettle();
       await _pumpShell(tester, api);
-      expect(find.text('تحديث جديد'), findsOneWidget);
+      expect(find.text('تحديث جديد!'), findsOneWidget);
       expect(find.text('تحديث الآن'), findsOneWidget);
       await tester.tap(find.text('لاحقاً'));
       await tester.pumpAndSettle();
-      expect(find.text('تحديث جديد'), findsNothing);
+      expect(find.text('تحديث جديد!'), findsNothing);
     });
 
     testWidgets('النقطة ترد الإصدار المثبَّت نفسه: بلا حوار ويعمل كل شيء',
@@ -223,7 +223,7 @@ void main() {
           ),
         ),
       );
-      expect(find.text('تحديث جديد'), findsNothing);
+      expect(find.text('تحديث جديد!'), findsNothing);
       expect(find.text('السلة'), findsOneWidget);
       await _sendInCustomerChat(tester);
       await _sendInAdvisorChat(tester);

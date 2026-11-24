@@ -11,22 +11,22 @@ class AppVersion {
   /// Version name from pubspec.yaml (1.1.0).
   static const versionName = '1.1.0';
 
-  /// Flutter build number from pubspec.yaml (the +10 in 1.1.0+10).
-  static const versionCode = 10;
+  /// Flutter build number from pubspec.yaml (the +11 in 1.1.0+11).
+  static const versionCode = 11;
 
   /// Codemagic build number of the published release (label only,
-  /// from the release tag v1.1.0-build40).
-  static const codemagicBuild = 40;
+  /// from the release tag v1.1.0-build41).
+  static const codemagicBuild = 41;
 
   /// Short commit SHA of the source this build was made from.
   ///
   /// Codemagic passes `--dart-define=ZAKHAM_COMMIT=<sha>` at build time;
-  /// the fallback is the tagged commit of the published build 38
-  /// (GitHub Release v1.1.0-build38). Update the fallback at each
+  /// the fallback is the tagged commit of the published build 40
+  /// (GitHub Release v1.1.0-build40). Update the fallback at each
   /// release so a build without the define still reports its source.
   static const commit = String.fromEnvironment(
     'ZAKHAM_COMMIT',
-    defaultValue: '0f1b451',
+    defaultValue: '2240d07',
   );
 
   /// نص التذييل للعميل — الإصدار فقط، بلا رقم بناء وبلا Commit:
